@@ -243,7 +243,6 @@ class MusicPanelView(discord.ui.View):
 
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
-    """Comandos para reproducir música de alta calidad."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.guild_states: dict[int, GuildState] = {}
@@ -260,11 +259,12 @@ class MusicCog(commands.Cog, name="Música"):
                 await state.active_panel.delete()
             except (discord.NotFound, discord.HTTPException):
                 pass
+
         embed = discord.Embed(title="MUSIC PANEL", color=discord.Color.blue())
         embed.description = f"**[{song['title']}]({song.get('url', '#')})**"
         embed.add_field(name="Pedido por", value=song['requester'].mention, inline=True)
         if 'duration' in song and song['duration']:
-             embed.add_field(name="Duración", value=str(datetime.timedelta(seconds=song['duration'])), inline=True)
+            embed.add_field(name="Duración", value=str(datetime.timedelta(seconds=song['duration'])), inline=True)
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         view = MusicPanelView(self, ctx)
         state.active_panel = await ctx.send(embed=embed, view=view)
@@ -272,52 +272,105 @@ class MusicCog(commands.Cog, name="Música"):
     def play_next_song(self, ctx: commands.Context):
         state = self.get_guild_state(ctx.guild.id)
         if state.current_song:
-            if state.loop_state == LoopState.SONG: state.queue.insert(0, state.current_song)
-            elif state.loop_state == LoopState.QUEUE: state.queue.append(state.current_song)
+            if state.loop_state == LoopState.SONG:
+                state.queue.insert(0, state.current_song)
+            elif state.loop_state == LoopState.QUEUE:
+                state.queue.append(state.current_song)
             state.history.append(state.current_song)
-            if len(state.history) > 20: state.history.pop(0)
+            if len(state.history) > 20:
+                state.history.pop(0)
 
         if not state.queue:
             state.current_song = None
             if state.autoplay and state.history:
                 last_song_title = state.history[-1]['title']
                 self.bot.loop.create_task(self.start_autoplay(ctx, last_song_title))
-            else: self.bot.loop.create_task(self.disconnect_after_inactivity(ctx))
+            else:
+                self.bot.loop.create_task(self.disconnect_after_inactivity(ctx))
             return
 
         state.current_song = state.queue.pop(0)
         vc = ctx.guild.voice_client
         if isinstance(vc, discord.VoiceClient) and vc.is_connected():
             try:
-                source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(state.current_song['url'], **FFMPEG_OPTIONS), volume=state.volume)
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(state.current_song['url'], **FFMPEG_OPTIONS),
+                    volume=state.volume
+                )
                 vc.play(source, after=lambda e: self.handle_after_play(ctx, e))
                 self.bot.loop.create_task(self.send_music_panel(ctx, state.current_song))
             except Exception as e:
                 print(f"Error al reproducir: {e}")
-                self.bot.loop.create_task(ctx.channel.send(f'❌ Hubo un error. Saltando.'))
+                self.bot.loop.create_task(ctx.channel.send(f'❌ Error al reproducir. Saltando.'))
                 self.play_next_song(ctx)
 
     def handle_after_play(self, ctx: commands.Context, error: Exception | None):
-        if error: print(f'Error after play: {error}')
+        if error:
+            print(f'Error after play: {error}')
         self.bot.loop.call_soon_threadsafe(self.play_next_song, ctx)
 
-    async def disconnect_after_inactivity(self, ctx: commands.Context):
-        await asyncio.sleep(120)
-        state = self.get_guild_state(ctx.guild.id)
-        vc = ctx.guild.voice_client
-        if not state.current_song and isinstance(vc, discord.VoiceClient):
-            fun_cog = self.bot.get_cog("Juegos e IA")
-            if not fun_cog or not fun_cog.game_in_progress.get(ctx.guild.id, False):
-                if state.active_panel:
-                    try: await state.active_panel.delete()
-                    except (discord.NotFound, discord.HTTPException): pass
-                    state.active_panel = None
-                await vc.disconnect()
-                await ctx.channel.send("👋 ¡Adiós! Desconectado por inactividad.")
+    async def play(self, ctx: commands.Context, *, search_query: str):
+        if ctx.interaction:
+            await ctx.defer(ephemeral=False)
 
-    async def start_autoplay(self, ctx: commands.Context, last_song_title: str):
-        await ctx.channel.send("✅ Iniciando Autoplay...")
-        await self.play.callback(self, ctx, search_query=f"'{last_song_title}' mix")
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            return await self.send_response(ctx, "❌ Debes estar en un canal de voz.", ephemeral=True)
+
+        voice_channel = ctx.author.voice.channel
+        vc = ctx.guild.voice_client
+
+        try:
+            if not vc:
+                vc = await voice_channel.connect()
+            elif vc.channel != voice_channel:
+                await vc.move_to(voice_channel)
+        except Exception as e:
+            return await self.send_response(ctx, f"❌ No pude conectarme al canal de voz: {e}", ephemeral=True)
+
+        msg = await self.send_response(ctx, f'🔎 Procesando: "**{search_query}**"...')
+
+        state = self.get_guild_state(ctx.guild.id)
+        final_query = search_query
+        ydl_opts = YDL_OPTIONS.copy()
+
+        try:
+            # Manejo de URLs YouTube
+            from urllib.parse import urlparse, parse_qs
+            if "youtube.com" in search_query or "youtu.be" in search_query:
+                parsed_url = urlparse(search_query)
+                query_params = parse_qs(parsed_url.query)
+                if 'v' in query_params:
+                    video_id = query_params['v'][0]
+                    final_query = f"https://www.youtube.com/watch?v={video_id}"
+                    ydl_opts['noplaylist'] = True
+                elif 'list' in query_params:
+                    ydl_opts['noplaylist'] = False
+
+            loop = asyncio.get_event_loop()
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info(final_query, download=False))
+
+            entries = info.get('entries', [info]) if info else []
+            if not entries:
+                return await msg.edit(content="❌ No encontré nada.")
+
+            for entry in entries:
+                if entry and entry.get('url'):
+                    song = {
+                        'title': entry.get('title', 'Título desconocido'),
+                        'url': entry.get('url'),
+                        'duration': entry.get('duration'),
+                        'requester': ctx.author
+                    }
+                    state.queue.append(song)
+
+            await msg.edit(content=f'✅ Añadido{"s" if len(entries) > 1 else ""} {len(entries)} canci{"ón" if len(entries) == 1 else "ones"} a la cola.')
+
+            if not state.current_song:
+                self.play_next_song(ctx)
+
+        except Exception as e:
+            await msg.edit(content=f"❌ Error al buscar o reproducir: `{str(e)}`")
 
     async def send_response(self, ctx: commands.Context, content: str = None, embed: discord.Embed = None, ephemeral: bool = False):
         if ctx.interaction:
@@ -327,6 +380,7 @@ class MusicCog(commands.Cog, name="Música"):
                 return await ctx.interaction.response.send_message(content, embed=embed, ephemeral=ephemeral)
         else:
             return await ctx.send(content, embed=embed)
+
 
     @commands.hybrid_command(name='join', description="Hace que el bot se una a tu canal de voz.")
     async def join(self, ctx: commands.Context):
