@@ -242,7 +242,7 @@ class MusicPanelView(discord.ui.View):
         await interaction.response.defer()
 
 # --- COG DE MÚSICA ---
-class MusicCog(commands.Cog, name="Música"):
+class MusicCog(commands.Cog, name="Música", description="Comandos para reproducir música de alta calidad."):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.guild_states: dict[int, GuildState] = {}
