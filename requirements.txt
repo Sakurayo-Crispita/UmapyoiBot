@@ -1,0 +1,9 @@
+discord.py
+yt-dlp
+aiohttp
+requests
+flask
+pillow
+python-dotenv
+replit
+lyricsgenius
