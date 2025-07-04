@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 # --- CONFIGURACIÓN DE APIS Y SERVIDOR WEB ---
 load_dotenv()
-GENIUS_API_TOKEN = os.getenv("GENIUS_API_TOKEN")
+GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
 genius = lyricsgenius.Genius(GENIUS_API_TOKEN)
 
 app = Flask('')
