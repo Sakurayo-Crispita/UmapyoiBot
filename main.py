@@ -242,7 +242,8 @@ class MusicPanelView(discord.ui.View):
         await interaction.response.defer()
 
 # --- COG DE MÚSICA ---
-class MusicCog(commands.Cog, name="Música", description="Comandos para reproducir música de alta calidad."):
+class MusicCog(commands.Cog, name="Música"):
+    "Comandos para reproducir música de alta calidad."
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.guild_states: dict[int, GuildState] = {}
@@ -380,7 +381,10 @@ class MusicCog(commands.Cog, name="Música", description="Comandos para reproduc
                 return await ctx.interaction.response.send_message(content, embed=embed, ephemeral=ephemeral)
         else:
             return await ctx.send(content, embed=embed)
-
+        
+    async def start_autoplay(self, ctx: commands.Context, last_song_title: str):
+        await ctx.channel.send("🎶 Autoplay activado: buscando canciones similares...")
+        await self.play(ctx, search_query=f"{last_song_title} mix")
 
     @commands.hybrid_command(name='join', description="Hace que el bot se una a tu canal de voz.")
     async def join(self, ctx: commands.Context):
@@ -433,7 +437,13 @@ class MusicCog(commands.Cog, name="Música", description="Comandos para reproduc
                     state.queue.append({'title': entry.get('title', 'Título desconocido'), 'url': entry.get('url'), 'duration': entry.get('duration'), 'requester': ctx.author})
             await msg.edit(content=f'✅ ¡Añadido{"s" if len(entries) > 1 else ""} {len(entries)} canci{"ón" if len(entries) == 1 else "ones"} a la cola!')
             if not state.current_song: self.play_next_song(ctx)
-        except Exception as e: await msg.edit(content=f'❌ Ocurrió un error: {e}')
+        except Exception as e:
+            error_msg = str(e)
+        if 'DRM' in error_msg or 'not DRM protected' in error_msg:
+            await msg.edit(content="❌ No puedo reproducir contenido de **Spotify** u otras plataformas con protección DRM.\nPor favor, intenta con un enlace de **YouTube**.")
+        else:
+            await msg.edit(content=f'❌ Ocurrió un error: {error_msg}')
+
 
     @commands.hybrid_command(name='stop', description="Detiene la música y vacía la cola.")
     async def stop(self, ctx: commands.Context):
