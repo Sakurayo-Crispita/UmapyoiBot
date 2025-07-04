@@ -3,6 +3,8 @@ from discord.ext import commands
 import yt_dlp
 import asyncio
 import os 
+from flask import Flask
+from threading import Thread
 import datetime
 import random
 import requests
@@ -19,6 +21,12 @@ from dotenv import load_dotenv
 load_dotenv()
 GENIUS_API_TOKEN = os.getenv("GENIUS_API_TOKEN")
 genius = lyricsgenius.Genius(GENIUS_API_TOKEN)
+
+app = Flask('')
+@app.route('/')
+def home(): return "Umapyoi está en línea."
+def run(): app.run(host='0.0.0.0', port=8080)
+def keep_alive(): Thread(target=run).start()
 
 # --- CONFIGURACIÓN DEL BOT ---
 FFMPEG_OPTIONS = {
@@ -1010,18 +1018,14 @@ async def on_command_error(ctx: commands.Context, error):
 def main():
     TOKEN = os.environ.get("DISCORD_TOKEN")
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-
     if TOKEN is None:
         print("¡ERROR! No se encontró el DISCORD_TOKEN en los Secrets.")
         return
-
     if GEMINI_API_KEY is None:
         print("¡ADVERTENCIA! No se encontró la GEMINI_API_KEY. El comando /pregunta no funcionará.")
-
-    try:
-        bot.run(TOKEN)
-    except Exception as e:
-        print(f"\nOcurrió un error al iniciar el bot: {e}")
+    keep_alive()
+    try: bot.run(TOKEN)
+    except Exception as e: print(f"\nOcurrió un error al iniciar el bot: {e}")
 
 if __name__ == "__main__":
     main()
