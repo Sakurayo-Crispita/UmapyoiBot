@@ -302,6 +302,20 @@ class MusicCog(commands.Cog, name="Música"):
             print(f'Error after play: {error}')
         self.bot.loop.call_soon_threadsafe(self.play_next_song, ctx)
 
+    async def disconnect_after_inactivity(self, ctx: commands.Context):
+        await asyncio.sleep(120)
+        state = self.get_guild_state(ctx.guild.id)
+        vc = ctx.guild.voice_client
+        if vc and not vc.is_playing() and not vc.is_paused():
+            fun_cog = self.bot.get_cog("Juegos e IA")
+            if not fun_cog or not fun_cog.game_in_progress.get(ctx.guild.id, False):
+                if state.active_panel:
+                    try: await state.active_panel.delete()
+                    except (discord.NotFound, discord.HTTPException): pass
+                    state.active_panel = None
+                await vc.disconnect()
+                await ctx.channel.send("👋 ¡Adiós! Desconectado por inactividad.")
+
     async def play(self, ctx: commands.Context, *, search_query: str):
         if ctx.interaction:
             await ctx.defer(ephemeral=False)
