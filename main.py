@@ -15,7 +15,7 @@ import lyricsgenius
 from enum import Enum
 from dotenv import load_dotenv
 from gtts import gTTS
-from typing import Literal # <-- Importación añadida
+from typing import Literal
 
 # --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
 load_dotenv()
@@ -771,14 +771,6 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         self.cursor.execute("UPDATE tts_user_settings SET is_active = ? WHERE guild_id = ? AND user_id = ?", (int(is_active), guild_id, user_id))
         self.conn.commit()
 
-    async def check_and_disconnect(self, vc: discord.VoiceClient):
-        await asyncio.sleep(5)
-        if vc and vc.is_connected() and not vc.is_playing() and not vc.is_paused():
-            music_cog = self.bot.get_cog("Música")
-            if music_cog and (music_cog.get_guild_state(vc.guild.id).current_song or music_cog.get_guild_state(vc.guild.id).queue):
-                return
-            await vc.disconnect()
-
     async def process_tts_message(self, message: discord.Message):
         user_lang, is_active = self.get_user_tts_settings(message.guild.id, message.author.id)
         if not is_active or not message.author.voice: return
@@ -811,7 +803,7 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
                 if e: print(f'TTS Error: {e}')
                 try: os.remove(tts_file)
                 except OSError as e: print(f"TTS File Error: {e}")
-                self.bot.loop.create_task(self.check_and_disconnect(vc))
+                # Ya no se llama a la función de desconexión aquí
 
             vc.play(source, after=after_playing)
         except Exception as e:
