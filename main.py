@@ -128,100 +128,57 @@ class MusicPanelView(discord.ui.View):
             if interaction.guild.voice_client.is_paused(): pause_button.label, pause_button.emoji = "Reanudar", "▶️"
             else: pause_button.label, pause_button.emoji = "Pausa", "⏸️"
 
-        await interaction.message.edit(view=self)
+        try:
+            await interaction.message.edit(view=self)
+        except discord.NotFound:
+            pass # El mensaje ya fue borrado
 
     @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary, emoji="⏪", row=0, custom_id="previous_button")
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        state = self.music_cog.get_guild_state(interaction.guild.id)
-        if not state.history:
-            return await interaction.response.send_message("No hay historial de canciones.", ephemeral=True)
-        
-        if state.current_song: state.queue.insert(0, state.current_song)
-        state.queue.insert(0, state.history.pop())
-        
-        if (vc := interaction.guild.voice_client) and vc.is_playing(): vc.stop()
-        else: 
-            ctx = await self.music_cog.bot.get_context(interaction)
-            self.music_cog.play_next_song(ctx)
-            
-        await interaction.response.send_message("⏪ Reproduciendo la canción anterior.", ephemeral=True, delete_after=5)
+        await self.music_cog.handle_previous(interaction)
 
     @discord.ui.button(label="Pausa", style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
     async def pause_resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        vc = interaction.guild.voice_client
-        if vc.is_paused():
-            vc.resume()
-            button.label, button.emoji = "Pausa", "⏸️"
-        else:
-            vc.pause()
-            button.label, button.emoji = "Reanudar", "▶️"
-        await interaction.response.edit_message(view=self)
+        await self.music_cog.handle_pause_resume(interaction)
+        await self.update_panel(interaction)
 
     @discord.ui.button(label="Saltar", style=discord.ButtonStyle.primary, emoji="⏭️", row=0, custom_id="skip_button")
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        vc = interaction.guild.voice_client
-        if vc and (vc.is_playing() or vc.is_paused()):
-            vc.stop()
-            await interaction.response.send_message("⏭️ Canción saltada.", ephemeral=True, delete_after=5)
-        else:
-            await interaction.response.send_message("No hay nada que saltar.", ephemeral=True)
+        await self.music_cog.handle_skip(interaction)
 
     @discord.ui.button(label="Barajar", style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
     async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        state = self.music_cog.get_guild_state(interaction.guild.id)
-        if not state.queue:
-            return await interaction.response.send_message("La cola está vacía para barajar.", ephemeral=True)
-        random.shuffle(state.queue)
-        await interaction.response.send_message("🔀 ¡La cola ha sido barajada!", ephemeral=True, delete_after=5)
+        await self.music_cog.handle_shuffle(interaction)
 
     @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
     async def loop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        state = self.music_cog.get_guild_state(interaction.guild.id)
-        if state.loop_state == LoopState.OFF:
-            state.loop_state, msg = LoopState.SONG, 'Bucle de canción activado.'
-        elif state.loop_state == LoopState.SONG:
-            state.loop_state, msg = LoopState.QUEUE, 'Bucle de cola activado.'
-        else:
-            state.loop_state, msg = LoopState.OFF, 'Bucle desactivado.'
-        
-        await interaction.response.send_message(f"🔁 {msg}", ephemeral=True, delete_after=5)
+        await self.music_cog.handle_loop(interaction)
         await self.update_panel(interaction)
 
     @discord.ui.button(label="Autoplay", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
     async def autoplay_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        state = self.music_cog.get_guild_state(interaction.guild.id)
-        state.autoplay = not state.autoplay
-        status = "activado" if state.autoplay else "desactivado"
-        await interaction.response.send_message(f"🔄 Autoplay **{status}**.", ephemeral=True, delete_after=5)
+        await self.music_cog.handle_autoplay(interaction)
         await self.update_panel(interaction)
 
     @discord.ui.button(label="Sonando", style=discord.ButtonStyle.primary, emoji="🎵", row=2, custom_id="nowplaying_button")
     async def nowplaying_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        ctx = await self.music_cog.bot.get_context(interaction)
-        await self.music_cog.nowplaying.callback(self.music_cog, ctx)
+        await self.music_cog.handle_nowplaying(interaction)
 
     @discord.ui.button(label="Cola", style=discord.ButtonStyle.primary, emoji="🎶", row=2, custom_id="queue_button")
     async def queue_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        ctx = await self.music_cog.bot.get_context(interaction)
-        await self.music_cog.queue_info.callback(self.music_cog, ctx)
+        await self.music_cog.handle_queue(interaction)
 
     @discord.ui.button(label="Letra", style=discord.ButtonStyle.primary, emoji="🎤", row=2, custom_id="lyrics_button")
     async def lyrics_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        ctx = await self.music_cog.bot.get_context(interaction)
-        await self.music_cog.lyrics.callback(self.music_cog, ctx)
+        await self.music_cog.handle_lyrics(interaction)
 
     @discord.ui.button(label="Detener", style=discord.ButtonStyle.danger, emoji="⏹️", row=3, custom_id="stop_button")
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        ctx = await self.music_cog.bot.get_context(interaction)
-        await self.music_cog.stop.callback(self.music_cog, ctx)
-        await interaction.response.send_message("⏹️ Música detenida.", ephemeral=True, delete_after=5)
-
+        await self.music_cog.handle_stop(interaction)
 
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
     async def leave_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        ctx = await self.music_cog.bot.get_context(interaction)
-        await self.music_cog.leave.callback(self.music_cog, ctx)
-        await interaction.response.send_message("👋 Desconectando...", ephemeral=True, delete_after=5)
+        await self.music_cog.handle_leave(interaction)
 
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
@@ -438,51 +395,77 @@ class MusicCog(commands.Cog, name="Música"):
             else:
                 await msg.edit(content=f'❌ Ocurrió un error: {error_msg}')
 
-    @commands.hybrid_command(name='stop', description="Detiene la música y vacía la cola.")
-    async def stop(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        if vc := ctx.guild.voice_client:
-            state.queue.clear()
-            state.current_song = None
+    # --- Lógica de los botones del panel ---
+    async def handle_previous(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
+        if not state.history:
+            return await interaction.response.send_message("No hay historial de canciones.", ephemeral=True)
+        
+        if state.current_song: state.queue.insert(0, state.current_song)
+        state.queue.insert(0, state.history.pop())
+        
+        if (vc := interaction.guild.voice_client) and (vc.is_playing() or vc.is_paused()):
             vc.stop()
-            await self.send_response(ctx, "⏹️ Música detenida.")
-            if state.active_panel:
-                try: await state.active_panel.delete()
-                except (discord.NotFound, discord.HTTPException): pass
-                state.active_panel = None
-        else:
-            await self.send_response(ctx, "No hay nada que detener.", ephemeral=True)
+        else: 
+            ctx = await self.bot.get_context(interaction.message)
+            self.play_next_song(ctx)
+            
+        await interaction.response.send_message("⏪ Reproduciendo la canción anterior.", ephemeral=True, delete_after=5)
 
-    @commands.hybrid_command(name='skip', aliases=['s'], description="Salta a la siguiente canción.")
-    async def skip(self, ctx: commands.Context):
-        if (vc := ctx.guild.voice_client) and (vc.is_playing() or vc.is_paused()):
-            vc.stop()
-            await self.send_response(ctx, "⏭️ Canción saltada.", ephemeral=True)
-        else:
-            await self.send_response(ctx, "No hay nada que saltar.", ephemeral=True)
-
-    @commands.hybrid_command(name='pause', description="Pausa la canción actual.")
-    async def pause(self, ctx: commands.Context):
-        if (vc := ctx.guild.voice_client) and vc.is_playing():
-            vc.pause()
-            await self.send_response(ctx, "⏸️ Canción pausada.", ephemeral=True)
-        else:
-            await self.send_response(ctx, "No hay música sonando para pausar.", ephemeral=True)
-
-    @commands.hybrid_command(name='resume', aliases=['r'], description="Reanuda la música.")
-    async def resume(self, ctx: commands.Context):
-        if (vc := ctx.guild.voice_client) and vc.is_paused():
+    async def handle_pause_resume(self, interaction: discord.Interaction):
+        vc = interaction.guild.voice_client
+        if vc.is_paused():
             vc.resume()
-            await self.send_response(ctx, "▶️ Música reanudada.", ephemeral=True)
         else:
-            await self.send_response(ctx, "La música no está pausada.", ephemeral=True)
+            vc.pause()
+        await interaction.response.defer()
 
-    @commands.hybrid_command(name='queue', aliases=['q'], description="Muestra la cola de canciones.")
-    async def queue_info(self, ctx: commands.Context):
-        if ctx.interaction: await ctx.defer(ephemeral=False)
-        state = self.get_guild_state(ctx.guild.id)
+    async def handle_skip(self, interaction: discord.Interaction):
+        vc = interaction.guild.voice_client
+        if vc and (vc.is_playing() or vc.is_paused()):
+            vc.stop()
+            await interaction.response.send_message("⏭️ Canción saltada.", ephemeral=True, delete_after=5)
+        else:
+            await interaction.response.send_message("No hay nada que saltar.", ephemeral=True)
+
+    async def handle_shuffle(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
+        if not state.queue:
+            return await interaction.response.send_message("La cola está vacía para barajar.", ephemeral=True)
+        random.shuffle(state.queue)
+        await interaction.response.send_message("🔀 ¡La cola ha sido barajada!", ephemeral=True, delete_after=5)
+
+    async def handle_loop(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
+        if state.loop_state == LoopState.OFF:
+            state.loop_state, msg = LoopState.SONG, 'Bucle de canción activado.'
+        elif state.loop_state == LoopState.SONG:
+            state.loop_state, msg = LoopState.QUEUE, 'Bucle de cola activado.'
+        else:
+            state.loop_state, msg = LoopState.OFF, 'Bucle desactivado.'
+        await interaction.response.send_message(f"� {msg}", ephemeral=True, delete_after=5)
+
+    async def handle_autoplay(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
+        state.autoplay = not state.autoplay
+        status = "activado" if state.autoplay else "desactivado"
+        await interaction.response.send_message(f"🔄 Autoplay **{status}**.", ephemeral=True, delete_after=5)
+
+    async def handle_nowplaying(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
+        if not state.current_song:
+            return await interaction.response.send_message("No hay ninguna canción reproduciéndose.", ephemeral=True)
+        song = state.current_song
+        embed = discord.Embed(title="🎵 Sonando Ahora", description=f"**[{song['title']}]({song.get('webpage_url', '#')})**", color=CREAM_COLOR)
+        embed.set_footer(text=f"Pedida por: {song['requester'].display_name}")
+        if song.get('thumbnail'):
+            embed.set_thumbnail(url=song['thumbnail'])
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    async def handle_queue(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
         if not state.current_song and not state.queue:
-            return await self.send_response(ctx, "La cola está vacía.")
+            return await interaction.response.send_message("La cola está vacía.", ephemeral=True)
         embed = discord.Embed(title="🎵 Cola de Música 🎵", color=CREAM_COLOR)
         if state.current_song:
             embed.add_field(name="Reproduciendo ahora", value=f"**{state.current_song['title']}**", inline=False)
@@ -491,96 +474,16 @@ class MusicCog(commands.Cog, name="Música"):
             embed.add_field(name="A continuación:", value="\n".join(next_songs), inline=False)
         if len(state.queue) > 10:
             embed.set_footer(text=f"Y {len(state.queue) - 10} más...")
-        await self.send_response(ctx, embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @commands.hybrid_command(name='nowplaying', aliases=['np'], description="Muestra la canción que está sonando.")
-    async def nowplaying(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        if not state.current_song:
-            return await self.send_response(ctx, "No hay ninguna canción reproduciéndose.", ephemeral=True)
-        song = state.current_song
-        embed = discord.Embed(title="🎵 Sonando Ahora", description=f"**[{song['title']}]({song.get('webpage_url', '#')})**", color=CREAM_COLOR)
-        embed.set_footer(text=f"Pedida por: {song['requester'].display_name}")
-        if song.get('thumbnail'):
-            embed.set_thumbnail(url=song['thumbnail'])
-        await self.send_response(ctx, embed=embed)
-
-    @commands.hybrid_command(name='volume', description="Ajusta el volumen (0-100).")
-    async def volume(self, ctx: commands.Context, volume: int):
-        state = self.get_guild_state(ctx.guild.id)
-        if not (vc := ctx.guild.voice_client):
-            return await self.send_response(ctx, "No estoy en un canal de voz.", ephemeral=True)
-        if not 0 <= volume <= 100:
-            return await self.send_response(ctx, "El volumen debe estar entre 0 y 100.", ephemeral=True)
-        state.volume = volume / 100
-        if vc.source:
-            vc.source.volume = state.volume
-        await self.send_response(ctx, f"🔊 Volumen ajustado al **{volume}%**.")
-
-    @commands.hybrid_command(name='loop', description="Activa el modo bucle (song, queue, off).")
-    async def loop(self, ctx: commands.Context, mode: Literal['song', 'queue', 'off']):
-        state = self.get_guild_state(ctx.guild.id)
-        mode = mode.lower()
-        if mode == 'off':
-            state.loop_state = LoopState.OFF
-            await self.send_response(ctx, "🔁 Bucle desactivado.")
-        elif mode == 'song':
-            state.loop_state = LoopState.SONG
-            await self.send_response(ctx, "🔂 Bucle de canción activado.")
-        elif mode == 'queue':
-            state.loop_state = LoopState.QUEUE
-            await self.send_response(ctx, "🔁 Bucle de cola activado.")
-
-    @commands.hybrid_command(name='autoplay', description="Activa o desactiva la reproducción automática.")
-    async def autoplay(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        state.autoplay = not state.autoplay
-        status = "activado" if state.autoplay else "desactivado"
-        await self.send_response(ctx, f"🔄 Autoplay **{status}**.")
-
-    @commands.hybrid_command(name='shuffle', description="Baraja la cola de canciones.")
-    async def shuffle(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        if not state.queue:
-            return await self.send_response(ctx, "La cola está vacía.", ephemeral=True)
-        random.shuffle(state.queue)
-        await self.send_response(ctx, "🔀 ¡La cola ha sido barajada!")
-
-    @commands.hybrid_command(name='remove', description="Elimina una canción de la cola por su posición.")
-    async def remove(self, ctx: commands.Context, posicion: int):
-        state = self.get_guild_state(ctx.guild.id)
-        if not 1 <= posicion <= len(state.queue):
-            return await self.send_response(ctx, "Posición inválida.", ephemeral=True)
-        removed_song = state.queue.pop(posicion - 1)
-        await self.send_response(ctx, f"🗑️ Se ha eliminado **{removed_song['title']}** de la cola.")
-
-    @commands.hybrid_command(name='move', description="Mueve una canción a una nueva posición en la cola.")
-    async def move(self, ctx: commands.Context, cancion: int, posicion: int):
-        state = self.get_guild_state(ctx.guild.id)
-        if not (1 <= cancion <= len(state.queue) and 1 <= posicion <= len(state.queue)):
-            return await self.send_response(ctx, "Posición inválida.", ephemeral=True)
-        song_to_move = state.queue.pop(cancion - 1)
-        state.queue.insert(posicion - 1, song_to_move)
-        await self.send_response(ctx, f"✅ Se ha movido **{song_to_move['title']}** a la posición {posicion}.")
-
-    @commands.hybrid_command(name='skipto', description="Salta a una canción específica en la cola.")
-    async def skipto(self, ctx: commands.Context, posicion: int):
-        state = self.get_guild_state(ctx.guild.id)
-        if not 1 <= posicion <= len(state.queue):
-            return await self.send_response(ctx, "Posición inválida.", ephemeral=True)
-        state.queue = state.queue[posicion - 1:]
-        if (vc := ctx.guild.voice_client) and (vc.is_playing() or vc.is_paused()):
-            vc.stop()
-        await self.send_response(ctx, f"⏭️ Saltando a la canción en la posición {posicion}.")
-
-    @commands.hybrid_command(name='lyrics', aliases=['letras'], description="Muestra la letra de la canción actual.")
-    async def lyrics(self, ctx: commands.Context):
+    async def handle_lyrics(self, interaction: discord.Interaction):
         if not self.genius:
-            return await self.send_response(ctx, "❌ La función de letras no está configurada (falta API key de Genius).")
-        state = self.get_guild_state(ctx.guild.id)
+            return await interaction.response.send_message("❌ La función de letras no está configurada.", ephemeral=True)
+        state = self.get_guild_state(interaction.guild.id)
         if not state.current_song:
-            return await self.send_response(ctx, "No hay ninguna canción reproduciéndose.", ephemeral=True)
-        if ctx.interaction: await ctx.defer()
+            return await interaction.response.send_message("No hay ninguna canción reproduciéndose.", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
         song_title = state.current_song['title']
         try:
             song = await asyncio.to_thread(self.genius.search_song, song_title)
@@ -590,48 +493,37 @@ class MusicCog(commands.Cog, name="Música"):
                     lyrics_text = lyrics_text[:3997] + "..."
                 embed = discord.Embed(title=f"🎤 Letra de: {song.title}", description=lyrics_text, color=CREAM_COLOR)
                 embed.set_footer(text=f"Artista: {song.artist}")
-                await self.send_response(ctx, embed=embed)
+                await interaction.followup.send(embed=embed, ephemeral=True)
             else:
-                await self.send_response(ctx, "❌ No se encontraron letras para esta canción.")
+                await interaction.followup.send("❌ No se encontraron letras para esta canción.", ephemeral=True)
         except Exception as e:
-            await self.send_response(ctx, f"❌ Ocurrió un error al buscar la letra: {e}")
-
-    @commands.hybrid_command(name='clearqueue', description="Limpia toda la cola de canciones.")
-    async def clearqueue(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        state.queue.clear()
-        await self.send_response(ctx, "🧹 La cola ha sido vaciada.")
-
-    @commands.hybrid_command(name='previous', description="Reproduce la canción anterior.")
-    async def previous(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        if not state.history:
-            return await self.send_response(ctx, "No hay historial de canciones.", ephemeral=True)
-        if state.current_song:
-            state.queue.insert(0, state.current_song)
-        last_song = state.history.pop()
-        state.queue.insert(0, last_song)
-        if (vc := ctx.guild.voice_client) and (vc.is_playing() or vc.is_paused()):
+            await interaction.followup.send(f"❌ Ocurrió un error al buscar la letra: {e}", ephemeral=True)
+    
+    async def handle_stop(self, interaction: discord.Interaction):
+        state = self.get_guild_state(interaction.guild.id)
+        vc = interaction.guild.voice_client
+        if vc:
+            state.queue.clear()
+            state.current_song = None
             vc.stop()
-        else:
-            self.play_next_song(ctx)
-        await self.send_response(ctx, "⏪ Reproduciendo la canción anterior.")
+            if state.active_panel:
+                try: await state.active_panel.delete()
+                except (discord.NotFound, discord.HTTPException): pass
+                state.active_panel = None
+        await interaction.response.defer()
 
-    @commands.hybrid_command(name='leave', aliases=['disconnect'], description="Desconecta el bot del canal de voz.")
-    async def leave(self, ctx: commands.Context):
-        lock = self.get_voice_lock(ctx.guild.id)
+    async def handle_leave(self, interaction: discord.Interaction):
+        lock = self.get_voice_lock(interaction.guild.id)
         async with lock:
-            if ctx.guild.voice_client:
-                # Limpiar configuración de TTS al salir
+            if interaction.guild.voice_client:
                 tts_cog = self.bot.get_cog("Texto a Voz")
                 if tts_cog:
-                    tts_cog.clear_guild_setup(ctx.guild.id)
+                    tts_cog.clear_guild_setup(interaction.guild.id)
+                
+                await self.handle_stop(interaction)
+                await interaction.guild.voice_client.disconnect()
+        await interaction.response.defer()
 
-                # La lógica de stop no necesita lock, es seguro llamarla
-                await self.stop.callback(self, ctx) 
-                await ctx.guild.voice_client.disconnect()
-            else:
-                await self.send_response(ctx, "No estoy en ningún canal de voz.", ephemeral=True)
 
 # --- COG DE NIVELES ---
 class LevelingCog(commands.Cog, name="Niveles"):
@@ -1165,7 +1057,7 @@ class EconomyCog(commands.Cog, name="Economía"):
                 user_name = user.display_name
             except discord.NotFound:
                 user_name = f"Usuario Desconocido ({user_id})"
-            rank = ["�", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
+            rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
             description += f"{rank} **{user_name}**: {balance} Umapesos\n"
         embed.description = description
         await ctx.send(embed=embed)
@@ -1256,7 +1148,7 @@ async def on_command_error(ctx: commands.Context, error):
         # Para comandos de barra, la forma de responder depende de si ya se ha "diferido"
         if ctx.interaction:
             if ctx.interaction.response.is_done():
-                await ctx.followup.send(error_message, ephemeral=True)
+                await ctx.interaction.followup.send(error_message, ephemeral=True)
             else:
                 await ctx.interaction.response.send_message(error_message, ephemeral=True)
         # Para comandos de prefijo, simplemente se envía al canal
