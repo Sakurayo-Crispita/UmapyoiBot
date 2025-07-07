@@ -616,11 +616,6 @@ class MusicCog(commands.Cog, name="Música"):
         lock = self.get_voice_lock(ctx.guild.id)
         async with lock:
             if ctx.guild.voice_client:
-                # Limpiar configuración de TTS al salir
-                tts_cog = self.bot.get_cog("Texto a Voz")
-                if tts_cog:
-                    tts_cog.clear_guild_setup(ctx.guild.id)
-
                 # La lógica de stop no necesita lock, es seguro llamarla
                 await self.stop.callback(self, ctx) 
                 await ctx.guild.voice_client.disconnect()
@@ -912,7 +907,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     async def contacto(self, ctx: commands.Context):
         creador_discord = "sakurayo_crispy"
         embed = discord.Embed(title="📞 Contacto", description=f"Puedes contactar a mi creador a través de Discord.", color=CREAM_COLOR)
-        embed.add_field(name="Creador", value=f"👑 {creador_discord}")
+        embed.add_field(name="Creador", value=f"� {creador_discord}")
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='serverhelp', description="Obtén el enlace al servidor de ayuda oficial.")
@@ -1216,25 +1211,44 @@ async def on_message(message: discord.Message):
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
+    # Manejadores para errores comunes y esperados
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"⏳ Espera {round(error.retry_after, 1)} segundos.", ephemeral=True)
+        return
     elif isinstance(error, commands.CommandNotFound):
         return
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ No tienes los permisos necesarios para usar este comando.", ephemeral=True)
-    else:
-        command_name = ctx.command.name if ctx.command else "Ninguno"
-        print(f"Error no manejado en '{command_name}': {error}")
-        
-        # Manejo del error "Interaction has already been acknowledged"
-        if isinstance(error, commands.errors.HybridCommandError) and isinstance(error.original, discord.errors.HTTPException) and error.original.code == 40060:
-             print("Se intentó responder a una interacción ya respondida. Esto es normal si el error se maneja en otro lugar.")
-             return # No enviar mensaje duplicado
+        return
 
-        try:
-            await ctx.send(f"Ocurrió un error inesperado al ejecutar el comando. Ya se ha notificado al desarrollador.", ephemeral=True)
-        except discord.errors.InteractionResponded:
-            await ctx.followup.send(f"Ocurrió un error inesperado al ejecutar el comando. Ya se ha notificado al desarrollador.", ephemeral=True)
+    # Loguear el error para depuración
+    command_name = ctx.command.name if ctx.command else "Ninguno"
+    print(f"Error no manejado en '{command_name}': {error}")
+
+    # Ignorar errores de interacción que ya fueron manejados o expiraron
+    if isinstance(error, commands.errors.HybridCommandError):
+        original = error.original
+        if isinstance(original, discord.errors.HTTPException) and original.code == 40060:
+            print("Ignorando error 'Interaction has already been acknowledged.'")
+            return
+        if isinstance(original, discord.errors.NotFound) and original.code == 10062:
+            print("Ignorando error 'Unknown Interaction.' La interacción probablemente expiró.")
+            return
+
+    # Intentar enviar un mensaje de error genérico al usuario de forma segura
+    error_message = "Ocurrió un error inesperado al ejecutar el comando. Ya se ha notificado al desarrollador."
+    try:
+        # Para comandos de barra, la forma de responder depende de si ya se ha "diferido"
+        if ctx.interaction:
+            if ctx.interaction.response.is_done():
+                await ctx.followup.send(error_message, ephemeral=True)
+            else:
+                await ctx.interaction.response.send_message(error_message, ephemeral=True)
+        # Para comandos de prefijo, simplemente se envía al canal
+        else:
+            await ctx.send(error_message)
+    except discord.errors.HTTPException as e:
+        print(f"No se pudo enviar el mensaje de error al usuario: {e}")
 
 
 def main():
