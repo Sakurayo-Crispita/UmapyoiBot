@@ -25,6 +25,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Usar un solo archivo para toda la base de datos
 DB_FILE = "bot_data.db"
+CREAM_COLOR = discord.Color.from_str("#F0EAD6")
 
 # --- CONFIGURACIÓN DEL BOT ---
 FFMPEG_OPTIONS = {
@@ -75,7 +76,7 @@ class HelpSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         selected_cog_name = self.values[0]
-        embed = discord.Embed(title=f"📜 Ayuda de Umapyoi", color=discord.Color.purple())
+        embed = discord.Embed(title=f"📜 Ayuda de Umapyoi", color=CREAM_COLOR)
         if selected_cog_name == "Inicio":
             embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
@@ -178,7 +179,7 @@ class MusicPanelView(discord.ui.View):
             state.loop_state = LoopState.OFF
             msg = 'Bucle desactivado.'
         self.update_loop_button_style()
-        await interaction.response.send_message(f"� {msg}", ephemeral=True, delete_after=5)
+        await interaction.response.send_message(f"🔁 {msg}", ephemeral=True, delete_after=5)
         await interaction.message.edit(view=self)
 
     @discord.ui.button(label="Autoplay", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
@@ -222,27 +223,36 @@ class MusicCog(commands.Cog, name="Música"):
         self.bot = bot
         self.guild_states: dict[int, GuildState] = {}
         self.genius = lyricsgenius.Genius(GENIUS_API_TOKEN) if GENIUS_API_TOKEN else None
+        self.voice_locks: dict[int, asyncio.Lock] = {}
 
     def get_guild_state(self, guild_id: int) -> GuildState:
         if guild_id not in self.guild_states:
             self.guild_states[guild_id] = GuildState(guild_id)
         return self.guild_states[guild_id]
+    
+    def get_voice_lock(self, guild_id: int) -> asyncio.Lock:
+        """Obtiene o crea un lock para un servidor específico para evitar race conditions."""
+        if guild_id not in self.voice_locks:
+            self.voice_locks[guild_id] = asyncio.Lock()
+        return self.voice_locks[guild_id]
         
     async def ensure_voice_client(self, channel: discord.VoiceChannel) -> discord.VoiceClient | None:
-        """Asegura que el bot esté conectado al canal de voz correcto, con timeouts."""
-        vc = channel.guild.voice_client
-        if not vc:
-            try:
-                return await asyncio.wait_for(channel.connect(), timeout=15.0)
-            except asyncio.TimeoutError:
-                print(f"Timed out connecting to {channel.name}")
-                return None
-            except Exception as e:
-                print(f"An error occurred while connecting: {e}")
-                return None
-        if vc.channel != channel:
-            await vc.move_to(channel)
-        return vc
+        """Asegura que el bot esté conectado al canal de voz correcto, usando un lock."""
+        lock = self.get_voice_lock(channel.guild.id)
+        async with lock:
+            vc = channel.guild.voice_client
+            if not vc:
+                try:
+                    return await asyncio.wait_for(channel.connect(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    print(f"Timed out connecting to {channel.name}")
+                    return None
+                except Exception as e:
+                    print(f"An error occurred while connecting: {e}")
+                    return None
+            if vc.channel != channel:
+                await vc.move_to(channel)
+            return vc
 
     async def send_music_panel(self, ctx: commands.Context, song: dict):
         state = self.get_guild_state(ctx.guild.id)
@@ -252,7 +262,7 @@ class MusicCog(commands.Cog, name="Música"):
             except (discord.NotFound, discord.HTTPException):
                 pass
 
-        embed = discord.Embed(title="🎵 Reproduciendo Ahora 🎵", color=discord.Color.blue())
+        embed = discord.Embed(title="🎵 Reproduciendo Ahora 🎵", color=CREAM_COLOR)
         embed.description = f"**[{song.get('title', 'Título Desconocido')}]({song.get('webpage_url', '#')})**"
         embed.add_field(name="Pedido por", value=song['requester'].mention, inline=True)
         
@@ -315,17 +325,25 @@ class MusicCog(commands.Cog, name="Música"):
 
     async def disconnect_after_inactivity(self, ctx: commands.Context):
         await asyncio.sleep(120)
-        state = self.get_guild_state(ctx.guild.id)
-        vc = ctx.guild.voice_client
-        if vc and not vc.is_playing() and not vc.is_paused():
-            fun_cog = self.bot.get_cog("Juegos e IA")
-            if not fun_cog or not fun_cog.game_in_progress.get(ctx.guild.id, False):
-                if state.active_panel:
-                    try: await state.active_panel.delete()
-                    except (discord.NotFound, discord.HTTPException): pass
-                    state.active_panel = None
-                await vc.disconnect()
-                await ctx.channel.send("👋 ¡Adiós! Desconectado por inactividad.")
+        lock = self.get_voice_lock(ctx.guild.id)
+        async with lock:
+            vc = ctx.guild.voice_client
+            if vc and not vc.is_playing() and not vc.is_paused():
+                
+                # No desconectar si el TTS está configurado
+                tts_cog = self.bot.get_cog("Texto a Voz")
+                if tts_cog and tts_cog.is_guild_setup(ctx.guild.id):
+                    return
+
+                fun_cog = self.bot.get_cog("Juegos e IA")
+                if not fun_cog or not fun_cog.game_in_progress.get(ctx.guild.id, False):
+                    state = self.get_guild_state(ctx.guild.id)
+                    if state.active_panel:
+                        try: await state.active_panel.delete()
+                        except (discord.NotFound, discord.HTTPException): pass
+                        state.active_panel = None
+                    await vc.disconnect()
+                    await ctx.channel.send("👋 ¡Adiós! Desconectado por inactividad.")
 
     async def send_response(self, ctx: commands.Context, content: str = None, embed: discord.Embed = None, ephemeral: bool = False, view: discord.ui.View = None):
         if ctx.interaction:
@@ -459,7 +477,7 @@ class MusicCog(commands.Cog, name="Música"):
         state = self.get_guild_state(ctx.guild.id)
         if not state.current_song and not state.queue:
             return await self.send_response(ctx, "La cola está vacía.")
-        embed = discord.Embed(title="🎵 Cola de Música 🎵", color=discord.Color.blue())
+        embed = discord.Embed(title="🎵 Cola de Música 🎵", color=CREAM_COLOR)
         if state.current_song:
             embed.add_field(name="Reproduciendo ahora", value=f"**{state.current_song['title']}**", inline=False)
         if state.queue:
@@ -475,7 +493,7 @@ class MusicCog(commands.Cog, name="Música"):
         if not state.current_song:
             return await self.send_response(ctx, "No hay ninguna canción reproduciéndose.", ephemeral=True)
         song = state.current_song
-        embed = discord.Embed(title="🎵 Sonando Ahora", description=f"**[{song['title']}]({song.get('webpage_url', '#')})**", color=discord.Color.green())
+        embed = discord.Embed(title="🎵 Sonando Ahora", description=f"**[{song['title']}]({song.get('webpage_url', '#')})**", color=CREAM_COLOR)
         embed.set_footer(text=f"Pedida por: {song['requester'].display_name}")
         if song.get('thumbnail'):
             embed.set_thumbnail(url=song['thumbnail'])
@@ -564,7 +582,7 @@ class MusicCog(commands.Cog, name="Música"):
                 lyrics_text = song.lyrics
                 if len(lyrics_text) > 4000:
                     lyrics_text = lyrics_text[:3997] + "..."
-                embed = discord.Embed(title=f"🎤 Letra de: {song.title}", description=lyrics_text, color=discord.Color.purple())
+                embed = discord.Embed(title=f"🎤 Letra de: {song.title}", description=lyrics_text, color=CREAM_COLOR)
                 embed.set_footer(text=f"Artista: {song.artist}")
                 await self.send_response(ctx, embed=embed)
             else:
@@ -595,11 +613,19 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.hybrid_command(name='leave', aliases=['disconnect'], description="Desconecta el bot del canal de voz.")
     async def leave(self, ctx: commands.Context):
-        if ctx.guild.voice_client:
-            await self.stop.callback(self, ctx) # Llama a stop para limpiar todo
-            await ctx.guild.voice_client.disconnect()
-        else:
-            await self.send_response(ctx, "No estoy en ningún canal de voz.", ephemeral=True)
+        lock = self.get_voice_lock(ctx.guild.id)
+        async with lock:
+            if ctx.guild.voice_client:
+                # Limpiar configuración de TTS al salir
+                tts_cog = self.bot.get_cog("Texto a Voz")
+                if tts_cog:
+                    tts_cog.clear_guild_setup(ctx.guild.id)
+
+                # La lógica de stop no necesita lock, es seguro llamarla
+                await self.stop.callback(self, ctx) 
+                await ctx.guild.voice_client.disconnect()
+            else:
+                await self.send_response(ctx, "No estoy en ningún canal de voz.", ephemeral=True)
 
 # --- COG DE NIVELES ---
 class LevelingCog(commands.Cog, name="Niveles"):
@@ -737,7 +763,7 @@ class LevelingCog(commands.Cog, name="Niveles"):
         self.cursor.execute("SELECT level, role_id FROM role_rewards WHERE guild_id = ? ORDER BY level ASC", (ctx.guild.id,))
         rewards = self.cursor.fetchall()
         if not rewards: return await ctx.send("No hay recompensas de roles configuradas en este servidor.")
-        embed = discord.Embed(title=f"🎁 Recompensas de Roles de {ctx.guild.name}", color=discord.Color.blue())
+        embed = discord.Embed(title=f"🎁 Recompensas de Roles de {ctx.guild.name}", color=CREAM_COLOR)
         description = ""
         for level, role_id in rewards:
             role = ctx.guild.get_role(role_id)
@@ -771,7 +797,7 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
 
     def setup_tts_database(self):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS tts_user_settings (guild_id INTEGER, user_id INTEGER, lang TEXT, is_active INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
         self.conn.commit()
 
     def get_guild_lang(self, guild_id: int) -> str:
@@ -779,40 +805,39 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         result = self.cursor.fetchone()
         return result[0] if result else 'es'
 
-    def get_user_tts_settings(self, guild_id: int, user_id: int):
-        self.cursor.execute("SELECT lang, is_active FROM tts_user_settings WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-        result = self.cursor.fetchone()
-        if result: return result[0], bool(result[1])
-        return None, False
-
-    def set_user_lang(self, guild_id: int, user_id: int, lang: str):
-        self.cursor.execute("INSERT OR IGNORE INTO tts_user_settings (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
-        self.cursor.execute("UPDATE tts_user_settings SET lang = ? WHERE guild_id = ? AND user_id = ?", (lang, guild_id, user_id))
-        self.conn.commit()
-
     def set_guild_lang(self, guild_id: int, lang: str):
         self.cursor.execute("REPLACE INTO tts_guild_settings (guild_id, lang) VALUES (?, ?)", (guild_id, lang))
         self.conn.commit()
 
-    def set_user_tts_status(self, guild_id: int, user_id: int, is_active: bool):
-        self.cursor.execute("INSERT OR IGNORE INTO tts_user_settings (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
-        self.cursor.execute("UPDATE tts_user_settings SET is_active = ? WHERE guild_id = ? AND user_id = ?", (int(is_active), guild_id, user_id))
+    def set_active_channel(self, guild_id: int, text_channel_id: int):
+        self.cursor.execute("REPLACE INTO tts_active_channels (guild_id, text_channel_id) VALUES (?, ?)", (guild_id, text_channel_id))
         self.conn.commit()
 
+    def get_active_channel(self, guild_id: int) -> int | None:
+        self.cursor.execute("SELECT text_channel_id FROM tts_active_channels WHERE guild_id = ?", (guild_id,))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+    
+    def clear_guild_setup(self, guild_id: int):
+        self.cursor.execute("DELETE FROM tts_active_channels WHERE guild_id = ?", (guild_id,))
+        self.conn.commit()
+
+    def is_guild_setup(self, guild_id: int) -> bool:
+        return self.get_active_channel(guild_id) is not None
+
     async def process_tts_message(self, message: discord.Message):
-        user_lang, is_active = self.get_user_tts_settings(message.guild.id, message.author.id)
-        if not is_active or not message.author.voice: return
-        
+        active_channel_id = self.get_active_channel(message.guild.id)
+        if not active_channel_id or message.channel.id != active_channel_id:
+            return
+
         music_cog = self.bot.get_cog("Música")
         if not music_cog: return
 
-        channel = message.author.voice.channel
-        vc = await music_cog.ensure_voice_client(channel)
-        if not vc: return
-
+        vc = message.guild.voice_client
+        if not vc or not vc.is_connected(): return
         if vc.is_playing(): return
 
-        lang_code = user_lang or self.get_guild_lang(message.guild.id)
+        lang_code = self.get_guild_lang(message.guild.id)
         text_to_speak = message.clean_content
         if not text_to_speak: return
 
@@ -836,15 +861,27 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         except Exception as e:
             print(f"Error en TTS automático: {e}")
 
-    @commands.hybrid_command(name='tts', description="Activa o desactiva la lectura automática de tus mensajes.")
-    async def tts_toggle(self, ctx: commands.Context, modo: Literal['on', 'off']):
-        if not ctx.guild: return await ctx.send("Este comando solo funciona en servidores.", ephemeral=True)
-        is_active = (modo.lower() == 'on')
-        self.set_user_tts_status(ctx.guild.id, ctx.author.id, is_active)
-        status_text = "activado" if is_active else "desactivado"
-        await ctx.send(f"🎤 ¡Modo de lectura automática **{status_text}** para ti!", ephemeral=True)
+    @commands.hybrid_command(name='setup', description="Configura el bot para leer mensajes en este canal.")
+    @commands.has_permissions(manage_guild=True)
+    async def setup(self, ctx: commands.Context):
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            return await ctx.send("Debes estar en un canal de voz para usar este comando.", ephemeral=True)
+        
+        music_cog = self.bot.get_cog("Música")
+        if not music_cog:
+            return await ctx.send("Error interno: no se pudo encontrar el cog de música.", ephemeral=True)
 
-    @commands.hybrid_command(name='set_my_language', description="Elige tu idioma personal para la lectura de mensajes.")
+        channel = ctx.author.voice.channel
+        vc = await music_cog.ensure_voice_client(channel)
+        if not vc:
+            return await ctx.send("❌ No pude conectarme a tu canal de voz.", ephemeral=True)
+
+        self.set_active_channel(ctx.guild.id, ctx.channel.id)
+        await ctx.send(f"✅ ¡Perfecto! A partir de ahora leeré los mensajes enviados en {ctx.channel.mention}.")
+
+
+    @commands.hybrid_command(name='set_language', description="[Admin] Establece el idioma de TTS para el servidor.")
+    @commands.has_permissions(manage_guild=True)
     @discord.app_commands.choices(idioma=[
         discord.app_commands.Choice(name="Español", value="es"),
         discord.app_commands.Choice(name="Inglés (EE.UU.)", value="en"),
@@ -852,21 +889,7 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         discord.app_commands.Choice(name="Italiano", value="it"),
         discord.app_commands.Choice(name="Francés", value="fr"),
     ])
-    async def set_my_language(self, ctx: commands.Context, idioma: discord.app_commands.Choice[str]):
-        if not ctx.guild: return await ctx.send("Este comando solo funciona en servidores.", ephemeral=True)
-        self.set_user_lang(ctx.guild.id, ctx.author.id, idioma.value)
-        await ctx.send(f"✅ Tu idioma para la lectura de mensajes ha sido establecido a **{idioma.name}**.", ephemeral=True)
-
-    @commands.hybrid_command(name='set_server_language', description="[Admin] Establece el idioma de TTS por defecto para el servidor.")
-    @commands.has_permissions(administrator=True)
-    @discord.app_commands.choices(idioma=[
-        discord.app_commands.Choice(name="Español", value="es"),
-        discord.app_commands.Choice(name="Inglés (EE.UU.)", value="en"),
-        discord.app_commands.Choice(name="Japonés", value="ja"),
-        discord.app_commands.Choice(name="Italiano", value="it"),
-        discord.app_commands.Choice(name="Francés", value="fr"),
-    ])
-    async def set_server_language(self, ctx: commands.Context, idioma: discord.app_commands.Choice[str]):
+    async def set_language(self, ctx: commands.Context, idioma: discord.app_commands.Choice[str]):
         if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
         self.set_guild_lang(ctx.guild.id, idioma.value)
         await ctx.send(f"✅ El idioma por defecto del servidor para TTS ha sido establecido a **{idioma.name}**.")
@@ -878,7 +901,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     
     @commands.hybrid_command(name='help', description="Muestra el panel de ayuda interactivo.")
     async def help(self, ctx: commands.Context):
-        embed = discord.Embed(title="📜 Ayuda de Umapyoi", color=discord.Color.purple())
+        embed = discord.Embed(title="📜 Ayuda de Umapyoi", color=CREAM_COLOR)
         embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
         embed.set_image(url="https://i.imgur.com/WwexK3G.png")
         embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
@@ -888,14 +911,14 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
         creador_discord = "sakurayo_crispy"
-        embed = discord.Embed(title="📞 Contacto", description=f"Puedes contactar a mi creador a través de Discord.", color=discord.Color.green())
+        embed = discord.Embed(title="📞 Contacto", description=f"Puedes contactar a mi creador a través de Discord.", color=CREAM_COLOR)
         embed.add_field(name="Creador", value=f"👑 {creador_discord}")
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='serverhelp', description="Obtén el enlace al servidor de ayuda oficial.")
     async def serverhelp(self, ctx: commands.Context):
         enlace_servidor = "https://discord.gg/fwNeZsGkSj"
-        embed = discord.Embed(title="💬 Servidor de Ayuda", description=f"¿Necesitas ayuda o quieres sugerir algo? ¡Únete a nuestro servidor oficial!", color=discord.Color.blurple())
+        embed = discord.Embed(title="💬 Servidor de Ayuda", description=f"¿Necesitas ayuda o quieres sugerir algo? ¡Únete a nuestro servidor oficial!", color=CREAM_COLOR)
         embed.add_field(name="Enlace de Invitación", value=f"[Haz clic aquí para unirte]({enlace_servidor})")
         await ctx.send(embed=embed)
 
@@ -925,7 +948,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     async def serverinfo(self, ctx: commands.Context):
         server = ctx.guild
         if not server: return
-        embed = discord.Embed(title=f"Información de {server.name}", color=discord.Color.blue())
+        embed = discord.Embed(title=f"Información de {server.name}", color=CREAM_COLOR)
         if server.icon: embed.set_thumbnail(url=server.icon.url)
         if server.owner: embed.add_field(name="👑 Propietario", value=server.owner.mention, inline=True)
         embed.add_field(name="👥 Miembros", value=server.member_count, inline=True)
@@ -1115,7 +1138,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         await ctx.defer()
         target_user = miembro or ctx.author
         balance = self.get_balance(target_user.id)
-        embed = discord.Embed(title=f"💰 Balance de {target_user.display_name}", description=f"Tienes **{balance} Umapesos**.", color=discord.Color.green())
+        embed = discord.Embed(title=f"💰 Balance de {target_user.display_name}", description=f"Tienes **{balance} Umapesos**.", color=CREAM_COLOR)
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='leaderboard', aliases=['lb'], description="Muestra a los usuarios más ricos.")
@@ -1147,7 +1170,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         if sender_balance < cantidad: return await ctx.send(f"No tienes suficientes Umapesos. Tu balance: **{sender_balance}**.", ephemeral=True)
         self.update_balance(sender_id, -cantidad)
         self.update_balance(receiver_id, cantidad)
-        embed = discord.Embed(title="💸 Transferencia Realizada", description=f"{ctx.author.mention} le ha transferido **{cantidad} Umapesos** a {miembro.mention}.", color=discord.Color.blue())
+        embed = discord.Embed(title="💸 Transferencia Realizada", description=f"{ctx.author.mention} le ha transferido **{cantidad} Umapesos** a {miembro.mention}.", color=CREAM_COLOR)
         await ctx.send(embed=embed)
 
 # --- EVENTOS Y EJECUCIÓN DEL BOT ---
