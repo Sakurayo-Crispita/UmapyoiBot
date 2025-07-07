@@ -1084,6 +1084,19 @@ async def on_message(message: discord.Message):
     # Si el mensaje es un comando, no procesar XP ni TTS
     if message.content.startswith(bot.command_prefix):
         return
+    
+     # 3. Crear un "contexto" para saber si el mensaje fue un comando
+    ctx = await bot.get_context(message)
+
+    # 4. Si el mensaje fue un comando válido (de cualquier tipo), no hacer nada más
+    if ctx.valid:
+        return
+
+    # 5. Si no fue un comando, revisar si mencionaron al bot
+    #    (y no es una respuesta o un @everyone)
+    if bot.user.mentioned_in(message) and not message.mention_everyone and not message.reference:
+        await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
+        return # Detener aquí para no dar XP por una simple mención
 
     # Distribuir el mensaje a los cogs relevantes
     level_cog = bot.get_cog("Niveles")
