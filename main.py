@@ -178,7 +178,7 @@ class MusicPanelView(discord.ui.View):
             state.loop_state = LoopState.OFF
             msg = 'Bucle desactivado.'
         self.update_loop_button_style()
-        await interaction.response.send_message(f"🔁 {msg}", ephemeral=True, delete_after=5)
+        await interaction.response.send_message(f"� {msg}", ephemeral=True, delete_after=5)
         await interaction.message.edit(view=self)
 
     @discord.ui.button(label="Autoplay", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
@@ -228,11 +228,18 @@ class MusicCog(commands.Cog, name="Música"):
             self.guild_states[guild_id] = GuildState(guild_id)
         return self.guild_states[guild_id]
         
-    async def ensure_voice_client(self, channel: discord.VoiceChannel):
-        """Asegura que el bot esté conectado al canal de voz correcto."""
+    async def ensure_voice_client(self, channel: discord.VoiceChannel) -> discord.VoiceClient | None:
+        """Asegura que el bot esté conectado al canal de voz correcto, con timeouts."""
         vc = channel.guild.voice_client
         if not vc:
-            return await channel.connect()
+            try:
+                return await asyncio.wait_for(channel.connect(), timeout=15.0)
+            except asyncio.TimeoutError:
+                print(f"Timed out connecting to {channel.name}")
+                return None
+            except Exception as e:
+                print(f"An error occurred while connecting: {e}")
+                return None
         if vc.channel != channel:
             await vc.move_to(channel)
         return vc
@@ -338,8 +345,12 @@ class MusicCog(commands.Cog, name="Música"):
         if not ctx.author.voice or not ctx.author.voice.channel:
             return await self.send_response(ctx, "Debes estar en un canal de voz para que pueda unirme.", ephemeral=True)
         channel = ctx.author.voice.channel
-        await self.ensure_voice_client(channel)
-        await self.send_response(ctx, f"👋 ¡Hola! Me he unido a **{channel.name}**.", ephemeral=True)
+        vc = await self.ensure_voice_client(channel)
+        if vc:
+            await self.send_response(ctx, f"👋 ¡Hola! Me he unido a **{channel.name}**.", ephemeral=True)
+        else:
+            await self.send_response(ctx, "❌ No pude conectarme al canal de voz.", ephemeral=True)
+
 
     @commands.hybrid_command(name='play', aliases=['p'], description="Reproduce una canción o playlist.")
     @commands.cooldown(1, 5, commands.BucketType.guild)
@@ -350,7 +361,9 @@ class MusicCog(commands.Cog, name="Música"):
             return await self.send_response(ctx, "Debes estar en un canal de voz.", ephemeral=True)
         
         channel = ctx.author.voice.channel
-        await self.ensure_voice_client(channel)
+        vc = await self.ensure_voice_client(channel)
+        if not vc:
+            return await self.send_response(ctx, "❌ No pude conectarme al canal de voz.", ephemeral=True)
 
         msg = await self.send_response(ctx, f'🔎 Procesando: "**{search_query}**"...')
         state = self.get_guild_state(ctx.guild.id)
@@ -785,25 +798,19 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         self.cursor.execute("INSERT OR IGNORE INTO tts_user_settings (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
         self.cursor.execute("UPDATE tts_user_settings SET is_active = ? WHERE guild_id = ? AND user_id = ?", (int(is_active), guild_id, user_id))
         self.conn.commit()
-        
-    async def ensure_voice_client(self, channel: discord.VoiceChannel):
-        """Asegura que el bot esté conectado al canal de voz correcto."""
-        vc = channel.guild.voice_client
-        if not vc:
-            return await channel.connect()
-        if vc.channel != channel:
-            await vc.move_to(channel)
-        return vc
 
     async def process_tts_message(self, message: discord.Message):
         user_lang, is_active = self.get_user_tts_settings(message.guild.id, message.author.id)
         if not is_active or not message.author.voice: return
         
-        vc = message.guild.voice_client
-        if vc and vc.is_playing(): return
+        music_cog = self.bot.get_cog("Música")
+        if not music_cog: return
 
         channel = message.author.voice.channel
-        await self.ensure_voice_client(channel)
+        vc = await music_cog.ensure_voice_client(channel)
+        if not vc: return
+
+        if vc.is_playing(): return
 
         lang_code = user_lang or self.get_guild_lang(message.guild.id)
         text_to_speak = message.clean_content
@@ -1028,6 +1035,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         if not music_cog: return # No debería pasar
         
         vc = await music_cog.ensure_voice_client(channel)
+        if not vc: return await ctx.send("❌ No pude conectarme al canal de voz.")
         if vc.is_playing(): return await ctx.send("No puedo iniciar un juego mientras reproduzco música.")
 
         self.game_in_progress[ctx.guild.id] = True
