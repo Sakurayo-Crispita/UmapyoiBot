@@ -616,6 +616,11 @@ class MusicCog(commands.Cog, name="Música"):
         lock = self.get_voice_lock(ctx.guild.id)
         async with lock:
             if ctx.guild.voice_client:
+                # Limpiar configuración de TTS al salir
+                tts_cog = self.bot.get_cog("Texto a Voz")
+                if tts_cog:
+                    tts_cog.clear_guild_setup(ctx.guild.id)
+
                 # La lógica de stop no necesita lock, es seguro llamarla
                 await self.stop.callback(self, ctx) 
                 await ctx.guild.voice_client.disconnect()
@@ -830,6 +835,13 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
 
         vc = message.guild.voice_client
         if not vc or not vc.is_connected(): return
+        
+        # --- CORRECCIÓN ---
+        # Ignorar si el autor del mensaje no está en el mismo canal de voz que el bot
+        if not message.author.voice or message.author.voice.channel != vc.channel:
+            return
+        # ------------------
+
         if vc.is_playing(): return
 
         lang_code = self.get_guild_lang(message.guild.id)
@@ -907,7 +919,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     async def contacto(self, ctx: commands.Context):
         creador_discord = "sakurayo_crispy"
         embed = discord.Embed(title="📞 Contacto", description=f"Puedes contactar a mi creador a través de Discord.", color=CREAM_COLOR)
-        embed.add_field(name="Creador", value=f"� {creador_discord}")
+        embed.add_field(name="Creador", value=f"👑 {creador_discord}")
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='serverhelp', description="Obtén el enlace al servidor de ayuda oficial.")
