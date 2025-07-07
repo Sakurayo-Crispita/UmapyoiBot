@@ -227,22 +227,44 @@ class MusicCog(commands.Cog, name="Música"):
         if guild_id not in self.guild_states:
             self.guild_states[guild_id] = GuildState(guild_id)
         return self.guild_states[guild_id]
+        
+    async def ensure_voice_client(self, channel: discord.VoiceChannel):
+        """Asegura que el bot esté conectado al canal de voz correcto."""
+        vc = channel.guild.voice_client
+        if not vc:
+            return await channel.connect()
+        if vc.channel != channel:
+            await vc.move_to(channel)
+        return vc
 
     async def send_music_panel(self, ctx: commands.Context, song: dict):
         state = self.get_guild_state(ctx.guild.id)
         if state.active_panel:
-            try: await state.active_panel.delete()
-            except (discord.NotFound, discord.HTTPException): pass
+            try:
+                await state.active_panel.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
         embed = discord.Embed(title="🎵 Reproduciendo Ahora 🎵", color=discord.Color.blue())
-        embed.description = f"**[{song['title']}]({song.get('webpage_url', '#')})**"
+        embed.description = f"**[{song.get('title', 'Título Desconocido')}]({song.get('webpage_url', '#')})**"
         embed.add_field(name="Pedido por", value=song['requester'].mention, inline=True)
-        if 'duration' in song and song['duration']:
-            embed.add_field(name="Duración", value=str(datetime.timedelta(seconds=song['duration'])), inline=True)
-        if 'thumbnail' in song:
-            embed.set_thumbnail(url=song['thumbnail'])
+        
+        duration = song.get('duration')
+        if duration:
+            embed.add_field(name="Duración", value=str(datetime.timedelta(seconds=duration)), inline=True)
+        
+        thumbnail_url = song.get('thumbnail')
+        if thumbnail_url:
+            embed.set_thumbnail(url=thumbnail_url)
+            
         view = MusicPanelView(self, ctx)
-        state.active_panel = await ctx.send(embed=embed, view=view)
+        
+        try:
+            state.active_panel = await ctx.channel.send(embed=embed, view=view)
+        except discord.Forbidden:
+            print(f"Error: No tengo permisos para enviar mensajes en el canal {ctx.channel.name} del servidor {ctx.guild.name}.")
+        except Exception as e:
+            print(f"Un error inesperado ocurrió en send_music_panel: {e}")
 
     def play_next_song(self, ctx: commands.Context):
         state = self.get_guild_state(ctx.guild.id)
@@ -316,10 +338,7 @@ class MusicCog(commands.Cog, name="Música"):
         if not ctx.author.voice or not ctx.author.voice.channel:
             return await self.send_response(ctx, "Debes estar en un canal de voz para que pueda unirme.", ephemeral=True)
         channel = ctx.author.voice.channel
-        if ctx.guild.voice_client:
-            await ctx.guild.voice_client.move_to(channel)
-        else:
-            await channel.connect()
+        await self.ensure_voice_client(channel)
         await self.send_response(ctx, f"👋 ¡Hola! Me he unido a **{channel.name}**.", ephemeral=True)
 
     @commands.hybrid_command(name='play', aliases=['p'], description="Reproduce una canción o playlist.")
@@ -331,11 +350,7 @@ class MusicCog(commands.Cog, name="Música"):
             return await self.send_response(ctx, "Debes estar en un canal de voz.", ephemeral=True)
         
         channel = ctx.author.voice.channel
-        vc = ctx.guild.voice_client
-        if not vc:
-            vc = await channel.connect()
-        elif vc.channel != channel:
-            await vc.move_to(channel)
+        await self.ensure_voice_client(channel)
 
         msg = await self.send_response(ctx, f'🔎 Procesando: "**{search_query}**"...')
         state = self.get_guild_state(ctx.guild.id)
@@ -770,6 +785,15 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         self.cursor.execute("INSERT OR IGNORE INTO tts_user_settings (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
         self.cursor.execute("UPDATE tts_user_settings SET is_active = ? WHERE guild_id = ? AND user_id = ?", (int(is_active), guild_id, user_id))
         self.conn.commit()
+        
+    async def ensure_voice_client(self, channel: discord.VoiceChannel):
+        """Asegura que el bot esté conectado al canal de voz correcto."""
+        vc = channel.guild.voice_client
+        if not vc:
+            return await channel.connect()
+        if vc.channel != channel:
+            await vc.move_to(channel)
+        return vc
 
     async def process_tts_message(self, message: discord.Message):
         user_lang, is_active = self.get_user_tts_settings(message.guild.id, message.author.id)
@@ -779,10 +803,7 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         if vc and vc.is_playing(): return
 
         channel = message.author.voice.channel
-        if not vc:
-            vc = await channel.connect()
-        elif vc.channel != channel:
-            await vc.move_to(channel)
+        await self.ensure_voice_client(channel)
 
         lang_code = user_lang or self.get_guild_lang(message.guild.id)
         text_to_speak = message.clean_content
@@ -803,7 +824,6 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
                 if e: print(f'TTS Error: {e}')
                 try: os.remove(tts_file)
                 except OSError as e: print(f"TTS File Error: {e}")
-                # Ya no se llama a la función de desconexión aquí
 
             vc.play(source, after=after_playing)
         except Exception as e:
@@ -1002,11 +1022,13 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         await ctx.defer()
         if self.game_in_progress.get(ctx.guild.id): return await ctx.send("Ya hay un juego en curso.")
         if not ctx.author.voice: return await ctx.send("Debes estar en un canal de voz.")
-        vc = ctx.guild.voice_client
-        if vc and vc.is_playing(): return await ctx.send("No puedo iniciar un juego mientras reproduzco música.")
+        
         channel = ctx.author.voice.channel
-        if not vc: vc = await channel.connect()
-        elif vc.channel != channel: await vc.move_to(channel)
+        music_cog = self.bot.get_cog("Música")
+        if not music_cog: return # No debería pasar
+        
+        vc = await music_cog.ensure_voice_client(channel)
+        if vc.is_playing(): return await ctx.send("No puedo iniciar un juego mientras reproduzco música.")
 
         self.game_in_progress[ctx.guild.id] = True
         try:
@@ -1032,7 +1054,6 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             if vc.is_playing(): vc.stop()
             self.game_in_progress[ctx.guild.id] = False
             await asyncio.sleep(5)
-            music_cog = self.bot.get_cog('Música')
             if not vc.is_playing() and not (music_cog and music_cog.get_guild_state(ctx.guild.id).current_song):
                 await vc.disconnect()
 
@@ -1173,7 +1194,12 @@ async def on_command_error(ctx: commands.Context, error):
     else:
         command_name = ctx.command.name if ctx.command else "Ninguno"
         print(f"Error no manejado en '{command_name}': {error}")
-        # Opcional: enviar un mensaje de error genérico al usuario
+        
+        # Manejo del error "Interaction has already been acknowledged"
+        if isinstance(error, commands.errors.HybridCommandError) and isinstance(error.original, discord.errors.HTTPException) and error.original.code == 40060:
+             print("Se intentó responder a una interacción ya respondida. Esto es normal si el error se maneja en otro lugar.")
+             return # No enviar mensaje duplicado
+
         try:
             await ctx.send(f"Ocurrió un error inesperado al ejecutar el comando. Ya se ha notificado al desarrollador.", ephemeral=True)
         except discord.errors.InteractionResponded:
