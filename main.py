@@ -98,41 +98,10 @@ class HelpView(discord.ui.View):
         self.add_item(HelpSelect(bot))
 
 class MusicPanelView(discord.ui.View):
-    """La vista definitiva con un diseño de botones ordenado y profesional."""
-    def __init__(self, music_cog: "MusicCog", ctx: commands.Context):
+    """Vista de panel de música independiente del contexto original."""
+    def __init__(self, music_cog: "MusicCog"):
         super().__init__(timeout=None)
         self.music_cog = music_cog
-        self.ctx = ctx
-        self.update_loop_button_style()
-        self.update_autoplay_button_style()
-
-    def update_loop_button_style(self):
-        state = self.music_cog.get_guild_state(self.ctx.guild.id)
-        loop_button = discord.utils.get(self.children, custom_id='loop_button')
-        if not loop_button: return
-
-        if state.loop_state == LoopState.OFF:
-            loop_button.style = discord.ButtonStyle.secondary
-            loop_button.label = "Loop"
-            loop_button.emoji = "🔁"
-        elif state.loop_state == LoopState.SONG:
-            loop_button.style = discord.ButtonStyle.success
-            loop_button.label = "Loop Song"
-            loop_button.emoji = "🔂"
-        elif state.loop_state == LoopState.QUEUE:
-            loop_button.style = discord.ButtonStyle.success
-            loop_button.label = "Loop Queue"
-            loop_button.emoji = "🔁"
-
-    def update_autoplay_button_style(self):
-        state = self.music_cog.get_guild_state(self.ctx.guild.id)
-        autoplay_button = discord.utils.get(self.children, custom_id='autoplay_button')
-        if not autoplay_button: return
-
-        if state.autoplay:
-            autoplay_button.style = discord.ButtonStyle.success
-        else:
-            autoplay_button.style = discord.ButtonStyle.secondary
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.user.voice or not interaction.guild.voice_client or interaction.user.voice.channel != interaction.guild.voice_client.channel:
@@ -140,81 +109,119 @@ class MusicPanelView(discord.ui.View):
             return False
         return True
 
+    async def update_panel(self, interaction: discord.Interaction):
+        """Actualiza los botones del panel y edita el mensaje."""
+        state = self.music_cog.get_guild_state(interaction.guild.id)
+        
+        loop_button = discord.utils.get(self.children, custom_id='loop_button')
+        if loop_button:
+            if state.loop_state == LoopState.OFF: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.secondary, "Loop", "🔁"
+            elif state.loop_state == LoopState.SONG: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Song", "🔂"
+            elif state.loop_state == LoopState.QUEUE: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Queue", "🔁"
+
+        autoplay_button = discord.utils.get(self.children, custom_id='autoplay_button')
+        if autoplay_button:
+            autoplay_button.style = discord.ButtonStyle.success if state.autoplay else discord.ButtonStyle.secondary
+        
+        pause_button = discord.utils.get(self.children, custom_id='pause_resume_button')
+        if pause_button and interaction.guild.voice_client:
+            if interaction.guild.voice_client.is_paused(): pause_button.label, pause_button.emoji = "Reanudar", "▶️"
+            else: pause_button.label, pause_button.emoji = "Pausa", "⏸️"
+
+        await interaction.message.edit(view=self)
+
     @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary, emoji="⏪", row=0, custom_id="previous_button")
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.previous.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        state = self.music_cog.get_guild_state(interaction.guild.id)
+        if not state.history:
+            return await interaction.response.send_message("No hay historial de canciones.", ephemeral=True)
+        
+        if state.current_song: state.queue.insert(0, state.current_song)
+        state.queue.insert(0, state.history.pop())
+        
+        if (vc := interaction.guild.voice_client) and vc.is_playing(): vc.stop()
+        else: 
+            ctx = await self.music_cog.bot.get_context(interaction)
+            self.music_cog.play_next_song(ctx)
+            
+        await interaction.response.send_message("⏪ Reproduciendo la canción anterior.", ephemeral=True, delete_after=5)
 
     @discord.ui.button(label="Pausa", style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
     async def pause_resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         vc = interaction.guild.voice_client
         if vc.is_paused():
-            await self.music_cog.resume.callback(self.music_cog, self.ctx)
-            button.label = "Pausa"; button.emoji = "⏸️"
+            vc.resume()
+            button.label, button.emoji = "Pausa", "⏸️"
         else:
-            await self.music_cog.pause.callback(self.music_cog, self.ctx)
-            button.label = "Reanudar"; button.emoji = "▶️"
+            vc.pause()
+            button.label, button.emoji = "Reanudar", "▶️"
         await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Saltar", style=discord.ButtonStyle.primary, emoji="⏭️", row=0, custom_id="skip_button")
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.skip.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        vc = interaction.guild.voice_client
+        if vc and (vc.is_playing() or vc.is_paused()):
+            vc.stop()
+            await interaction.response.send_message("⏭️ Canción saltada.", ephemeral=True, delete_after=5)
+        else:
+            await interaction.response.send_message("No hay nada que saltar.", ephemeral=True)
 
     @discord.ui.button(label="Barajar", style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
     async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.shuffle.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        state = self.music_cog.get_guild_state(interaction.guild.id)
+        if not state.queue:
+            return await interaction.response.send_message("La cola está vacía para barajar.", ephemeral=True)
+        random.shuffle(state.queue)
+        await interaction.response.send_message("🔀 ¡La cola ha sido barajada!", ephemeral=True, delete_after=5)
 
     @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
     async def loop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         state = self.music_cog.get_guild_state(interaction.guild.id)
         if state.loop_state == LoopState.OFF:
-            state.loop_state = LoopState.SONG
-            msg = 'Bucle de canción activado.'
+            state.loop_state, msg = LoopState.SONG, 'Bucle de canción activado.'
         elif state.loop_state == LoopState.SONG:
-            state.loop_state = LoopState.QUEUE
-            msg = 'Bucle de cola activado.'
+            state.loop_state, msg = LoopState.QUEUE, 'Bucle de cola activado.'
         else:
-            state.loop_state = LoopState.OFF
-            msg = 'Bucle desactivado.'
-        self.update_loop_button_style()
+            state.loop_state, msg = LoopState.OFF, 'Bucle desactivado.'
+        
         await interaction.response.send_message(f"🔁 {msg}", ephemeral=True, delete_after=5)
-        await interaction.message.edit(view=self)
+        await self.update_panel(interaction)
 
     @discord.ui.button(label="Autoplay", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
     async def autoplay_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         state = self.music_cog.get_guild_state(interaction.guild.id)
         state.autoplay = not state.autoplay
         status = "activado" if state.autoplay else "desactivado"
-        self.update_autoplay_button_style()
         await interaction.response.send_message(f"🔄 Autoplay **{status}**.", ephemeral=True, delete_after=5)
-        await interaction.message.edit(view=self)
+        await self.update_panel(interaction)
 
     @discord.ui.button(label="Sonando", style=discord.ButtonStyle.primary, emoji="🎵", row=2, custom_id="nowplaying_button")
     async def nowplaying_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.nowplaying.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        ctx = await self.music_cog.bot.get_context(interaction)
+        await self.music_cog.nowplaying.callback(self.music_cog, ctx)
 
     @discord.ui.button(label="Cola", style=discord.ButtonStyle.primary, emoji="🎶", row=2, custom_id="queue_button")
     async def queue_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.queue_info.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        ctx = await self.music_cog.bot.get_context(interaction)
+        await self.music_cog.queue_info.callback(self.music_cog, ctx)
 
     @discord.ui.button(label="Letra", style=discord.ButtonStyle.primary, emoji="🎤", row=2, custom_id="lyrics_button")
     async def lyrics_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.lyrics.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        ctx = await self.music_cog.bot.get_context(interaction)
+        await self.music_cog.lyrics.callback(self.music_cog, ctx)
 
     @discord.ui.button(label="Detener", style=discord.ButtonStyle.danger, emoji="⏹️", row=3, custom_id="stop_button")
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.stop.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        ctx = await self.music_cog.bot.get_context(interaction)
+        await self.music_cog.stop.callback(self.music_cog, ctx)
+        await interaction.response.send_message("⏹️ Música detenida.", ephemeral=True, delete_after=5)
+
 
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
     async def leave_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.music_cog.leave.callback(self.music_cog, self.ctx)
-        await interaction.response.defer()
+        ctx = await self.music_cog.bot.get_context(interaction)
+        await self.music_cog.leave.callback(self.music_cog, ctx)
+        await interaction.response.send_message("👋 Desconectando...", ephemeral=True, delete_after=5)
 
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
@@ -274,7 +281,7 @@ class MusicCog(commands.Cog, name="Música"):
         if thumbnail_url:
             embed.set_thumbnail(url=thumbnail_url)
             
-        view = MusicPanelView(self, ctx)
+        view = MusicPanelView(self)
         
         try:
             state.active_panel = await ctx.channel.send(embed=embed, view=view)
@@ -330,7 +337,6 @@ class MusicCog(commands.Cog, name="Música"):
             vc = ctx.guild.voice_client
             if vc and not vc.is_playing() and not vc.is_paused():
                 
-                # No desconectar si el TTS está configurado
                 tts_cog = self.bot.get_cog("Texto a Voz")
                 if tts_cog and tts_cog.is_guild_setup(ctx.guild.id):
                     return
@@ -836,11 +842,8 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         vc = message.guild.voice_client
         if not vc or not vc.is_connected(): return
         
-        # --- CORRECCIÓN ---
-        # Ignorar si el autor del mensaje no está en el mismo canal de voz que el bot
         if not message.author.voice or message.author.voice.channel != vc.channel:
             return
-        # ------------------
 
         if vc.is_playing(): return
 
@@ -1162,7 +1165,7 @@ class EconomyCog(commands.Cog, name="Economía"):
                 user_name = user.display_name
             except discord.NotFound:
                 user_name = f"Usuario Desconocido ({user_id})"
-            rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
+            rank = ["�", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
             description += f"{rank} **{user_name}**: {balance} Umapesos\n"
         embed.description = description
         await ctx.send(embed=embed)
