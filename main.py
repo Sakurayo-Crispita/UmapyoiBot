@@ -14,6 +14,7 @@ import sqlite3
 import lyricsgenius
 from enum import Enum
 from dotenv import load_dotenv
+from gtts import gTTS 
 
 # --- CONFIGURACIÓN DE APIS Y SERVIDOR WEB ---
 load_dotenv()
@@ -596,6 +597,266 @@ class MusicCog(commands.Cog, name="Música"):
             await ctx.guild.voice_client.disconnect()
         else: await self.send_response(ctx, "No estoy en ningún canal de voz.", ephemeral=True)
 
+# --- COG DE NIVELES ---
+class LevelingCog(commands.Cog, name="Niveles"):
+    """Comandos para ver tu nivel y competir en el ranking de XP."""
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.conn = sqlite3.connect('economia.db')
+        self.cursor = self.conn.cursor()
+        self.setup_database()
+
+    def setup_database(self):
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS levels (
+                guild_id INTEGER, user_id INTEGER,
+                level INTEGER DEFAULT 1, xp INTEGER DEFAULT 0,
+                PRIMARY KEY (guild_id, user_id)
+            )
+        ''')
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS role_rewards (
+                guild_id INTEGER, level INTEGER, role_id INTEGER,
+                PRIMARY KEY (guild_id, level)
+            )
+        ''')
+        self.conn.commit()
+
+    def get_user_level(self, guild_id: int, user_id: int):
+        self.cursor.execute("SELECT level, xp FROM levels WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+        result = self.cursor.fetchone()
+        if result: return result
+        else:
+            self.cursor.execute("INSERT INTO levels (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
+            self.conn.commit()
+            return 1, 0
+
+    def update_user_xp(self, guild_id: int, user_id: int, level: int, xp: int):
+        self.cursor.execute("UPDATE levels SET level = ?, xp = ? WHERE guild_id = ? AND user_id = ?", (level, xp, guild_id, user_id))
+        self.conn.commit()
+
+    async def check_role_rewards(self, member: discord.Member, new_level: int):
+        guild_id = member.guild.id
+        self.cursor.execute("SELECT role_id FROM role_rewards WHERE guild_id = ? AND level = ?", (guild_id, new_level))
+        result = self.cursor.fetchone()
+        if result:
+            role_id = result[0]
+            role = member.guild.get_role(role_id)
+            if role:
+                try:
+                    await member.add_roles(role)
+                    return role
+                except discord.Forbidden:
+                    print(f"No tengo permisos para dar el rol {role.name} en el servidor {member.guild.name}")
+        return None
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild or message.content.startswith(self.bot.command_prefix): return
+        guild_id = message.guild.id
+        user_id = message.author.id
+        level, xp = self.get_user_level(guild_id, user_id)
+        xp_to_add = random.randint(15, 25)
+        new_xp = xp + xp_to_add
+        xp_needed = 5 * (level ** 2) + 50 * level + 100
+        if new_xp >= xp_needed:
+            new_level = level + 1
+            xp_leftover = new_xp - xp_needed
+            self.update_user_xp(guild_id, user_id, new_level, xp_leftover)
+            reward_role = await self.check_role_rewards(message.author, new_level)
+            level_up_message = f"🎉 ¡Felicidades {message.author.mention}, has subido al **nivel {new_level}**!"
+            if reward_role:
+                level_up_message += f"\n🎁 ¡Has ganado el rol {reward_role.mention} como recompensa!"
+            try:
+                await message.channel.send(level_up_message)
+            except discord.Forbidden: pass
+        else:
+            self.update_user_xp(guild_id, user_id, level, new_xp)
+
+    @commands.hybrid_command(name='rank', description="Muestra tu nivel y XP en este servidor.")
+    async def rank(self, ctx: commands.Context, miembro: discord.Member | None = None):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        await ctx.defer()
+        target_user = miembro or ctx.author
+        level, xp = self.get_user_level(ctx.guild.id, target_user.id)
+        xp_needed = 5 * (level ** 2) + 50 * level + 100
+        progress = int((xp / xp_needed) * 20) if xp_needed > 0 else 0
+        progress_bar = '🟩' * progress + '⬛' * (20 - progress)
+        embed = discord.Embed(title=f"Estadísticas de Nivel de {target_user.display_name}", description=f"Mostrando el rango para el servidor **{ctx.guild.name}**", color=target_user.color)
+        embed.set_thumbnail(url=target_user.display_avatar.url)
+        embed.add_field(name="Nivel", value=f"**{level}**", inline=True)
+        embed.add_field(name="XP", value=f"**{xp} / {xp_needed}**", inline=True)
+        embed.add_field(name="Progreso", value=f"`{progress_bar}`", inline=False)
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name='levelboard', aliases=['lb_level'], description="Muestra a los usuarios con más nivel en este servidor.")
+    async def levelboard(self, ctx: commands.Context):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        await ctx.defer()
+        self.cursor.execute("SELECT user_id, level, xp FROM levels WHERE guild_id = ? ORDER BY level DESC, xp DESC LIMIT 10", (ctx.guild.id,))
+        top_users = self.cursor.fetchall()
+        if not top_users: return await ctx.send("Nadie tiene nivel en este servidor todavía. ¡Empieza a chatear para ganar XP!")
+        embed = discord.Embed(title=f"🏆 Ranking de Niveles de {ctx.guild.name} 🏆", color=discord.Color.gold())
+        description = ""
+        for i, (user_id, level, xp) in enumerate(top_users):
+            try: user = await self.bot.fetch_user(user_id)
+            except discord.NotFound: user = None
+            user_name = user.display_name if user else f"Usuario Desconocido ({user_id})"
+            rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
+            description += f"{rank} **{user_name}**: Nivel {level} ({xp} XP)\n"
+        embed.description = description
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name='set_level_role', description="Asigna un rol como recompensa por alcanzar un nivel.")
+    @commands.has_permissions(administrator=True)
+    async def set_level_role(self, ctx: commands.Context, nivel: int, rol: discord.Role):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        self.cursor.execute("REPLACE INTO role_rewards (guild_id, level, role_id) VALUES (?, ?, ?)", (ctx.guild.id, nivel, rol.id))
+        self.conn.commit()
+        await ctx.send(f"✅ ¡Perfecto! El rol {rol.mention} se dará como recompensa al alcanzar el **nivel {nivel}**.")
+
+    @commands.hybrid_command(name='remove_level_role', description="Elimina la recompensa de rol de un nivel.")
+    @commands.has_permissions(administrator=True)
+    async def remove_level_role(self, ctx: commands.Context, nivel: int):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        self.cursor.execute("DELETE FROM role_rewards WHERE guild_id = ? AND level = ?", (ctx.guild.id, nivel))
+        self.conn.commit()
+        await ctx.send(f"🗑️ Se ha eliminado la recompensa de rol para el **nivel {nivel}**.")
+
+    @commands.hybrid_command(name='list_level_roles', description="Muestra todas las recompensas de roles configuradas.")
+    async def list_level_roles(self, ctx: commands.Context):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        await ctx.defer()
+        self.cursor.execute("SELECT level, role_id FROM role_rewards WHERE guild_id = ? ORDER BY level ASC", (ctx.guild.id,))
+        rewards = self.cursor.fetchall()
+        if not rewards: return await ctx.send("No hay recompensas de roles configuradas en este servidor.")
+        embed = discord.Embed(title=f"🎁 Recompensas de Roles de {ctx.guild.name}", color=discord.Color.blue())
+        description = ""
+        for level, role_id in rewards:
+            role = ctx.guild.get_role(role_id)
+            description += f"**Nivel {level}** → {role.mention if role else 'Rol no encontrado'}\n"
+        embed.description = description
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name='reset_level', description="Reinicia el nivel de un usuario.")
+    @commands.has_permissions(administrator=True)
+    async def reset_level(self, ctx: commands.Context, miembro: discord.Member):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        self.update_user_xp(ctx.guild.id, miembro.id, 1, 0)
+        await ctx.send(f"🔄 El nivel de {miembro.mention} ha sido reiniciado.")
+
+    @commands.hybrid_command(name='give_xp', description="Otorga XP a un usuario.")
+    @commands.has_permissions(administrator=True)
+    async def give_xp(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        level, xp = self.get_user_level(ctx.guild.id, miembro.id)
+        self.update_user_xp(ctx.guild.id, miembro.id, level, xp + cantidad)
+        await ctx.send(f"✨ Se han añadido **{cantidad} XP** a {miembro.mention}.")
+
+# --- COG DE TEXTO A VOZ (TTS) ---
+class TTSCog(commands.Cog, name="Texto a Voz"):
+    """Comandos para que el bot hable y lea tus mensajes."""
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.conn = sqlite3.connect('tts.db') # Base de datos separada
+        self.cursor = self.conn.cursor()
+        self.setup_tts_database()
+
+    def setup_tts_database(self):
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS tts_user_settings (guild_id INTEGER, user_id INTEGER, lang TEXT, is_active INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
+        self.conn.commit()
+
+    def get_guild_lang(self, guild_id: int) -> str:
+        self.cursor.execute("SELECT lang FROM tts_guild_settings WHERE guild_id = ?", (guild_id,))
+        result = self.cursor.fetchone()
+        return result[0] if result else 'es'
+
+    def get_user_tts_settings(self, guild_id: int, user_id: int):
+        self.cursor.execute("SELECT lang, is_active FROM tts_user_settings WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+        result = self.cursor.fetchone()
+        if result: return result[0], bool(result[1])
+        return None, False
+
+    def set_user_lang(self, guild_id: int, user_id: int, lang: str):
+        self.cursor.execute("INSERT OR IGNORE INTO tts_user_settings (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
+        self.cursor.execute("UPDATE tts_user_settings SET lang = ? WHERE guild_id = ? AND user_id = ?", (lang, guild_id, user_id))
+        self.conn.commit()
+
+    def set_guild_lang(self, guild_id: int, lang: str):
+        self.cursor.execute("REPLACE INTO tts_guild_settings (guild_id, lang) VALUES (?, ?)", (guild_id, lang))
+        self.conn.commit()
+
+    def toggle_tts_mode(self, guild_id: int, user_id: int) -> bool:
+        _, is_active = self.get_user_tts_settings(guild_id, user_id)
+        new_status = not is_active
+        self.cursor.execute("INSERT OR IGNORE INTO tts_user_settings (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
+        self.cursor.execute("UPDATE tts_user_settings SET is_active = ? WHERE guild_id = ? AND user_id = ?", (int(new_status), guild_id, user_id))
+        self.conn.commit()
+        return new_status
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild or message.content.startswith(self.bot.command_prefix): return
+        user_lang, is_active = self.get_user_tts_settings(message.guild.id, message.author.id)
+        if not is_active or not message.author.voice: return
+        vc = message.guild.voice_client
+        if vc and vc.is_playing(): return
+        channel = message.author.voice.channel
+        if not vc: vc = await channel.connect()
+        elif vc.channel != channel: await vc.move_to(channel)
+        lang_code = user_lang or self.get_guild_lang(message.guild.id)
+        text_to_speak = message.clean_content
+        if not text_to_speak: return
+        try:
+            loop = asyncio.get_event_loop()
+            tts_file = f"tts_{message.guild.id}_{message.author.id}.mp3"
+            def save_tts():
+                tts = gTTS(text=text_to_speak, lang=lang_code, slow=False)
+                tts.save(tts_file)
+            await loop.run_in_executor(None, save_tts)
+            source = discord.FFmpegPCMAudio(tts_file)
+            def after_playing(e):
+                if e: print(f'TTS Error: {e}')
+                try: os.remove(tts_file)
+                except OSError as e: print(f"TTS File Error: {e}")
+            vc.play(source, after=after_playing)
+        except Exception as e: print(f"Error en TTS automático: {e}")
+
+    @commands.hybrid_command(name='tts', description="Activa o desactiva la lectura automática de tus mensajes.")
+    async def tts_toggle(self, ctx: commands.Context, modo: Literal['on', 'off']):
+        if not ctx.guild: return await ctx.send("Este comando solo funciona en servidores.", ephemeral=True)
+        new_status = self.toggle_tts_mode(ctx.guild.id, ctx.author.id)
+        status_text = "activado" if new_status else "desactivado"
+        await ctx.send(f"🎤 ¡Modo de lectura automática **{status_text}** para ti!", ephemeral=True)
+
+    @commands.hybrid_command(name='set_my_language', description="Elige tu idioma personal para la lectura de mensajes.")
+    @discord.app_commands.choices(idioma=[
+        discord.app_commands.Choice(name="Español", value="es"),
+        discord.app_commands.Choice(name="Inglés (EE.UU.)", value="en"),
+        discord.app_commands.Choice(name="Japonés", value="ja"),
+        discord.app_commands.Choice(name="Italiano", value="it"),
+        discord.app_commands.Choice(name="Francés", value="fr"),
+    ])
+    async def set_my_language(self, ctx: commands.Context, idioma: discord.app_commands.Choice[str]):
+        if not ctx.guild: return await ctx.send("Este comando solo funciona en servidores.", ephemeral=True)
+        self.set_user_lang(ctx.guild.id, ctx.author.id, idioma.value)
+        await ctx.send(f"✅ Tu idioma para la lectura de mensajes ha sido establecido a **{idioma.name}**.", ephemeral=True)
+
+    @commands.hybrid_command(name='set_server_language', description="[Admin] Establece el idioma de TTS por defecto para el servidor.")
+    @commands.has_permissions(administrator=True)
+    @discord.app_commands.choices(idioma=[
+        discord.app_commands.Choice(name="Español", value="es"),
+        discord.app_commands.Choice(name="Inglés (EE.UU.)", value="en"),
+        discord.app_commands.Choice(name="Japonés", value="ja"),
+        discord.app_commands.Choice(name="Italiano", value="it"),
+        discord.app_commands.Choice(name="Francés", value="fr"),
+    ])
+    async def set_server_language(self, ctx: commands.Context, idioma: discord.app_commands.Choice[str]):
+        if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
+        self.set_guild_lang(ctx.guild.id, idioma.value)
+        await ctx.send(f"✅ El idioma por defecto del servidor para TTS ha sido establecido a **{idioma.name}**.", ephemeral=True)
+
 # --- COG DE UTILIDAD ---
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
@@ -783,7 +1044,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     """Gana Umapesos, compite y sé el más rico del servidor."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.conn = sqlite3.connect('economia.db')
+        self.conn = sqlite3.connect('niveles.db')
         self.cursor = self.conn.cursor()
         self.setup_database()
 
@@ -1069,6 +1330,7 @@ async def on_ready():
     await bot.add_cog(FunCog(bot))
     await bot.add_cog(EconomyCog(bot))
     await bot.add_cog(LevelingCog(bot))
+    await bot.add_cog(TTSCog(bot))
     print("Cogs cargados.")
     print("-----------------------------------------")
     print("Sincronizando comandos slash...")
