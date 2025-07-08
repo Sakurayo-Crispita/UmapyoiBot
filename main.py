@@ -1959,6 +1959,12 @@ async def on_command_error(ctx: commands.Context, error):
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ No tienes los permisos necesarios para usar este comando.", ephemeral=True)
         return
+    elif isinstance(error, commands.BotMissingPermissions):
+        # Convierte la lista de permisos faltantes en un texto legible
+        permisos_faltantes = ", ".join(perm.replace('_', ' ').capitalize() for perm in error.missing_permissions)
+        # Envía el mensaje de error específico al canal
+        await ctx.send(f"⚠️ No puedo ejecutar esa acción porque me faltan los siguientes permisos: **{permisos_faltantes}**", ephemeral=True)
+        return
     elif isinstance(error, commands.errors.HybridCommandError):
         original = error.original
         if isinstance(original, discord.errors.InteractionResponded):
