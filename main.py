@@ -837,19 +837,33 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.conn = sqlite3.connect(DB_FILE)
         self.cursor = self.conn.cursor()
         self.setup_database()
-
+        
     def setup_database(self):
-        # Añadimos la columna para el canal creador
+        # VERSIÓN CORREGIDA SIN LA COMA EXTRA AL FINAL
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS server_settings (
-                guild_id INTEGER PRIMARY KEY, welcome_channel_id INTEGER, goodbye_channel_id INTEGER,
-                log_channel_id INTEGER, autorole_id INTEGER, welcome_message TEXT,
-                welcome_banner_url TEXT, goodbye_message TEXT, goodbye_banner_url TEXT,
-                automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT,
+                guild_id INTEGER PRIMARY KEY,
+                welcome_channel_id INTEGER,
+                goodbye_channel_id INTEGER,
+                log_channel_id INTEGER,
+                autorole_id INTEGER,
+                welcome_message TEXT,
+                welcome_banner_url TEXT,
+                goodbye_message TEXT,
+                goodbye_banner_url TEXT,
+                automod_anti_invite INTEGER DEFAULT 1,
+                automod_banned_words TEXT,
                 temp_channel_creator_id INTEGER,
-                leveling_enabled INTEGER DEFAULT
-            )''')
-        # ... (el resto del setup de la DB sin cambios)
+                leveling_enabled INTEGER DEFAULT 1
+            )
+        ''')
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reaction_roles (
+                guild_id INTEGER, message_id INTEGER, emoji TEXT, role_id INTEGER,
+                PRIMARY KEY (guild_id, message_id, emoji)
+            )
+        ''')
+        self.conn.commit()
 
     def get_settings(self, guild_id: int):
         self.cursor.execute("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
