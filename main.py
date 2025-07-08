@@ -1312,19 +1312,24 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     @announce.error
     async def announce_error(self, ctx: commands.Context, error: commands.CommandError):
         """Manejador de errores local para el comando 'announce'."""
-        # Esta comprobación funciona para comandos de prefijo.
-        if isinstance(error, commands.MissingRequiredArgument):
-            return await ctx.send("⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`")
         
-        # Para comandos de barra, el error es un poco diferente
-        if isinstance(error, commands.HybridCommandError) and isinstance(error.original, discord.app_commands.errors.MissingRPCError):
-             # En este caso, Discord ya no envía la interacción, así que no podemos responder.
-             # Lo ideal es que el usuario se dé cuenta de que el campo es obligatorio.
-             return
+        # Obtenemos la causa real del error, ya que puede venir "envuelto"
+        root_error = getattr(error, 'original', error)
 
-        # Para cualquier otro error inesperado en este comando
-        print(f"Ocurrió un error no manejado en 'announce': {error}")
-        await ctx.send("❌ Hubo un error desconocido con el comando de anuncio.", ephemeral=True)
+        # Comprobamos si la causa fue que faltó el argumento
+        if isinstance(root_error, commands.MissingRequiredArgument):
+            message = "⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`"
+            
+            # Respondemos (no es necesario que sea efímero si es un error de prefijo)
+            await ctx.send(message, delete_after=15)
+            
+            # --- LA LÍNEA MÁGICA ---
+            # Con esto, el error no seguirá propagándose al manejador global.
+            return
+        
+        # Si el error es de otro tipo, lo dejamos pasar para que lo maneje el on_command_error global
+        # y nos notifique con todos los detalles en la consola.
+        raise error
 
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
