@@ -837,7 +837,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.conn = sqlite3.connect(DB_FILE)
         self.cursor = self.conn.cursor()
         self.setup_database()
-
+        
     def setup_database(self):
         # VERSIÓN CORREGIDA SIN LA COMA EXTRA AL FINAL
         self.cursor.execute('''
@@ -1637,54 +1637,61 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
-    # 1. Ignorar bots y mensajes privados
+    # Ignorar mensajes de bots y mensajes privados
     if message.author.bot or not message.guild:
         return
 
-    # --- LÓGICA CORREGIDA ---
-
-    # 2. Obtener los Cogs importantes al principio.
-    config_cog = bot.get_cog("Configuración del Servidor")
-    level_cog = bot.get_cog("Niveles")
-    tts_cog = bot.get_cog("Texto a Voz")
-
-    # 3. Lógica de Automod
+    # --- NUEVA LÓGICA DE AUTOMOD ---
     # No aplicar automod a moderadores
-    if not message.author.guild_permissions.manage_messages and config_cog:
-        settings = config_cog.get_settings(message.guild.id)
-        # Filtro Anti-invites
-        if settings.get("automod_anti_invite", 1) and ("discord.gg/" in message.content or "discord.com/invite/" in message.content):
-            await message.delete()
-            await message.channel.send(f"⚠️ {message.author.mention}, no se permiten invitaciones en este servidor.", delete_after=10)
-            return
-
-        # Filtro de Palabras Prohibidas
-        banned_words_str = settings.get("automod_banned_words", "") or ""
-        if banned_words_str:
-            banned_words = [word.strip() for word in banned_words_str.split(',')]
-            if any(word in message.content.lower() for word in banned_words):
+    if not message.author.guild_permissions.manage_messages:
+        config_cog = bot.get_cog("Configuración del Servidor")
+        if config_cog:
+            settings = config_cog.get_settings(message.guild.id)
+            # Filtro Anti-invites
+            if settings.get("automod_anti_invite", 1) and ("discord.gg/" in message.content or "discord.com/invite/" in message.content):
                 await message.delete()
-                await message.channel.send(f"⚠️ {message.author.mention}, tu mensaje contiene una palabra no permitida.", delete_after=10)
-                return
+                await message.channel.send(f"⚠️ {message.author.mention}, no se permiten invitaciones en este servidor.", delete_after=10)
+                return # Detener para no procesar más
+            
+            # Filtro de Palabras Prohibidas
+            banned_words_str = settings.get("automod_banned_words", "") or ""
+            if banned_words_str:
+                banned_words = [word.strip() for word in banned_words_str.split(',')]
+                if any(word in message.content.lower() for word in banned_words):
+                    await message.delete()
+                    await message.channel.send(f"⚠️ {message.author.mention}, tu mensaje contiene una palabra no permitida.", delete_after=10)
+                    return # Detener para no procesar más
+    # --- FIN DE LÓGICA DE AUTOMOD ---
 
-    # 4. Procesar comandos
+    # Procesar comandos primero
     await bot.process_commands(message)
+
+    # Si el mensaje es un comando, no procesar XP ni TTS
+    if message.content.startswith(bot.command_prefix):
+        return
+    
+     # 3. Crear un "contexto" para saber si el mensaje fue un comando
     ctx = await bot.get_context(message)
+
+    # 4. Si el mensaje fue un comando válido (de cualquier tipo), no hacer nada más
     if ctx.valid:
         return
 
-    # 5. Responder a menciones
+    # 5. Si no fue un comando, revisar si mencionaron al bot
+    #    (y no es una respuesta o un @everyone)
     if bot.user.mentioned_in(message) and not message.mention_everyone and not message.reference:
         await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
-        return
+        return # Detener aquí para no dar XP por una simple mención
 
-    # 6. Procesar XP (si el sistema está activado)
-    if config_cog and level_cog:
+    # Distribuir el mensaje a los cogs relevantes
+    if config_cog:
         settings = config_cog.get_settings(message.guild.id)
-        if settings.get("leveling_enabled", 1):
-            await level_cog.process_xp(message)
+        if settings.get("leveling_enabled", 1): # Por defecto está activado (1)
+            level_cog = bot.get_cog("Niveles")
+            if level_cog:
+                await level_cog.process_xp(message)
 
-    # 7. Procesar TTS
+    tts_cog = bot.get_cog("Texto a Voz")
     if tts_cog:
         await tts_cog.process_tts_message(message)
 
