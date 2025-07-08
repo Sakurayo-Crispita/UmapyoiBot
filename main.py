@@ -1309,28 +1309,32 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         else:
             await ctx.send(response_message)
 
+    # --- INICIO DE LA CORRECCIÓN FINAL ---
     @announce.error
     async def announce_error(self, ctx: commands.Context, error: commands.CommandError):
-        """Manejador de errores local para el comando 'announce'."""
+        """Manejador de errores local y exclusivo para el comando 'announce'."""
         
-        # Obtenemos la causa real del error, ya que puede venir "envuelto"
+        # Obtenemos la causa real del error, que a veces viene "envuelta".
         root_error = getattr(error, 'original', error)
 
-        # Comprobamos si la causa fue que faltó el argumento
+        # Caso 1: Falta el mensaje.
         if isinstance(root_error, commands.MissingRequiredArgument):
-            message = "⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`"
-            
-            # Respondemos (no es necesario que sea efímero si es un error de prefijo)
-            await ctx.send(message, delete_after=15)
-            
-            # --- LA LÍNEA MÁGICA ---
-            # Con esto, el error no seguirá propagándose al manejador global.
-            return
-        
-        # Si el error es de otro tipo, lo dejamos pasar para que lo maneje el on_command_error global
-        # y nos notifique con todos los detalles en la consola.
-        raise error
+            await ctx.send("⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`")
+            return # Importante: Detenemos la ejecución aquí.
 
+        # Caso 2: El usuario no es el dueño del bot.
+        if isinstance(root_error, commands.NotOwner):
+            await ctx.send("❌ Este comando es solo para el dueño del bot.", ephemeral=True)
+            return # Importante: Detenemos la ejecución aquí.
+
+        # Caso 3: Cualquier otro error. Lo registramos en la consola para que lo veas
+        # y enviamos un mensaje genérico, pero solo para este comando.
+        print(f"Ocurrió un error inesperado en el comando 'announce': {root_error}")
+        import traceback
+        traceback.print_exception(type(root_error), root_error, root_error.__traceback__)
+        await ctx.send("❌ Hubo un problema técnico al intentar ejecutar el comando de anuncio.")
+        return # Importante: Detenemos la ejecución aquí para que no llegue al manejador global.
+    # --- FIN DE LA CORRECCIÓN FINAL ---
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
