@@ -112,14 +112,12 @@ class HelpSelect(discord.ui.Select):
         if bot.cogs:
             sorted_cogs = sorted(bot.cogs.items())
             for cog_name, cog in sorted_cogs:
-                # Solo mostrar cogs que tengan comandos de app visibles
                 if any(isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden for cmd in cog.get_commands()):
                     options.append(discord.SelectOption(label=cog_name, description=getattr(cog, "description", "Sin descripción."), emoji="➡️"))
         super().__init__(placeholder="Selecciona una categoría para ver los comandos...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         selected_cog_name = self.values[0]
-        # Crear un nuevo embed para la respuesta
         embed = discord.Embed(color=CREAM_COLOR)
 
         if selected_cog_name == "Inicio":
@@ -134,12 +132,10 @@ class HelpSelect(discord.ui.Select):
                 description = ""
                 command_list = sorted(cog.get_commands(), key=lambda c: c.name)
                 for cmd in command_list:
-                    # Comprobar que sea un comando de app visible y no el propio grupo de ayuda
                     if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden and cmd.name != 'help':
                         description += f"**`/{cmd.name}`** - {cmd.description}\n"
                 embed.description = description or "Esta categoría no tiene comandos para mostrar."
 
-        # Editar el mensaje original con el nuevo embed
         await interaction.response.edit_message(embed=embed)
 
 class HelpView(discord.ui.View):
@@ -1300,6 +1296,16 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: UmapyoiBot):
         self.bot = bot
+        self.cog_map = {
+            "música": "Música",
+            "niveles": "Niveles",
+            "economía": "Economía",
+            "apuestas": "Juegos de Apuestas",
+            "juegos": "Juegos e IA",
+            "configuración": "Configuración del Servidor",
+            "tts": "Texto a Voz",
+            "utilidad": "Utilidad"
+        }
 
     async def _send_cog_help(self, ctx: commands.Context, cog_name: str):
         cog = self.bot.get_cog(cog_name)
@@ -1317,50 +1323,38 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         embed.description = description or "Esta categoría no tiene comandos para mostrar."
         await ctx.send(embed=embed, ephemeral=True)
 
-    @commands.hybrid_group(name='help', description="Muestra ayuda para los comandos del bot.", invoke_without_command=True)
-    async def help(self, ctx: commands.Context):
-        # Esta es la función principal que se ejecuta cuando se usa /help sin subcomandos
-        if ctx.invoked_subcommand is None:
+    @commands.hybrid_command(name='help', description="Muestra ayuda sobre los comandos del bot.")
+    @discord.app_commands.describe(categoría="Elige una categoría para ver sus comandos específicos.")
+    async def help(self, ctx: commands.Context, categoría: Optional[str] = None):
+        """
+        Muestra el panel de ayuda o la ayuda de una categoría específica.
+        """
+        if categoría is None:
+            # Si no se especifica categoría, muestra el panel interactivo
             embed = discord.Embed(title="📜 Ayuda de Umapyoi", color=CREAM_COLOR)
             embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
             embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
             view = HelpView(self.bot)
             await ctx.send(embed=embed, view=view)
+        else:
+            # Si se especifica una categoría, busca su nombre real y muestra su ayuda
+            cog_name_real = self.cog_map.get(categoría.lower())
+            if cog_name_real:
+                await self._send_cog_help(ctx, cog_name_real)
+            else:
+                await ctx.send(f"La categoría '{categoría}' no existe. Usa una de las opciones sugeridas.", ephemeral=True)
 
-    # --- Subcomandos de Ayuda ---
-    @help.command(name="música", description="Muestra todos los comandos de música.")
-    async def help_musica(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Música")
-
-    @help.command(name="niveles", description="Muestra los comandos del sistema de niveles.")
-    async def help_niveles(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Niveles")
-
-    @help.command(name="economía", description="Muestra los comandos del sistema de economía.")
-    async def help_economia(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Economía")
-
-    @help.command(name="apuestas", description="Muestra los comandos de los juegos de apuestas.")
-    async def help_apuestas(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Juegos de Apuestas")
-        
-    @help.command(name="juegos", description="Muestra los comandos de juegos e IA.")
-    async def help_juegos(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Juegos e IA")
-
-    @help.command(name="configuración", description="Muestra los comandos de configuración del servidor.")
-    async def help_configuracion(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Configuración del Servidor")
-
-    @help.command(name="tts", description="Muestra los comandos de Texto a Voz.")
-    async def help_tts(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Texto a Voz")
-        
-    @help.command(name="utilidad", description="Muestra los comandos de utilidad general.")
-    async def help_utilidad(self, ctx: commands.Context):
-        await self._send_cog_help(ctx, "Utilidad")
-        
+    @help.autocomplete('categoría')
+    async def help_autocomplete(self, interaction: discord.Interaction, current: str) -> list[discord.app_commands.Choice[str]]:
+        """Ofrece sugerencias de autocompletado para las categorías."""
+        choices = [
+            discord.app_commands.Choice(name=cog_name, value=cmd_name)
+            for cmd_name, cog_name in self.cog_map.items()
+            if current.lower() in cmd_name.lower()
+        ]
+        return choices[:25]
+    
     # --- COMANDO ANNOUNCE OCULTO ---
     @commands.command(name='announce', hidden=True)
     @commands.is_owner()
