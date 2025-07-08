@@ -140,115 +140,118 @@ class MusicPanelView(discord.ui.View):
     def __init__(self, music_cog: "MusicCog"):
         super().__init__(timeout=None)
         self.music_cog = music_cog
+        # Al crear la vista, nos aseguramos que los botones tengan el estilo correcto desde el principio
+        # (Aunque el panel se crea con una interacción, es una buena práctica)
+        # self._update_button_styles(None) # Esto no es necesario si el panel se crea después de la primera canción
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.user.voice or not interaction.guild.voice_client or interaction.user.voice.channel != interaction.guild.voice_client.channel:
-            await interaction.response.send_message("Debes estar en el mismo canal de voz que yo para usar los botones.", ephemeral=True)
+            await interaction.response.send_message("Debes estar en el mismo canal de voz que yo para usar los botones.", ephemeral=True, delete_after=10)
             return False
         return True
 
-    async def update_panel(self, interaction: discord.Interaction):
-        """Actualiza los botones del panel y edita el mensaje."""
+    def _update_button_styles(self, interaction: discord.Interaction):
+        """Prepara los estilos de los botones antes de enviar la actualización."""
         state = self.music_cog.get_guild_state(interaction.guild.id)
 
-        loop_button = discord.utils.get(self.children, custom_id='loop_button')
+        # Actualizar botón de Loop
+        loop_button: discord.ui.Button = discord.utils.get(self.children, custom_id='loop_button')
         if loop_button:
             if state.loop_state == LoopState.OFF: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.secondary, "Loop", "🔁"
             elif state.loop_state == LoopState.SONG: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Song", "🔂"
-            elif state.loop_state == LoopState.QUEUE: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Queue", "🔁"
+            else: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Queue", "🔁"
 
-        autoplay_button = discord.utils.get(self.children, custom_id='autoplay_button')
+        # Actualizar botón de Autoplay
+        autoplay_button: discord.ui.Button = discord.utils.get(self.children, custom_id='autoplay_button')
         if autoplay_button:
             autoplay_button.style = discord.ButtonStyle.success if state.autoplay else discord.ButtonStyle.secondary
 
-        pause_button = discord.utils.get(self.children, custom_id='pause_resume_button')
+        # Actualizar botón de Pausa/Reanudar
+        pause_button: discord.ui.Button = discord.utils.get(self.children, custom_id='pause_resume_button')
         if pause_button and interaction.guild.voice_client:
             if interaction.guild.voice_client.is_paused(): pause_button.label, pause_button.emoji = "Reanudar", "▶️"
             else: pause_button.label, pause_button.emoji = "Pausa", "⏸️"
 
-        try:
-            # Usamos la interacción original para editar el mensaje
-            await interaction.message.edit(view=self)
-        except discord.NotFound:
-            pass # El mensaje ya fue borrado
-        except discord.HTTPException as e:
-            print(f"Error al actualizar el panel: {e}")
-
-
     async def _execute_command(self, interaction: discord.Interaction, command_name: str):
-        """Función auxiliar para ejecutar un comando desde un botón (versión corregida)."""
+        """Función auxiliar para ejecutar comandos que no necesitan actualización de panel."""
         command = self.music_cog.bot.get_command(command_name)
-        if not command:
-            return await interaction.response.send_message("Error: Comando del botón no encontrado.", ephemeral=True, delete_after=5)
+        if not command: return await interaction.response.send_message("Error interno.", ephemeral=True, delete_after=5)
 
-        # Crear un contexto falso necesario para que los comandos se ejecuten
         ctx = await self.music_cog.bot.get_context(interaction.message)
         ctx.author = interaction.user
         ctx.interaction = interaction
+        await command.callback(self.music_cog, ctx)
 
-        try:
-            # Llama directamente a la función del comando. Es más fiable.
-            await command.callback(self.music_cog, ctx)
-        except Exception as e:
-            print(f"Error al ejecutar el comando '{command_name}' desde un botón: {e}")
-            import traceback
-            traceback.print_exc()
-            # Asegurarse de que el usuario sepa que algo falló
-            if not interaction.response.is_done():
-                await interaction.response.send_message("❌ Ocurrió un error al usar este botón.", ephemeral=True, delete_after=10)
-            else:
-                await interaction.followup.send("❌ Ocurrió un error al usar este botón.", ephemeral=True, delete_after=10)
-
+    # --- BOTONES ---
 
     @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary, emoji="⏪", row=0, custom_id="previous_button")
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def previous_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'previous')
-        # No actualizamos panel aquí porque el comando skip/previous lo hará al cambiar de canción
 
     @discord.ui.button(label="Pausa", style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
-    async def pause_resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def pause_resume_button(self, interaction: discord.Interaction, _: discord.ui.Button):
+        # El comando 'pause' envía su propia respuesta, así que lo ejecutamos
         await self._execute_command(interaction, 'pause')
-        await self.update_panel(interaction)
+        # Luego, actualizamos el panel para que el botón cambie de 'Pausa' a 'Reanudar'
+        self._update_button_styles(interaction)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Saltar", style=discord.ButtonStyle.primary, emoji="⏭️", row=0, custom_id="skip_button")
-    async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def skip_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'skip')
-        # No actualizamos panel aquí porque el comando skip/previous lo hará al cambiar de canción
 
     @discord.ui.button(label="Barajar", style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
-    async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def shuffle_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'shuffle')
 
     @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
-    async def loop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._execute_command(interaction, 'loop')
-        await self.update_panel(interaction)
+    async def loop_button(self, interaction: discord.Interaction, _: discord.ui.Button):
+        # Lógica del loop directamente aquí
+        state = self.music_cog.get_guild_state(interaction.guild.id)
+        if state.loop_state == LoopState.OFF:
+            state.loop_state, msg = LoopState.SONG, 'Bucle de canción activado.'
+        elif state.loop_state == LoopState.SONG:
+            state.loop_state, msg = LoopState.QUEUE, 'Bucle de cola activado.'
+        else:
+            state.loop_state, msg = LoopState.OFF, 'Bucle desactivado.'
+        
+        # Actualizar la apariencia y responder
+        self._update_button_styles(interaction)
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(f"🔁 {msg}", ephemeral=True, delete_after=5)
 
     @discord.ui.button(label="Autoplay", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
-    async def autoplay_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._execute_command(interaction, 'autoplay')
-        await self.update_panel(interaction)
+    async def autoplay_button(self, interaction: discord.Interaction, _: discord.ui.Button):
+        # Lógica del autoplay directamente aquí
+        state = self.music_cog.get_guild_state(interaction.guild.id)
+        state.autoplay = not state.autoplay
+        status = "activado" if state.autoplay else "desactivado"
+
+        # Actualizar la apariencia y responder
+        self._update_button_styles(interaction)
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(f"🔄 Autoplay **{status}**.", ephemeral=True, delete_after=5)
 
     @discord.ui.button(label="Sonando", style=discord.ButtonStyle.primary, emoji="🎵", row=2, custom_id="nowplaying_button")
-    async def nowplaying_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def nowplaying_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'nowplaying')
 
     @discord.ui.button(label="Cola", style=discord.ButtonStyle.primary, emoji="🎶", row=2, custom_id="queue_button")
-    async def queue_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def queue_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'queue')
 
     @discord.ui.button(label="Letra", style=discord.ButtonStyle.primary, emoji="🎤", row=2, custom_id="lyrics_button")
-    async def lyrics_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def lyrics_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'lyrics')
 
     @discord.ui.button(label="Detener", style=discord.ButtonStyle.danger, emoji="⏹️", row=3, custom_id="stop_button")
-    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def stop_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'stop')
 
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
-    async def leave_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def leave_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'leave')
-
+        
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
     """Comandos para reproducir música de alta calidad."""
@@ -589,21 +592,13 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.hybrid_command(name='loop', description="Activa o desactiva la repetición (canción/cola).")
     async def loop(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        if state.loop_state == LoopState.OFF:
-            state.loop_state, msg = LoopState.SONG, 'Bucle de canción activado.'
-        elif state.loop_state == LoopState.SONG:
-            state.loop_state, msg = LoopState.QUEUE, 'Bucle de cola activado.'
-        else:
-            state.loop_state, msg = LoopState.OFF, 'Bucle desactivado.'
-        await self.send_response(ctx, f"🔁 {msg}", ephemeral=True)
+        message = self._toggle_loop(ctx.guild.id)
+        await self.send_response(ctx, message, ephemeral=True)
 
     @commands.hybrid_command(name='autoplay', description="Activa o desactiva el autoplay de canciones.")
     async def autoplay(self, ctx: commands.Context):
-        state = self.get_guild_state(ctx.guild.id)
-        state.autoplay = not state.autoplay
-        status = "activado" if state.autoplay else "desactivado"
-        await self.send_response(ctx, f"🔄 Autoplay **{status}**.", ephemeral=True)
+        message = self._toggle_autoplay(ctx.guild.id)
+        await self.send_response(ctx, message, ephemeral=True)
 
 # --- COG DE NIVELES ---
 class LevelingCog(commands.Cog, name="Niveles"):
