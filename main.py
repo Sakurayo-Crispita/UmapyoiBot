@@ -1264,13 +1264,11 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     @commands.is_owner()
     async def announce(self, ctx: commands.Context, *, mensaje: str):
         """Envía un anuncio a todos los servidores donde está el bot."""
-        
-        # --- INICIO DE LA CORRECCIÓN ---
-        # Primero, verificamos si es una interacción de slash command para poder usar defer()
-        if ctx.interaction:
+        is_interaction = ctx.interaction is not None
+        if is_interaction:
             await ctx.defer(ephemeral=True)
-        # Si es un comando de prefijo, no hacemos nada aquí y el bot responde al final.
-        # --- FIN DE LA CORRECCIÓN ---
+        else:
+            await ctx.typing()
 
         embed = discord.Embed(
             title="📢 Anuncio del Bot",
@@ -1285,10 +1283,8 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
         for guild in self.bot.guilds:
             target_channel = None
-            # Intentar usar el canal del sistema (donde se dan las bienvenidas)
             if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
                 target_channel = guild.system_channel
-            # Si no, buscar el primer canal de texto disponible
             else:
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).send_messages:
@@ -1308,9 +1304,28 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
         response_message = f"✅ Anuncio enviado con éxito a **{successful_sends} servidores**.\n❌ Falló en **{failed_sends} servidores**."
 
-        # Enviamos la respuesta final. `ctx.send` es lo suficientemente inteligente
-        # para manejar tanto slash como prefix commands si el defer() se hizo correctamente.
-        await ctx.send(response_message, ephemeral=True)
+        if is_interaction:
+            await ctx.send(response_message, ephemeral=True)
+        else:
+            await ctx.send(response_message)
+
+    @announce.error
+    async def announce_error(self, ctx: commands.Context, error: commands.CommandError):
+        """Manejador de errores local para el comando 'announce'."""
+        # Esta comprobación funciona para comandos de prefijo.
+        if isinstance(error, commands.MissingRequiredArgument):
+            return await ctx.send("⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`")
+        
+        # Para comandos de barra, el error es un poco diferente
+        if isinstance(error, commands.HybridCommandError) and isinstance(error.original, discord.app_commands.errors.MissingRPCError):
+             # En este caso, Discord ya no envía la interacción, así que no podemos responder.
+             # Lo ideal es que el usuario se dé cuenta de que el campo es obligatorio.
+             return
+
+        # Para cualquier otro error inesperado en este comando
+        print(f"Ocurrió un error no manejado en 'announce': {error}")
+        await ctx.send("❌ Hubo un error desconocido con el comando de anuncio.", ephemeral=True)
+
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
