@@ -1820,63 +1820,64 @@ async def on_message(message: discord.Message):
     if message.author.bot or not message.guild:
         return
 
-    # Obtener los cogs necesarios
     config_cog: Optional[ServerConfigCog] = bot.get_cog("Configuración del Servidor")
     level_cog: Optional[LevelingCog] = bot.get_cog("Niveles")
     tts_cog: Optional[TTSCog] = bot.get_cog("Texto a Voz")
 
-    # Lógica de Automod
     if config_cog and not message.author.guild_permissions.manage_messages:
         settings = await config_cog.get_settings(message.guild.id)
         if settings:
-            # Filtro Anti-invites
             if settings["automod_anti_invite"] and ("discord.gg/" in message.content or "discord.com/invite/" in message.content):
                 await message.delete()
                 await message.channel.send(f"⚠️ {message.author.mention}, no se permiten invitaciones en este servidor.", delete_after=10)
                 return
 
-            # --- INICIO DE LA CORRECCIÓN MEJORADA ---
-            # Filtro de Palabras Prohibidas (versión con palabras completas)
             banned_words_str = settings["automod_banned_words"] or ""
             if banned_words_str:
-                # Creamos un conjunto de palabras para una búsqueda más eficiente
+                # --- INICIO DE LAS LÍNEAS DE DEPURACIÓN ---
+                print("--- INICIANDO CHEQUEO DE AUTOMOD ---")
+                print(f"Mensaje original: '{message.content}'")
+                print(f"Palabras prohibidas desde la DB: '{banned_words_str}'")
+                
                 banned_words_set = {word.strip().lower() for word in banned_words_str.split(',') if word.strip()}
-                
-                # Creamos una expresión regular para buscar solo palabras completas
-                # \b asegura que estamos buscando una palabra entera y no una subcadena
+                print(f"Set de palabras procesadas: {banned_words_set}")
+
                 pattern = r'\b(' + '|'.join(re.escape(word) for word in banned_words_set) + r')\b'
+                print(f"Patrón Regex generado: {pattern}")
                 
-                # Buscamos el patrón en el mensaje, ignorando mayúsculas/minúsculas
-                if re.search(pattern, message.content, re.IGNORECASE):
+                match = re.search(pattern, message.content, re.IGNORECASE)
+                print(f"Resultado de la búsqueda Regex: {match}")
+                # --- FIN DE LAS LÍNEAS DE DEPURACIÓN ---
+
+                if match:
                     try:
+                        print("¡Palabra prohibida encontrada! Borrando mensaje...")
                         await message.delete()
                         await message.channel.send(f"⚠️ {message.author.mention}, tu mensaje contiene una palabra no permitida.", delete_after=10)
+                        print("Mensaje borrado y notificación enviada.")
                     except discord.Forbidden:
                         print(f"Error: No tengo permiso para borrar mensajes en el servidor '{message.guild.name}'.")
-                    return # Detenemos la ejecución para no procesar comandos o XP
-            # --- FIN DE LA CORRECCIÓN MEJORADA ---
+                    except Exception as e:
+                        print(f"Error inesperado al borrar el mensaje: {e}")
+                    return
 
-    # Procesar comandos después del automod
     await bot.process_commands(message)
     ctx = await bot.get_context(message)
     if ctx.valid:
         return
 
-    # Responder a menciones
     if bot.user.mentioned_in(message) and not message.mention_everyone and not message.reference:
         await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
         return
 
-    # Procesar XP si los niveles están activados
     if config_cog and level_cog:
         settings = await config_cog.get_settings(message.guild.id)
         if settings and settings["leveling_enabled"]:
             await level_cog.process_xp(message)
 
-    # Procesar TTS
     if tts_cog:
         await tts_cog.process_tts_message(message)
-        
+
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
     if isinstance(error, commands.CommandOnCooldown):
