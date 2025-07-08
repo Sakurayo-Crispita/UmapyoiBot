@@ -19,6 +19,46 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
         self.conn.commit()
     
+    # --- FUNCIONES SÍNCRONAS PARA LA BASE DE DATOS ---
+
+    def _get_guild_lang_sync(self, guild_id: int) -> str:
+        self.cursor.execute("SELECT lang FROM tts_guild_settings WHERE guild_id = ?", (guild_id,))
+        result = self.cursor.fetchone()
+        return result['lang'] if result else 'es'
+
+    def _set_guild_lang_sync(self, guild_id: int, lang: str):
+        self.cursor.execute("REPLACE INTO tts_guild_settings (guild_id, lang) VALUES (?, ?)", (guild_id, lang))
+        self.conn.commit()
+
+    def _set_active_channel_sync(self, guild_id: int, text_channel_id: int):
+        self.cursor.execute("REPLACE INTO tts_active_channels (guild_id, text_channel_id) VALUES (?, ?)", (guild_id, text_channel_id))
+        self.conn.commit()
+
+    def _get_active_channel_sync(self, guild_id: int) -> int | None:
+        self.cursor.execute("SELECT text_channel_id FROM tts_active_channels WHERE guild_id = ?", (guild_id,))
+        result = self.cursor.fetchone()
+        return result['text_channel_id'] if result else None
+
+    # --- FUNCIONES ASÍNCRONAS (WRAPPERS) ---
+
+    async def get_guild_lang(self, guild_id: int) -> str:
+        async with self.db_lock:
+            return await asyncio.to_thread(self._get_guild_lang_sync, guild_id)
+
+    async def set_guild_lang(self, guild_id: int, lang: str):
+        async with self.db_lock:
+            await asyncio.to_thread(self._set_guild_lang_sync, guild_id, lang)
+
+    async def set_active_channel(self, guild_id: int, text_channel_id: int):
+        async with self.db_lock:
+            await asyncio.to_thread(self._set_active_channel_sync, guild_id, text_channel_id)
+
+    async def get_active_channel(self, guild_id: int) -> int | None:
+        async with self.db_lock:
+            return await asyncio.to_thread(self._get_active_channel_sync, guild_id)
+
+    # --- LÓGICA Y COMANDOS ---
+    
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot or not message.guild: return
@@ -40,6 +80,7 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         try:
             tts_file = f"tts_{message.guild.id}_{message.author.id}.mp3"
             
+            # gTTS también puede ser bloqueante, así que lo movemos a un hilo
             def save_tts():
                 tts = gTTS(text=text_to_speak, lang=lang_code, slow=False)
                 tts.save(tts_file)
@@ -49,26 +90,6 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
             vc.play(source, after=lambda e: os.remove(tts_file) if os.path.exists(tts_file) else None)
         except Exception as e:
             print(f"Error en TTS automático: {e}")
-
-    async def get_guild_lang(self, guild_id: int) -> str:
-        async with self.db_lock:
-            self.cursor.execute("SELECT lang FROM tts_guild_settings WHERE guild_id = ?", (guild_id,))
-            result = self.cursor.fetchone()
-        return result['lang'] if result else 'es'
-
-    async def set_guild_lang(self, guild_id: int, lang: str):
-        async with self.db_lock:
-            self.cursor.execute("REPLACE INTO tts_guild_settings (guild_id, lang) VALUES (?, ?)", (guild_id, lang)); self.conn.commit()
-
-    async def set_active_channel(self, guild_id: int, text_channel_id: int):
-        async with self.db_lock:
-            self.cursor.execute("REPLACE INTO tts_active_channels (guild_id, text_channel_id) VALUES (?, ?)", (guild_id, text_channel_id)); self.conn.commit()
-
-    async def get_active_channel(self, guild_id: int) -> int | None:
-        async with self.db_lock:
-            self.cursor.execute("SELECT text_channel_id FROM tts_active_channels WHERE guild_id = ?", (guild_id,))
-            result = self.cursor.fetchone()
-        return result['text_channel_id'] if result else None
 
     @commands.hybrid_command(name='setup_tts', description="Configura el bot para leer mensajes en este canal.")
     @commands.has_permissions(manage_guild=True)
@@ -98,6 +119,7 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
         await self.set_guild_lang(ctx.guild.id, idioma.value)
         await ctx.send(f"✅ El idioma de TTS ha sido establecido a **{idioma.name}**.")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(TTSCog(bot))

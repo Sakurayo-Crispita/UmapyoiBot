@@ -5,7 +5,7 @@ import asyncio
 import datetime
 from typing import Optional, Literal
 
-# --- MODALES ---
+# --- MODALES (Sin cambios) ---
 class WelcomeConfigModal(discord.ui.Modal, title='Configuración de Bienvenida'):
     def __init__(self, cog, default_message, default_banner):
         super().__init__()
@@ -13,6 +13,7 @@ class WelcomeConfigModal(discord.ui.Modal, title='Configuración de Bienvenida')
         self.add_item(discord.ui.TextInput(label="Mensaje de Bienvenida", style=discord.TextStyle.long, placeholder="{user.mention}, {server.name}", default=default_message, required=True))
         self.add_item(discord.ui.TextInput(label="URL del Banner", placeholder="https://i.imgur.com/...", default=default_banner, required=False))
     async def on_submit(self, interaction: discord.Interaction):
+        # Usamos la nueva función asíncrona que no bloquea
         await self.cog.save_setting(interaction.guild.id, 'welcome_message', self.children[0].value)
         await self.cog.save_setting(interaction.guild.id, 'welcome_banner_url', self.children[1].value or self.cog.DEFAULT_WELCOME_BANNER)
         await interaction.response.send_message("✅ Configuración de bienvenida guardada.", ephemeral=True)
@@ -24,6 +25,7 @@ class GoodbyeConfigModal(discord.ui.Modal, title='Configuración de Despedida'):
         self.add_item(discord.ui.TextInput(label="Mensaje de Despedida", style=discord.TextStyle.long, placeholder="{user.name}, {server.name}", default=default_message, required=True))
         self.add_item(discord.ui.TextInput(label="URL del Banner", placeholder="https://i.imgur.com/...", default=default_banner, required=False))
     async def on_submit(self, interaction: discord.Interaction):
+        # Usamos la nueva función asíncrona que no bloquea
         await self.cog.save_setting(interaction.guild.id, 'goodbye_message', self.children[0].value)
         await self.cog.save_setting(interaction.guild.id, 'goodbye_banner_url', self.children[1].value or self.cog.DEFAULT_GOODBYE_BANNER)
         await interaction.response.send_message("✅ Configuración de despedida guardada.", ephemeral=True)
@@ -42,6 +44,7 @@ class ReactionRoleModal(discord.ui.Modal, title="Crear Rol por Reacción"):
         except ValueError:
             return await interaction.response.send_message("❌ ID de Mensaje o Rol no válidos.", ephemeral=True)
         try:
+            # Usamos la nueva función asíncrona que no bloquea
             await self.cog.add_reaction_role(interaction.guild.id, message_id, emoji, role_id)
             if isinstance(interaction.channel, (discord.TextChannel, discord.ForumChannel, discord.Thread)):
                 message = await interaction.channel.fetch_message(message_id)
@@ -71,19 +74,38 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS reaction_roles (guild_id INTEGER, message_id INTEGER, emoji TEXT, role_id INTEGER, PRIMARY KEY (guild_id, message_id, emoji))''')
         self.conn.commit()
 
+    def _get_settings_sync(self, guild_id: int) -> Optional[sqlite3.Row]:
+        self.cursor.execute("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
+        return self.cursor.fetchone()
+
+    def _save_setting_sync(self, guild_id: int, key: str, value):
+        self.cursor.execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (guild_id,))
+        self.cursor.execute(f"UPDATE server_settings SET {key} = ? WHERE guild_id = ?", (value, guild_id))
+        self.conn.commit()
+    
+    def _add_reaction_role_sync(self, guild_id, message_id, emoji, role_id):
+        self.cursor.execute("REPLACE INTO reaction_roles (guild_id, message_id, emoji, role_id) VALUES (?, ?, ?, ?)", (guild_id, message_id, emoji, role_id))
+        self.conn.commit()
+
+    def _get_reaction_role_sync(self, guild_id, message_id, emoji) -> Optional[sqlite3.Row]:
+        self.cursor.execute("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (guild_id, message_id, emoji))
+        return self.cursor.fetchone()
+
     async def get_settings(self, guild_id: int) -> Optional[sqlite3.Row]:
         async with self.db_lock:
-            self.cursor.execute("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
-            return self.cursor.fetchone()
+            return await asyncio.to_thread(self._get_settings_sync, guild_id)
 
     async def save_setting(self, guild_id: int, key: str, value):
         async with self.db_lock:
-            self.cursor.execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (guild_id,))
-            self.cursor.execute(f"UPDATE server_settings SET {key} = ? WHERE guild_id = ?", (value, guild_id)); self.conn.commit()
+            await asyncio.to_thread(self._save_setting_sync, guild_id, key, value)
 
     async def add_reaction_role(self, guild_id, message_id, emoji, role_id):
         async with self.db_lock:
-            self.cursor.execute("REPLACE INTO reaction_roles (guild_id, message_id, emoji, role_id) VALUES (?, ?, ?, ?)", (guild_id, message_id, emoji, role_id)); self.conn.commit()
+            await asyncio.to_thread(self._add_reaction_role_sync, guild_id, message_id, emoji, role_id)
+            
+    async def get_reaction_role(self, guild_id, message_id, emoji) -> Optional[sqlite3.Row]:
+        async with self.db_lock:
+            return await asyncio.to_thread(self._get_reaction_role_sync, guild_id, message_id, emoji)
 
     async def log_event(self, guild_id, embed):
         settings = await self.get_settings(guild_id)
@@ -155,14 +177,16 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.member and payload.member.bot: return
-        async with self.db_lock: self.cursor.execute("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (payload.guild_id, payload.message_id, str(payload.emoji))); result = self.cursor.fetchone()
+        # Usamos la nueva función que no bloquea
+        result = await self.get_reaction_role(payload.guild_id, payload.message_id, str(payload.emoji))
         if result and (guild := self.bot.get_guild(payload.guild_id)) and (member := guild.get_member(payload.user_id)) and (role := guild.get_role(result['role_id'])):
             try: await member.add_roles(role)
             except: pass
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
-        async with self.db_lock: self.cursor.execute("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (payload.guild_id, payload.message_id, str(payload.emoji))); result = self.cursor.fetchone()
+        # Usamos la nueva función que no bloquea
+        result = await self.get_reaction_role(payload.guild_id, payload.message_id, str(payload.emoji))
         if result and (guild := self.bot.get_guild(payload.guild_id)) and (member := guild.get_member(payload.user_id)) and (role := guild.get_role(result['role_id'])):
             try: await member.remove_roles(role)
             except: pass
