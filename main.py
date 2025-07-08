@@ -1884,6 +1884,71 @@ async def on_message(message: discord.Message):
     if tts_cog:
         await tts_cog.process_tts_message(message)
 
+# --- REEMPLAZA LA FUNCIÓN on_guild_join ANTERIOR CON ESTA ---
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    """
+    Se activa cuando el bot se une a un nuevo servidor.
+    Envía un mensaje de bienvenida por DM al dueño del servidor.
+    Si falla, lo envía a un canal público como alternativa.
+    """
+    print(f"¡Me he unido a un nuevo servidor: {guild.name} (ID: {guild.id})!")
+
+    # 1. Recopilar la información y crear el embed (esto no cambia).
+    creador_discord = "sakurayo_crispy"
+    enlace_servidor = "https://discord.gg/fwNeZsGkSj"
+    bot_summary = "Un bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!"
+
+    embed = discord.Embed(
+        title=f"👋 ¡Gracias por añadir a Umapyoi a tu servidor '{guild.name}'!",
+        description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. Aquí tienes una guía rápida para empezar:",
+        color=CREAM_COLOR
+    )
+
+    if bot.user.display_avatar:
+        embed.set_thumbnail(url=bot.user.display_avatar.url)
+
+    embed.add_field(
+        name="1️⃣ Configuración Importante: ¡Permisos!",
+        value="Para que mis funciones de moderación (como borrar mensajes con palabras prohibidas) funcionen, **necesito que me des un rol con permisos de Administrador**.",
+        inline=False
+    )
+    embed.add_field(name="2️⃣ ¿Qué hago?", value=bot_summary, inline=False)
+    embed.add_field(name="3️⃣ Lista de Comandos", value="Puedes ver todos mis comandos usando el menú interactivo que aparece al escribir `/help`.", inline=False)
+    embed.add_field(name="🔗 Servidor de Soporte", value=f"¿Necesitas ayuda o quieres sugerir algo? [¡Únete aquí!]({enlace_servidor})", inline=True)
+    embed.add_field(name="👑 Creador", value=creador_discord, inline=True)
+    embed.set_footer(text="¡Espero que disfrutes usando Umapyoi!")
+
+    # 2. Intentar enviar el mensaje por DM al dueño del servidor.
+    try:
+        if guild.owner:
+            await guild.owner.send(embed=embed)
+            print(f"Mensaje de bienvenida enviado por DM al dueño de '{guild.name}'.")
+            return  # Si se envía con éxito, terminamos la función aquí.
+    except discord.Forbidden:
+        print(f"No pude enviar el DM al dueño de '{guild.name}'. Intentando en un canal público.")
+    except Exception as e:
+        print(f"Ocurrió un error al intentar enviar el DM al dueño de '{guild.name}': {e}")
+
+    # 3. Alternativa: Si el DM falla, buscar un canal público.
+    target_channel = None
+    if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+        target_channel = guild.system_channel
+    else:
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                target_channel = channel
+                break
+    
+    if target_channel:
+        try:
+            await target_channel.send(embed=embed)
+            print(f"Mensaje de bienvenida enviado al canal '{target_channel.name}' en el servidor '{guild.name}'.")
+        except Exception as e:
+            print(f"Error al enviar el mensaje de bienvenida en el canal público de '{guild.name}': {e}")
+    else:
+        print(f"Fallo total: No se pudo encontrar ningún canal para enviar el mensaje de bienvenida en '{guild.name}'.")
+
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
     if isinstance(error, commands.CommandOnCooldown):
