@@ -113,7 +113,8 @@ class HelpSelect(discord.ui.Select):
             sorted_cogs = sorted(bot.cogs.items())
             for cog_name, cog in sorted_cogs:
                 if any(isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden for cmd in cog.get_commands()):
-                    options.append(discord.SelectOption(label=cog_name, description=getattr(cog, "description", "Sin descripción."), emoji="➡️"))
+                    description = getattr(cog, "description", "Sin descripción.")
+                    options.append(discord.SelectOption(label=cog_name, description=description[:100], emoji="➡️"))
         super().__init__(placeholder="Selecciona una categoría para ver los comandos...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
