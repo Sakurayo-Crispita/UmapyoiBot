@@ -3,66 +3,69 @@ from discord.ext import commands
 import sqlite3
 import random
 import asyncio
+from typing import Optional
 
 class LevelingCog(commands.Cog, name="Niveles"):
     """Comandos para ver tu nivel y competir en el ranking de XP."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.conn = bot.db_conn
-        self.cursor = self.conn.cursor()
-        self.db_lock = bot.db_lock
-        self.setup_database()
+        self.db_file = bot.db_file
 
-    def setup_database(self):
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS levels (guild_id INTEGER, user_id INTEGER, level INTEGER DEFAULT 1, xp INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS role_rewards (guild_id INTEGER, level INTEGER, role_id INTEGER, PRIMARY KEY (guild_id, level))''')
-        self.conn.commit()
-
-    # --- FUNCIONES SÍNCRONAS PARA LA BASE DE DATOS ---
-
+    # --- FUNCIONES SÍNCRONAS ---
     def _get_user_level_sync(self, guild_id: int, user_id: int) -> tuple[int, int]:
-        self.cursor.execute("SELECT level, xp FROM levels WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-        if result := self.cursor.fetchone():
-            return result['level'], result['xp']
-        else:
-            self.cursor.execute("INSERT INTO levels (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
-            self.conn.commit()
-            return 1, 0
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT level, xp FROM levels WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+            if result := cursor.fetchone():
+                return result['level'], result['xp']
+            else:
+                cursor.execute("INSERT INTO levels (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id))
+                conn.commit()
+                return 1, 0
 
     def _update_user_xp_sync(self, guild_id: int, user_id: int, level: int, xp: int):
-        self.cursor.execute("UPDATE levels SET level = ?, xp = ? WHERE guild_id = ? AND user_id = ?", (level, xp, guild_id, user_id))
-        self.conn.commit()
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE levels SET level = ?, xp = ? WHERE guild_id = ? AND user_id = ?", (level, xp, guild_id, user_id))
+            conn.commit()
 
-    def _get_role_reward_sync(self, guild_id: int, new_level: int) -> sqlite3.Row | None:
-        self.cursor.execute("SELECT role_id FROM role_rewards WHERE guild_id = ? AND level = ?", (guild_id, new_level))
-        return self.cursor.fetchone()
+    def _get_role_reward_sync(self, guild_id: int, new_level: int) -> Optional[sqlite3.Row]:
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT role_id FROM role_rewards WHERE guild_id = ? AND level = ?", (guild_id, new_level))
+            return cursor.fetchone()
 
     def _db_execute_commit(self, query: str, params: tuple):
-        self.cursor.execute(query, params)
-        self.conn.commit()
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            conn.commit()
 
     def _get_levelboard_sync(self, guild_id: int) -> list[sqlite3.Row]:
-        self.cursor.execute("SELECT user_id, level, xp FROM levels WHERE guild_id = ? ORDER BY level DESC, xp DESC LIMIT 10", (guild_id,))
-        return self.cursor.fetchall()
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, level, xp FROM levels WHERE guild_id = ? ORDER BY level DESC, xp DESC LIMIT 10", (guild_id,))
+            return cursor.fetchall()
         
     def _get_role_rewards_list_sync(self, guild_id: int) -> list[sqlite3.Row]:
-        self.cursor.execute("SELECT level, role_id FROM role_rewards WHERE guild_id = ? ORDER BY level ASC", (guild_id,))
-        return self.cursor.fetchall()
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT level, role_id FROM role_rewards WHERE guild_id = ? ORDER BY level ASC", (guild_id,))
+            return cursor.fetchall()
 
-    # --- FUNCIONES ASÍNCRONAS (WRAPPERS) ---
-
+    # --- WRAPPERS ASÍNCRONOS ---
     async def get_user_level(self, guild_id: int, user_id: int) -> tuple[int, int]:
-        async with self.db_lock:
-            return await asyncio.to_thread(self._get_user_level_sync, guild_id, user_id)
+        return await asyncio.to_thread(self._get_user_level_sync, guild_id, user_id)
 
     async def update_user_xp(self, guild_id: int, user_id: int, level: int, xp: int):
-        async with self.db_lock:
-            await asyncio.to_thread(self._update_user_xp_sync, guild_id, user_id, level, xp)
+        await asyncio.to_thread(self._update_user_xp_sync, guild_id, user_id, level, xp)
 
-    async def check_role_rewards(self, member: discord.Member, new_level: int) -> discord.Role | None:
-        async with self.db_lock:
-            result = await asyncio.to_thread(self._get_role_reward_sync, member.guild.id, new_level)
-        
+    async def check_role_rewards(self, member: discord.Member, new_level: int) -> Optional[discord.Role]:
+        result = await asyncio.to_thread(self._get_role_reward_sync, member.guild.id, new_level)
         if result and (role := member.guild.get_role(result['role_id'])):
             try:
                 await member.add_roles(role)
@@ -70,9 +73,17 @@ class LevelingCog(commands.Cog, name="Niveles"):
             except discord.Forbidden:
                 print(f"No tengo permisos para dar el rol {role.name} en {member.guild.name}")
         return None
+    
+    async def db_execute(self, query: str, params: tuple = ()):
+        await asyncio.to_thread(self._db_execute_commit, query, params)
+        
+    async def get_levelboard(self, guild_id: int) -> list[sqlite3.Row]:
+        return await asyncio.to_thread(self._get_levelboard_sync, guild_id)
 
-    # --- LÓGICA Y COMANDOS ---
+    async def get_role_rewards_list(self, guild_id: int) -> list[sqlite3.Row]:
+        return await asyncio.to_thread(self._get_role_rewards_list_sync, guild_id)
 
+    # --- LISTENERS Y COMANDOS ---
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot or not message.guild: return
@@ -121,8 +132,7 @@ class LevelingCog(commands.Cog, name="Niveles"):
     async def levelboard(self, ctx: commands.Context):
         if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
         await ctx.defer()
-        async with self.db_lock:
-            top_users = await asyncio.to_thread(self._get_levelboard_sync, ctx.guild.id)
+        top_users = await self.get_levelboard(ctx.guild.id)
         if not top_users: return await ctx.send("Nadie tiene nivel en este servidor todavía.")
         embed = discord.Embed(title=f"🏆 Ranking de Niveles de {ctx.guild.name} 🏆", color=discord.Color.gold())
         description = ""
@@ -142,24 +152,21 @@ class LevelingCog(commands.Cog, name="Niveles"):
     @commands.bot_has_permissions(manage_roles=True)
     async def set_level_role(self, ctx: commands.Context, nivel: int, rol: discord.Role):
         if not ctx.guild: return
-        async with self.db_lock:
-            await asyncio.to_thread(self._db_execute_commit, "REPLACE INTO role_rewards (guild_id, level, role_id) VALUES (?, ?, ?)", (ctx.guild.id, nivel, rol.id))
+        await self.db_execute("REPLACE INTO role_rewards (guild_id, level, role_id) VALUES (?, ?, ?)", (ctx.guild.id, nivel, rol.id))
         await ctx.send(f"✅ ¡Perfecto! El rol {rol.mention} se dará como recompensa al alcanzar el **nivel {nivel}**.")
 
     @commands.hybrid_command(name='remove_level_role', description="Elimina la recompensa de rol de un nivel.")
     @commands.has_permissions(administrator=True)
     async def remove_level_role(self, ctx: commands.Context, nivel: int):
         if not ctx.guild: return
-        async with self.db_lock:
-            await asyncio.to_thread(self._db_execute_commit, "DELETE FROM role_rewards WHERE guild_id = ? AND level = ?", (ctx.guild.id, nivel))
+        await self.db_execute("DELETE FROM role_rewards WHERE guild_id = ? AND level = ?", (ctx.guild.id, nivel))
         await ctx.send(f"🗑️ Se ha eliminado la recompensa de rol para el **nivel {nivel}**.")
 
     @commands.hybrid_command(name='list_level_roles', description="Muestra todas las recompensas de roles configuradas.")
     async def list_level_roles(self, ctx: commands.Context):
         if not ctx.guild: return
         await ctx.defer()
-        async with self.db_lock:
-            rewards = await asyncio.to_thread(self._get_role_rewards_list_sync, ctx.guild.id)
+        rewards = await self.get_role_rewards_list(ctx.guild.id)
         if not rewards: return await ctx.send("No hay recompensas de roles configuradas.")
         embed = discord.Embed(title=f"🎁 Recompensas de Roles de {ctx.guild.name}", color=self.bot.CREAM_COLOR)
         description = "\n".join([f"**Nivel {r['level']}** → {(ctx.guild.get_role(r['role_id']).mention if ctx.guild.get_role(r['role_id']) else 'Rol no encontrado')}" for r in rewards])
@@ -180,7 +187,6 @@ class LevelingCog(commands.Cog, name="Niveles"):
         level, xp = await self.get_user_level(ctx.guild.id, miembro.id)
         await self.update_user_xp(ctx.guild.id, miembro.id, level, xp + cantidad)
         await ctx.send(f"✨ Se han añadido **{cantidad} XP** a {miembro.mention}.")
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(LevelingCog(bot))

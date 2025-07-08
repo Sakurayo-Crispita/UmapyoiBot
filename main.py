@@ -10,14 +10,14 @@ from dotenv import load_dotenv
 # --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-DB_FILE = "bot_data.db"
+DB_FILE = "bot_data.db" # Solo guardamos el nombre del archivo
 
 # --- CLASE DE BOT PERSONALIZADA ---
 class UmapyoiBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.db_conn: Optional[sqlite3.Connection] = None
-        self.db_lock = asyncio.Lock()
+        # AÑADIMOS una propiedad para el nombre del archivo de la DB
+        self.db_file = DB_FILE
 
         # --- CONSTANTES GLOBALES DEL BOT ---
         self.GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
@@ -35,10 +35,27 @@ class UmapyoiBot(commands.Bot):
         }
 
     async def setup_hook(self):
-        self.db_conn = sqlite3.connect(DB_FILE, timeout=10)
-        self.db_conn.row_factory = sqlite3.Row
-        print("Conexión a la base de datos establecida.")
+        # Nos aseguramos de que la base de datos y las tablas existan al iniciar
+        print("Verificando y creando tablas de la base de datos si no existen...")
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            # Tablas de EconomyCog
+            cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
+            # Tablas de LevelingCog
+            cursor.execute('''CREATE TABLE IF NOT EXISTS levels (guild_id INTEGER, user_id INTEGER, level INTEGER DEFAULT 1, xp INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS role_rewards (guild_id INTEGER, level INTEGER, role_id INTEGER, PRIMARY KEY (guild_id, level))''')
+            # Tablas de ServerConfigCog
+            cursor.execute('''CREATE TABLE IF NOT EXISTS server_settings (guild_id INTEGER PRIMARY KEY, welcome_channel_id INTEGER, goodbye_channel_id INTEGER, log_channel_id INTEGER, autorole_id INTEGER, welcome_message TEXT, welcome_banner_url TEXT, goodbye_message TEXT, goodbye_banner_url TEXT, automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT, temp_channel_creator_id INTEGER, leveling_enabled INTEGER DEFAULT 1)''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS reaction_roles (guild_id INTEGER, message_id INTEGER, emoji TEXT, role_id INTEGER, PRIMARY KEY (guild_id, message_id, emoji))''')
+            # Tablas de TTSCog
+            cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
+            conn.commit()
+        print("Verificación de base de datos completada.")
         print('-----------------------------------------')
+        
         print("Cargando Cogs...")
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):
@@ -54,9 +71,7 @@ class UmapyoiBot(commands.Bot):
         print("¡Comandos sincronizados!")
 
     async def close(self):
-        if self.db_conn:
-            self.db_conn.close()
-            print("Conexión a la base de datos cerrada.")
+        # Ya no es necesario cerrar una conexión global
         await super().close()
 
 # --- DEFINICIÓN DE INTENTS E INICIO DEL BOT ---
@@ -80,7 +95,6 @@ async def on_message(message: discord.Message):
         return
     if bot.user.mentioned_in(message) and not message.mention_everyone and not message.reference:
         await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
-    # Los listeners de Cogs se encargarán del resto (XP, TTS, Automod)
     await bot.process_commands(message)
 
 @bot.event
@@ -102,7 +116,6 @@ async def on_command_error(ctx: commands.Context, error):
         import traceback
         print(f"Error no manejado en '{ctx.command.name if ctx.command else 'Comando desconocido'}':")
         traceback.print_exception(type(error), error, error.__traceback__)
-
 
 def main():
     if not DISCORD_TOKEN:

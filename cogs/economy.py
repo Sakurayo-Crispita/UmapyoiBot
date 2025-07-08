@@ -1,120 +1,131 @@
 import discord
 from discord.ext import commands
 import random, sqlite3, datetime, asyncio
-from typing import Literal
+from typing import Literal, Optional
 
 class EconomyCog(commands.Cog, name="Economía"):
     """Sistema de economía configurable por servidor."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.conn = bot.db_conn
-        self.cursor = self.conn.cursor()
-        self.db_lock = bot.db_lock
+        self.db_file = bot.db_file
         self._work_cd = commands.CooldownMapping.from_cooldown(1, 3600, commands.BucketType.user)
         self._rob_cd = commands.CooldownMapping.from_cooldown(1, 21600, commands.BucketType.user)
-        self.setup_database()
-
-    def setup_database(self):
-        # Esta función se llama desde __init__ (síncrono), por lo que no necesita cambios.
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN max_balance INTEGER")
-        except: pass
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN daily_min INTEGER DEFAULT 100")
-        except: pass
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN daily_max INTEGER DEFAULT 500")
-        except: pass
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN work_min INTEGER DEFAULT 50")
-        except: pass
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN work_max INTEGER DEFAULT 250")
-        except: pass
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN work_cooldown INTEGER DEFAULT 3600")
-        except: pass
-        try: self.cursor.execute("ALTER TABLE economy_settings ADD COLUMN rob_cooldown INTEGER DEFAULT 21600")
-        except: pass
-        self.conn.commit()
 
     # --- FUNCIONES SÍNCRONAS PARA LA BASE DE DATOS ---
     
     def _get_guild_settings_sync(self, guild_id: int) -> sqlite3.Row:
-        self.cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
-        if not (settings := self.cursor.fetchone()):
-            self.cursor.execute("INSERT INTO economy_settings (guild_id) VALUES (?)", (guild_id,))
-            self.conn.commit()
-            self.cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
-            settings = self.cursor.fetchone()
-        return settings
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
+            if not (settings := cursor.fetchone()):
+                cursor.execute("INSERT OR IGNORE INTO economy_settings (guild_id) VALUES (?)", (guild_id,))
+                conn.commit()
+                cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
+                settings = cursor.fetchone()
+            return settings
 
     def _get_active_channels_sync(self, guild_id: int) -> list[int]:
-        self.cursor.execute("SELECT channel_id FROM economy_active_channels WHERE guild_id = ?", (guild_id,))
-        return [r['channel_id'] for r in self.cursor.fetchall()]
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT channel_id FROM economy_active_channels WHERE guild_id = ?", (guild_id,))
+            return [r['channel_id'] for r in cursor.fetchall()]
 
     def _get_balance_sync(self, guild_id: int, user_id: int) -> tuple[int, int]:
-        self.cursor.execute("SELECT wallet, bank FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-        if result := self.cursor.fetchone():
-            return result['wallet'], result['bank']
-        else:
-            settings = self._get_guild_settings_sync(guild_id)
-            start_balance = settings['start_balance']
-            self.cursor.execute("INSERT INTO balances (guild_id, user_id, wallet, bank) VALUES (?, ?, ?, 0)", (guild_id, user_id, start_balance))
-            self.conn.commit()
-            return start_balance, 0
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT wallet, bank FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+            if result := cursor.fetchone():
+                return result['wallet'], result['bank']
+            else:
+                settings_cursor = conn.cursor()
+                settings_cursor.execute("SELECT start_balance FROM economy_settings WHERE guild_id = ?", (guild_id,))
+                settings_row = settings_cursor.fetchone()
+                start_balance = settings_row['start_balance'] if settings_row else 100
+                
+                cursor.execute("INSERT INTO balances (guild_id, user_id, wallet, bank) VALUES (?, ?, ?, 0)", (guild_id, user_id, start_balance))
+                conn.commit()
+                return start_balance, 0
 
     def _update_balance_sync(self, guild_id: int, user_id: int, wallet_change: int = 0, bank_change: int = 0) -> tuple[int, int]:
-        wallet, bank = self._get_balance_sync(guild_id, user_id)
-        settings = self._get_guild_settings_sync(guild_id)
-        new_wallet = wallet + wallet_change
-        if settings['max_balance'] is not None:
-            new_wallet = min(new_wallet, settings['max_balance'])
-        new_bank = bank + bank_change
-        self.cursor.execute("REPLACE INTO balances (guild_id, user_id, wallet, bank) VALUES (?, ?, ?, ?)", (guild_id, user_id, new_wallet, new_bank))
-        self.conn.commit()
-        return new_wallet, new_bank
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            # Usamos una función interna para evitar abrir y cerrar conexiones anidadas innecesariamente
+            def get_balance_internal(cur, g_id, u_id):
+                cur.execute("SELECT wallet, bank FROM balances WHERE guild_id = ? AND user_id = ?", (g_id, u_id))
+                if res := cur.fetchone():
+                    return res['wallet'], res['bank']
+                else:
+                    settings_cur = conn.cursor()
+                    settings_cur.execute("SELECT start_balance FROM economy_settings WHERE guild_id = ?", (g_id,))
+                    settings_res = settings_cur.fetchone()
+                    start_bal = settings_res[0] if settings_res else 100
+                    cur.execute("INSERT INTO balances (guild_id, user_id, wallet, bank) VALUES (?, ?, ?, 0)", (g_id, u_id, start_bal))
+                    conn.commit()
+                    return start_bal, 0
+            
+            cursor = conn.cursor()
+            wallet, bank = get_balance_internal(cursor, guild_id, user_id)
+            
+            settings_cursor = conn.cursor()
+            settings_cursor.execute("SELECT max_balance FROM economy_settings WHERE guild_id = ?", (guild_id,))
+            settings = settings_cursor.fetchone()
+            max_balance = settings[0] if settings else None
+
+            new_wallet = wallet + wallet_change
+            if max_balance is not None:
+                new_wallet = min(new_wallet, max_balance)
+            new_bank = bank + bank_change
+            
+            cursor.execute("REPLACE INTO balances (guild_id, user_id, wallet, bank) VALUES (?, ?, ?, ?)", (guild_id, user_id, new_wallet, new_bank))
+            conn.commit()
+            return new_wallet, new_bank
         
     def _db_execute_commit(self, query: str, params: tuple):
-        self.cursor.execute(query, params)
-        self.conn.commit()
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            conn.commit()
 
     def _get_leaderboard_sync(self, guild_id: int) -> list[sqlite3.Row]:
-        self.cursor.execute("SELECT user_id, wallet, bank, (wallet + bank) as total FROM balances WHERE guild_id = ? ORDER BY total DESC LIMIT 10", (guild_id,))
-        return self.cursor.fetchall()
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, wallet, bank, (wallet + bank) as total FROM balances WHERE guild_id = ? ORDER BY total DESC LIMIT 10", (guild_id,))
+            return cursor.fetchall()
 
     # --- FUNCIONES ASÍNCRONAS (WRAPPERS) ---
 
     async def get_guild_settings(self, guild_id: int) -> sqlite3.Row:
-        async with self.db_lock:
-            return await asyncio.to_thread(self._get_guild_settings_sync, guild_id)
+        return await asyncio.to_thread(self._get_guild_settings_sync, guild_id)
             
     async def get_active_channels(self, guild_id: int) -> list[int]:
-        async with self.db_lock:
-            return await asyncio.to_thread(self._get_active_channels_sync, guild_id)
+        return await asyncio.to_thread(self._get_active_channels_sync, guild_id)
 
     async def get_balance(self, guild_id: int, user_id: int) -> tuple[int, int]:
-        async with self.db_lock:
-            return await asyncio.to_thread(self._get_balance_sync, guild_id, user_id)
+        return await asyncio.to_thread(self._get_balance_sync, guild_id, user_id)
 
     async def update_balance(self, guild_id: int, user_id: int, wallet_change: int=0, bank_change: int=0) -> tuple[int, int]:
-        async with self.db_lock:
-            return await asyncio.to_thread(self._update_balance_sync, guild_id, user_id, wallet_change, bank_change)
+        return await asyncio.to_thread(self._update_balance_sync, guild_id, user_id, wallet_change, bank_change)
 
     async def db_execute(self, query: str, params: tuple = ()):
-        async with self.db_lock:
-            await asyncio.to_thread(self._db_execute_commit, query, params)
+        await asyncio.to_thread(self._db_execute_commit, query, params)
             
     async def get_leaderboard(self, guild_id: int) -> list[sqlite3.Row]:
-        async with self.db_lock:
-            return await asyncio.to_thread(self._get_leaderboard_sync, guild_id)
-
-    # --- COMANDOS Y LÓGICA DEL COG ---
+        return await asyncio.to_thread(self._get_leaderboard_sync, guild_id)
 
     async def is_economy_active(self, ctx: commands.Context) -> bool:
         if not ctx.guild: return False
         active_channels = await self.get_active_channels(ctx.guild.id)
         if not active_channels:
-            if not ctx.author.guild_permissions.manage_guild: await ctx.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True, delete_after=10); return False
-        if ctx.channel.id not in active_channels and not ctx.author.guild_permissions.manage_guild:
-             await ctx.send("Los comandos de economía no están permitidos aquí.", ephemeral=True, delete_after=10); return False
+            if not ctx.author.guild_permissions.manage_guild: 
+                await ctx.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True, delete_after=10)
+                return False
+        elif ctx.channel.id not in active_channels and not ctx.author.guild_permissions.manage_guild:
+             await ctx.send("Los comandos de economía no están permitidos aquí.", ephemeral=True, delete_after=10)
+             return False
         return True
 
     async def log_transaction(self, guild: discord.Guild, author: discord.Member, message: str):
@@ -130,7 +141,8 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.has_permissions(administrator=True)
     async def economy(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
-            settings = await self.get_guild_settings(ctx.guild.id); active_channels = await self.get_active_channels(ctx.guild.id)
+            settings = await self.get_guild_settings(ctx.guild.id)
+            active_channels = await self.get_active_channels(ctx.guild.id)
             channels = "\n".join([f"<#{cid}>" for cid in active_channels]) if active_channels else "Ninguno"
             max_bal = f"{settings['max_balance']}" if settings['max_balance'] is not None else "Sin límite"
             embed = discord.Embed(title="⚙️ Estado de la Economía", color=self.bot.CREAM_COLOR, description="Usa los subcomandos para configurar el sistema.")
@@ -305,8 +317,11 @@ class EconomyCog(commands.Cog, name="Economía"):
         embed = discord.Embed(title=f"🏆 Ranking de {settings['currency_name']} 🏆", color=discord.Color.gold())
         description = ""
         for i, row in enumerate(top_users):
-            try: user = await self.bot.fetch_user(row['user_id']); name = user.display_name
-            except: name = f"Usuario Desconocido ({row['user_id']})"
+            try: 
+                user = await self.bot.fetch_user(row['user_id'])
+                name = user.display_name
+            except: 
+                name = f"Usuario Desconocido ({row['user_id']})"
             rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
             description += f"{rank} **{name}**: {row['total']} (Cartera: {row['wallet']} / Banco: {row['bank']})\n"
         embed.description = description
