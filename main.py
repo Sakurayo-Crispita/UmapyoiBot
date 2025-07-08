@@ -70,7 +70,6 @@ class UmapyoiBot(commands.Bot):
         print("Sincronizando comandos slash...")
         await self.tree.sync()
         print("¡Comandos sincronizados!")
-        await self.change_presence(activity=discord.Game(name="Música y Juegos | /help"))
 
     async def close(self):
         if self.db_conn:
@@ -1760,6 +1759,8 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
 @bot.event
 async def on_ready():
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
+    await bot.change_presence(activity=discord.Game(name="Música y Juegos | /help"))
+
 
 @bot.event
 async def on_message(message: discord.Message):
