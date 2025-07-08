@@ -606,6 +606,25 @@ class MusicCog(commands.Cog, name="Música"):
     async def autoplay(self, ctx: commands.Context):
         message = self._toggle_autoplay(ctx.guild.id)
         await self.send_response(ctx, message, ephemeral=True)
+    
+    @commands.hybrid_command(name='volume', aliases=['vol'], description="Ajusta el volumen del reproductor (0-100%).")
+    async def volume(self, ctx: commands.Context, new_volume: int):
+        """Ajusta el volumen de la música."""
+        vc = ctx.guild.voice_client
+        if not vc:
+            return await self.send_response(ctx, "No estoy en un canal de voz.", ephemeral=True)
+
+        if not 0 <= new_volume <= 100:
+            return await self.send_response(ctx, "El volumen debe ser un número entre 0 y 100.", ephemeral=True)
+
+        state = self.get_guild_state(ctx.guild.id)
+        # Convertir el porcentaje (0-100) a un flotante (0.0-1.0)
+        state.volume = new_volume / 100.0
+
+        if vc.source:
+            vc.source.volume = state.volume
+        
+        await self.send_response(ctx, f"🔊 Volumen ajustado a **{new_volume}%**.", ephemeral=True)
 
 # --- COG DE NIVELES ---
 class LevelingCog(commands.Cog, name="Niveles"):
