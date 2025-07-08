@@ -782,7 +782,7 @@ class WelcomeConfigModal(discord.ui.Modal, title='Configuración de Bienvenida')
         super().__init__()
         self.server_config_cog = cog
         self.add_item(discord.ui.TextInput(label="Mensaje de Bienvenida", style=discord.TextStyle.long, placeholder="Usa {user.mention}, {user.name}, {server.name}, {member.count}", default=default_message, required=True))
-        self.add_item(discord.ui.TextInput(label="URL del Banner de Bienvenida", placeholder="Pega aquí el enlace a una imagen (ej. https://i.imgur.com/....png)", default=default_banner, required=False))
+        self.add_item(discord.ui.TextInput(label="URL del Banner de Bienvenida", placeholder="https://i.imgur.com/WwexK3G.png", default=default_banner, required=False))
     async def on_submit(self, interaction: discord.Interaction):
         guild_id = interaction.guild.id
         self.server_config_cog.save_setting(guild_id, 'welcome_message', self.children[0].value)
@@ -794,7 +794,7 @@ class GoodbyeConfigModal(discord.ui.Modal, title='Configuración de Despedida'):
         super().__init__()
         self.server_config_cog = cog
         self.add_item(discord.ui.TextInput(label="Mensaje de Despedida", style=discord.TextStyle.long, placeholder="Usa {user.name}, {server.name}, {member.count}", default=default_message, required=True))
-        self.add_item(discord.ui.TextInput(label="URL del Banner de Despedida", placeholder="Pega aquí el enlace a una imagen (ej. https://i.imgur.com/....png)", default=default_banner, required=False))
+        self.add_item(discord.ui.TextInput(label="URL del Banner de Despedida", placeholder="https://i.imgur.com/WwexK3G.png", default=default_banner, required=False))
     async def on_submit(self, interaction: discord.Interaction):
         guild_id = interaction.guild.id
         self.server_config_cog.save_setting(guild_id, 'goodbye_message', self.children[0].value)
@@ -825,10 +825,12 @@ class ReactionRoleModal(discord.ui.Modal, title="Crear Rol por Reacción"):
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
     
+    # --- Constantes y __init__ ---
     DEFAULT_WELCOME_MESSAGE = "¡Bienvenido a {server.name}, {user.mention}! 🎉"
-    DEFAULT_WELCOME_BANNER = "https://i.imgur.com/2U2pL4a.gif" 
+    DEFAULT_WELCOME_BANNER = "https://i.imgur.com/WwexK3G.png" 
     DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima! 😢"
-    DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/P3i4a4g.gif"
+    DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/WwexK3G.png"
+    TEMP_CHANNEL_PREFIX = "Sala de " # Prefijo para identificar canales temporales
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -837,26 +839,25 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.setup_database()
 
     def setup_database(self):
+        # Añadimos la columna para el canal creador
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS server_settings (
                 guild_id INTEGER PRIMARY KEY, welcome_channel_id INTEGER, goodbye_channel_id INTEGER,
                 log_channel_id INTEGER, autorole_id INTEGER, welcome_message TEXT,
                 welcome_banner_url TEXT, goodbye_message TEXT, goodbye_banner_url TEXT,
-                automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT
+                automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT,
+                temp_channel_creator_id INTEGER
             )''')
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS reaction_roles (
-                guild_id INTEGER, message_id INTEGER, emoji TEXT, role_id INTEGER,
-                PRIMARY KEY (guild_id, message_id, emoji)
-            )''')
-        self.conn.commit()
+        # ... (el resto del setup de la DB sin cambios)
+
     def get_settings(self, guild_id: int):
         self.cursor.execute("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
         res = self.cursor.fetchone()
         return {
             "welcome_channel_id": res[1], "goodbye_channel_id": res[2], "log_channel_id": res[3],
             "autorole_id": res[4], "welcome_message": res[5], "welcome_banner_url": res[6],
-            "goodbye_message": res[7], "goodbye_banner_url": res[8]
+            "goodbye_message": res[7], "goodbye_banner_url": res[8], "automod_anti_invite": res[9],
+            "automod_banned_words": res[10], "temp_channel_creator_id": res[11]
         } if res else {}
 
     def save_setting(self, guild_id: int, key: str, value):
@@ -916,6 +917,20 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         if ctx.invoked_subcommand is None:
             await ctx.send("Comando de automod inválido. Usa `/automod anti-invites` o `/automod badwords`.", ephemeral=True)
 
+    @commands.hybrid_command(name='setcreatorchannel', description="Establece el canal de voz para crear salas temporales.")
+    @commands.has_permissions(manage_guild=True)
+    async def set_creator_channel(self, ctx: commands.Context, canal: discord.VoiceChannel):
+        self.save_setting(ctx.guild.id, 'temp_channel_creator_id', canal.id)
+        await ctx.send(f"✅ ¡Perfecto! Ahora, quien se una a **{canal.name}** creará su propia sala de voz.", ephemeral=True)
+
+    @commands.hybrid_command(name='removecreatorchannel', description="Desactiva la creación de salas de voz temporales.")
+    @commands.has_permissions(manage_guild=True)
+    async def remove_creator_channel(self, ctx: commands.Context):
+        # Establece el valor a NULL en la base de datos, desactivando la función
+        self.save_setting(ctx.guild.id, 'temp_channel_creator_id', None)
+        await ctx.send("✅ La función de crear salas de voz temporales ha sido desactivada.", ephemeral=True)
+
+
     @automod.command(name="anti_invites", description="Activa o desactiva el borrado de invitaciones de Discord.")
     async def anti_invites(self, ctx: commands.Context, estado: Literal['on', 'off']):
         is_on = 1 if estado == 'on' else 0
@@ -969,6 +984,46 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             if log_channel := self.bot.get_channel(log_channel_id):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        guild_id = member.guild.id
+        settings = self.get_settings(guild_id)
+        creator_channel_id = settings.get("temp_channel_creator_id")
+
+        # --- Lógica para CREAR un canal temporal ---
+        # Si el usuario se une al canal creador
+        if after.channel and after.channel.id == creator_channel_id:
+            try:
+                # Definir permisos para el creador del canal
+                overwrites = {
+                    member.guild.default_role: discord.PermissionOverwrite(view_channel=True),
+                    member: discord.PermissionOverwrite(view_channel=True, manage_channels=True, manage_permissions=True, move_members=True, mute_members=True, deafen_members=True)
+                }
+                
+                # Crear el nuevo canal de voz en la misma categoría que el canal creador
+                temp_channel = await member.guild.create_voice_channel(
+                    name=f"{self.TEMP_CHANNEL_PREFIX}{member.display_name}",
+                    category=after.channel.category,
+                    overwrites=overwrites,
+                    reason=f"Canal temporal creado por {member.display_name}"
+                )
+                
+                # Mover al miembro a su nuevo canal
+                await member.move_to(temp_channel)
+            except Exception as e:
+                print(f"No se pudo crear el canal temporal: {e}")
+
+        # --- Lógica para BORRAR un canal temporal ---
+        # Si el usuario se va de un canal (y ese canal era temporal y ahora está vacío)
+        if before.channel and before.channel.name.startswith(self.TEMP_CHANNEL_PREFIX):
+            # Esperamos un segundo para evitar problemas de concurrencia
+            await asyncio.sleep(1) 
+            if len(before.channel.members) == 0:
+                try:
+                    await before.channel.delete(reason="Canal temporal vacío.")
+                except Exception as e:
+                    print(f"No se pudo borrar el canal temporal: {e}")
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -1240,6 +1295,47 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             await asyncio.sleep(5)
             if not vc.is_playing() and not (music_cog and music_cog.get_guild_state(ctx.guild.id).current_song):
                 await vc.disconnect()
+    @commands.hybrid_command(name='anime', description="Busca información detallada sobre un anime.")
+    async def anime(self, ctx: commands.Context, *, nombre: str):
+        await ctx.defer()
+        API_URL = f"https://api.jikan.moe/v4/anime?q={nombre.replace(' ', '%20')}&limit=1"
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(API_URL) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if not data['data']:
+                            return await ctx.send(f"❌ No encontré ningún anime llamado `{nombre}`.", ephemeral=True)
+                        
+                        anime_data = data['data'][0]
+                        
+                        # Crear el embed con la información
+                        embed = discord.Embed(
+                            title=anime_data.get('title', 'N/A'),
+                            url=anime_data.get('url', ''),
+                            description=anime_data.get('synopsis', 'No hay sinopsis disponible.')[:1000] + "...",
+                            color=discord.Color.blue()
+                        )
+                        
+                        if image_url := anime_data.get('images', {}).get('jpg', {}).get('large_image_url'):
+                            embed.set_thumbnail(url=image_url)
+                        
+                        embed.add_field(name="Puntuación", value=f"⭐ {anime_data.get('score', 'N/A')}", inline=True)
+                        embed.add_field(name="Episodios", value=anime_data.get('episodes', 'N/A'), inline=True)
+                        embed.add_field(name="Estado", value=anime_data.get('status', 'N/A'), inline=True)
+                        
+                        genres = [genre['name'] for genre in anime_data.get('genres', [])]
+                        if genres:
+                            embed.add_field(name="Géneros", value=", ".join(genres), inline=False)
+                        
+                        embed.set_footer(text=f"Fuente: MyAnimeList | ID: {anime_data.get('mal_id')}")
+                        
+                        await ctx.send(embed=embed)
+                    else:
+                        await ctx.send(f"❌ Hubo un error con la API (Código: {response.status}). Inténtalo de nuevo más tarde.", ephemeral=True)
+        except Exception as e:
+            await ctx.send(f"❌ Ocurrió un error inesperado: {e}", ephemeral=True)
 
 # --- COG DE ECONOMÍA ---
 class EconomyCog(commands.Cog, name="Economía"):
@@ -1326,6 +1422,174 @@ class EconomyCog(commands.Cog, name="Economía"):
         embed = discord.Embed(title="💸 Transferencia Realizada", description=f"{ctx.author.mention} le ha transferido **{cantidad} Umapesos** a {miembro.mention}.", color=CREAM_COLOR)
         await ctx.send(embed=embed)
 
+# --- COG DE JUEGOS Y APUESTAS ---
+
+class BlackJackView(discord.ui.View):
+    def __init__(self, cog, ctx, bet):
+        super().__init__(timeout=120.0)
+        self.cog = cog
+        self.ctx = ctx
+        self.bet = bet
+        self.player_hand = [self.cog.deal_card(), self.cog.deal_card()]
+        self.dealer_hand = [self.cog.deal_card(), self.cog.deal_card()]
+        self.update_buttons()
+
+    def update_buttons(self):
+        player_score = self.cog.calculate_score(self.player_hand)
+        # Deshabilitar botones si el jugador se pasa de 21 o tiene Blackjack
+        if player_score >= 21:
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+
+    @discord.ui.button(label="Pedir Carta", style=discord.ButtonStyle.success, emoji="➕")
+    async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.player_hand.append(self.cog.deal_card())
+        player_score = self.cog.calculate_score(self.player_hand)
+        
+        if player_score >= 21:
+            # El juego termina automáticamente si el jugador se pasa o llega a 21
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.create_embed(), view=self)
+            await self.cog.end_blackjack_game(self.ctx, self)
+        else:
+            # Si el juego continúa, solo actualiza el mensaje
+            await interaction.response.edit_message(embed=self.create_embed(), view=self)
+
+    @discord.ui.button(label="Plantarse", style=discord.ButtonStyle.danger, emoji="🛑")
+    async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Deshabilitar todos los botones una vez que el jugador se planta
+        for item in self.children:
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
+        await interaction.response.edit_message(embed=self.create_embed(show_dealer_card=True), view=self)
+        await self.cog.end_blackjack_game(self.ctx, self)
+
+    def create_embed(self, show_dealer_card=False):
+        player_score = self.cog.calculate_score(self.player_hand)
+        dealer_score = self.cog.calculate_score(self.dealer_hand)
+        
+        embed = discord.Embed(title="🃏 Blackjack", color=CREAM_COLOR)
+        embed.add_field(name=f"Tu Mano ({player_score})", value=" ".join(self.player_hand), inline=False)
+        
+        if show_dealer_card:
+            embed.add_field(name=f"Mano del Bot ({dealer_score})", value=" ".join(self.dealer_hand), inline=False)
+        else:
+            embed.add_field(name="Mano del Bot (?)", value=f"{self.dealer_hand[0]} ❔", inline=False)
+        
+        embed.set_footer(text=f"Apuesta: {self.bet} Umapesos")
+        return embed
+
+class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
+    """Juegos para apostar tus Umapesos y probar tu suerte."""
+    
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.conn = sqlite3.connect(DB_FILE)
+        self.cursor = self.conn.cursor()
+        self.cards = ['<:A:123456789>', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] # Reemplaza el ID del emoji por uno real si tienes
+
+    def get_economy_cog(self) -> EconomyCog:
+        # Helper para obtener una instancia del EconomyCog
+        return self.bot.get_cog("Economía")
+
+    # --- Lógica de Blackjack ---
+    def deal_card(self):
+        return random.choice(self.cards)
+
+    def calculate_score(self, hand):
+        score = 0
+        aces = 0
+        for card in hand:
+            if card.isdigit():
+                score += int(card)
+            elif card in ['J', 'Q', 'K']:
+                score += 10
+            elif card.startswith('<:A'): # As
+                aces += 1
+                score += 11
+        while score > 21 and aces:
+            score -= 10
+            aces -= 1
+        return score
+
+    async def end_blackjack_game(self, ctx: commands.Context, view: BlackJackView):
+        player_score = self.calculate_score(view.player_hand)
+        
+        # El bot pide cartas hasta llegar a 17 o más
+        while self.calculate_score(view.dealer_hand) < 17:
+            view.dealer_hand.append(self.deal_card())
+            
+        dealer_score = self.calculate_score(view.dealer_hand)
+        
+        # Actualizar el embed final para mostrar la mano completa del dealer
+        final_embed = view.create_embed(show_dealer_card=True)
+        
+        economy_cog = self.get_economy_cog()
+        result_message = ""
+        
+        if player_score > 21:
+            result_message = f"Te pasaste de 21. ¡Perdiste **{view.bet}** Umapesos!"
+            economy_cog.update_balance(ctx.author.id, -view.bet)
+        elif dealer_score > 21 or player_score > dealer_score:
+            result_message = f"¡Ganaste! Recibes **{view.bet}** Umapesos."
+            economy_cog.update_balance(ctx.author.id, view.bet)
+        elif player_score < dealer_score:
+            result_message = f"El bot gana. ¡Perdiste **{view.bet}** Umapesos!"
+            economy_cog.update_balance(ctx.author.id, -view.bet)
+        else:
+            result_message = "¡Es un empate! Recuperas tu apuesta."
+        
+        final_embed.description = result_message
+        await ctx.interaction.edit_original_response(embed=final_embed, view=view)
+
+
+    @commands.hybrid_command(name='blackjack', description="Juega una partida de Blackjack apostando Umapesos.")
+    async def blackjack(self, ctx: commands.Context, apuesta: int):
+        economy_cog = self.get_economy_cog()
+        if not economy_cog: return await ctx.send("El sistema de economía no está disponible.", ephemeral=True)
+        
+        balance = economy_cog.get_balance(ctx.author.id)
+        if apuesta <= 0: return await ctx.send("La apuesta debe ser mayor que cero.", ephemeral=True)
+        if balance < apuesta: return await ctx.send(f"No tienes suficientes Umapesos para esa apuesta. Tu balance: **{balance}**", ephemeral=True)
+        
+        view = BlackJackView(self, ctx, apuesta)
+        await ctx.send(embed=view.create_embed(), view=view)
+
+    @commands.hybrid_command(name='tragamonedas', aliases=['slots'], description="Prueba tu suerte en la máquina tragamonedas.")
+    async def slots(self, ctx: commands.Context, apuesta: int):
+        economy_cog = self.get_economy_cog()
+        if not economy_cog: return await ctx.send("El sistema de economía no está disponible.", ephemeral=True)
+
+        balance = economy_cog.get_balance(ctx.author.id)
+        if apuesta <= 0: return await ctx.send("La apuesta debe ser mayor que cero.", ephemeral=True)
+        if balance < apuesta: return await ctx.send(f"No tienes suficientes Umapesos. Tu balance: **{balance}**", ephemeral=True)
+
+        # Restar la apuesta inicial
+        economy_cog.update_balance(ctx.author.id, -apuesta)
+
+        emojis = ["🍒", "🔔", "🍋", "⭐", "💎", "🍀"]
+        reels = [random.choice(emojis) for _ in range(3)]
+        
+        result_text = f"**[ {reels[0]} | {reels[1]} | {reels[2]} ]**"
+        
+        winnings = 0
+        if reels[0] == reels[1] == reels[2]:
+            winnings = apuesta * 10
+            result_text += f"\n\n**¡JACKPOT!** ¡Ganaste **{winnings}** Umapesos!"
+        elif reels[0] == reels[1] or reels[1] == reels[2]:
+            winnings = apuesta * 2
+            result_text += f"\n\n¡Dos iguales! ¡Ganaste **{winnings}** Umapesos!"
+        else:
+            result_text += "\n\n¡Mala suerte! No ganaste nada esta vez."
+
+        if winnings > 0:
+            economy_cog.update_balance(ctx.author.id, winnings)
+
+        embed = discord.Embed(title="🎰 Tragamonedas 🎰", description=result_text, color=CREAM_COLOR)
+        embed.set_footer(text=f"Apostaste {apuesta} Umapesos. Tu nuevo balance: {economy_cog.get_balance(ctx.author.id)}")
+        await ctx.send(embed=embed)
+
 # --- EVENTOS Y EJECUCIÓN DEL BOT ---
 @bot.event
 async def on_ready():
@@ -1339,6 +1603,7 @@ async def on_ready():
     await bot.add_cog(LevelingCog(bot))
     await bot.add_cog(TTSCog(bot))
     await bot.add_cog(ServerConfigCog(bot))
+    await bot.add_cog(GamblingCog(bot))
     print("Cogs cargados.")
     print("-----------------------------------------")
     print("Sincronizando comandos slash...")
