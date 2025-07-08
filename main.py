@@ -1296,37 +1296,30 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                         except discord.Forbidden: pass
 
 # --- COG DE UTILIDAD ---
-# --- COG DE UTILIDAD ---
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: UmapyoiBot):
         self.bot = bot
 
     async def _send_cog_help(self, ctx: commands.Context, cog_name: str):
-        """Función auxiliar para enviar la ayuda de una categoría específica."""
         cog = self.bot.get_cog(cog_name)
         if not cog:
             return await ctx.send(f"No se encontró la categoría '{cog_name}'.", ephemeral=True)
 
         embed = discord.Embed(title=f"📜 Comandos de {cog_name}", color=CREAM_COLOR)
-        
         description = ""
         command_list = sorted(cog.get_commands(), key=lambda c: c.name)
 
         for cmd in command_list:
-            if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden:
-                 if cmd.name != 'help':
-                    if isinstance(cmd, commands.HybridGroup):
-                        sub_cmds = sorted([f"`{c.name}`" for c in cmd.commands])
-                        description += f"**`/{cmd.name}`**: {cmd.description}\n> Subcomandos: {', '.join(sub_cmds)}\n"
-                    else:
-                        description += f"**`/{cmd.name}`** - {cmd.description}\n"
+            if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden and cmd.name != 'help':
+                description += f"**`/{cmd.name}`** - {cmd.description}\n"
 
         embed.description = description or "Esta categoría no tiene comandos para mostrar."
         await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_group(name='help', description="Muestra ayuda para los comandos del bot.", invoke_without_command=True)
     async def help(self, ctx: commands.Context):
+        # Esta es la función principal que se ejecuta cuando se usa /help sin subcomandos
         if ctx.invoked_subcommand is None:
             embed = discord.Embed(title="📜 Ayuda de Umapyoi", color=CREAM_COLOR)
             embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
@@ -1335,6 +1328,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             view = HelpView(self.bot)
             await ctx.send(embed=embed, view=view)
 
+    # --- Subcomandos de Ayuda ---
     @help.command(name="música", description="Muestra todos los comandos de música.")
     async def help_musica(self, ctx: commands.Context):
         await self._send_cog_help(ctx, "Música")
@@ -1366,6 +1360,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     @help.command(name="utilidad", description="Muestra los comandos de utilidad general.")
     async def help_utilidad(self, ctx: commands.Context):
         await self._send_cog_help(ctx, "Utilidad")
+        
     # --- COMANDO ANNOUNCE OCULTO ---
     @commands.command(name='announce', hidden=True)
     @commands.is_owner()
