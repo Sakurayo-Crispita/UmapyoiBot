@@ -1512,8 +1512,9 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             loop = self.bot.loop or asyncio.get_event_loop()
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
                 # --- INICIO DE LA CORRECCIÓN ---
-                # Usamos un enlace directo a una playlist para que sea mucho más rápido.
-                playlist_url = "https://www.youtube.com/playlist?list=PL4fGSI1pDJn6jG_r5p1h3T-1-pEw9V7gB"
+                # Usamos un enlace directo a una playlist de éxitos globales más estable.
+                playlist_url = "https://www.youtube.com/playlist?list=PL4fGSI1pDJn5kI81J1fYC0w_xPA5o_r2g"
+                # Primero, obtenemos la lista de videos sin procesar toda la información, es más rápido.
                 info = await loop.run_in_executor(None, lambda: ydl.extract_info(playlist_url, download=False, process=False))
                 # --- FIN DE LA CORRECCIÓN ---
 
@@ -1525,15 +1526,17 @@ class FunCog(commands.Cog, name="Juegos e IA"):
                 # Elegimos una canción aleatoria de la lista
                 song_entry = random.choice(info['entries'])
                 
-                # Ahora procesamos solo la información de esa canción
+                # Ahora procesamos solo la información de esa canción para obtener el título y la URL de audio
                 song_info = await loop.run_in_executor(None, lambda: ydl.extract_info(song_entry['url'], download=False))
 
                 video_title = song_info.get('title', 'Canción Desconocida')
                 
-                # Preparamos las respuestas correctas (título y artista si está disponible)
+                # Preparamos las posibles respuestas correctas (título y artista)
                 answers = [re.sub(r'[^a-z0-9\s]', '', video_title.lower()).strip()]
                 if artist := song_info.get('artist'):
                     answers.append(re.sub(r'[^a-z0-9\s]', '', artist.lower()).strip())
+                if uploader := song_info.get('uploader'):
+                     answers.append(re.sub(r'[^a-z0-9\s]', '', uploader.lower()).replace(" - topic", "").strip())
                 
             duration = int(song_info.get('duration', 90))
             start_time = random.randint(30, duration - 20) if duration > 50 else 0
@@ -1543,7 +1546,10 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             await msg.edit(content="🎧 **¡Adivina la Canción!** Tienes 30 segundos para escribir el título o el artista...")
 
             def check(m):
+                # Normalizamos la respuesta del usuario para que sea más fácil acertar
                 normalized_content = re.sub(r'[^a-z0-9\s]', '', m.content.lower()).strip()
+                if not normalized_content: return False
+                
                 return m.channel == ctx.channel and any(ans in normalized_content for ans in answers if ans)
 
             try:
@@ -1713,33 +1719,61 @@ class EconomyCog(commands.Cog, name="Economía"):
 # --- COG DE JUEGOS Y APUESTAS ---
 
 class BlackJackView(discord.ui.View):
-    def __init__(self, cog, ctx, bet):
+    def __init__(self, cog: 'GamblingCog', ctx: commands.Context, bet: int):
         super().__init__(timeout=120.0)
         self.cog = cog
         self.ctx = ctx
+        self.author = ctx.author  # Guardamos quién inició el juego
         self.bet = bet
         self.player_hand = [self.cog.deal_card(), self.cog.deal_card()]
         self.dealer_hand = [self.cog.deal_card(), self.cog.deal_card()]
         self.update_buttons()
 
+    # --- INICIO DE LA CORRECCIÓN ---
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # Comprueba si el usuario que interactúa es el autor original del comando
+        if interaction.user.id != self.author.id:
+            # Envía un mensaje oculto al usuario que intentó pulsar el botón
+            await interaction.response.send_message("No puedes interactuar con el juego de otra persona.", ephemeral=True, delete_after=10)
+            return False  # Deniega la interacción
+        return True  # Permite la interacción
+    # --- FIN DE LA CORRECCIÓN ---
+
+    async def on_timeout(self):
+        # Desactiva los botones y avisa que el juego terminó cuando se acaba el tiempo
+        for item in self.children:
+            item.disabled = True
+        
+        timeout_embed = self.create_embed()
+        timeout_embed.description = "⌛ El juego ha terminado por inactividad."
+        # Usamos try/except por si el mensaje original fue borrado
+        try:
+            await self.ctx.edit_original_response(embed=timeout_embed, view=self)
+        except discord.NotFound:
+            pass
+
     def update_buttons(self):
         player_score = self.cog.calculate_score(self.player_hand)
         if player_score >= 21:
             for item in self.children:
-                if isinstance(item, discord.ui.Button): item.disabled = True
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
 
     @discord.ui.button(label="Pedir Carta", style=discord.ButtonStyle.success, emoji="➕")
-    async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def hit(self, interaction: discord.Interaction, _: discord.ui.Button):
         self.player_hand.append(self.cog.deal_card())
         self.update_buttons()
+        # Usamos la interacción del botón para editar el mensaje
         await interaction.response.edit_message(embed=self.create_embed(), view=self)
         if self.cog.calculate_score(self.player_hand) >= 21:
             await self.cog.end_blackjack_game(interaction, self)
 
     @discord.ui.button(label="Plantarse", style=discord.ButtonStyle.danger, emoji="🛑")
-    async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def stand(self, interaction: discord.Interaction, _: discord.ui.Button):
         for item in self.children:
-            if isinstance(item, discord.ui.Button): item.disabled = True
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
+        # Usamos la interacción del botón para editar la vista (desactivar botones)
         await interaction.response.edit_message(view=self)
         await self.cog.end_blackjack_game(interaction, self)
 
