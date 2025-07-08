@@ -960,7 +960,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
 
     DEFAULT_WELCOME_MESSAGE = "¡Bienvenido a {server.name}, {user.mention}! 🎉"
-    DEFAULT_WELCOME_BANNER = "https://i.imgur.com/WwexK3G.png"
+    DEFAULT_WELCOME_BANNER = "https://i.imgur.com/WnEqRW5.png"
     DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima! 😢"
     DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/WwexK3G.png"
     TEMP_CHANNEL_PREFIX = "Sala de "
@@ -1267,6 +1267,33 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: UmapyoiBot): self.bot = bot
+
+    async def _send_cog_help(self, ctx: commands.Context, cog_name: str):
+        """Función auxiliar para enviar la ayuda de una categoría específica."""
+        cog = self.bot.get_cog(cog_name)
+        if not cog:
+            return await ctx.send(f"No se encontró la categoría '{cog_name}'.", ephemeral=True)
+
+        embed = discord.Embed(title=f"📜 Comandos de {cog_name}", color=CREAM_COLOR)
+        
+        # Obtener y ordenar los comandos alfabéticamente
+        description = ""
+        command_list = sorted(cog.get_commands(), key=lambda c: c.name)
+
+        for cmd in command_list:
+            # Asegurarse de que el comando es visible y no es el propio comando de ayuda
+            if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and cmd.name != 'help':
+                # Si es un grupo de comandos, listar sus subcomandos
+                if isinstance(cmd, commands.HybridGroup):
+                    sub_cmds = [f"`{c.name}`" for c in cmd.commands]
+                    description += f"**`/{cmd.name}`**: {cmd.description}\n> Subcomandos: {', '.join(sub_cmds)}\n"
+                # Si es un comando normal, mostrar su nombre y descripción
+                else:
+                    description += f"**`/{cmd.name}`** - {cmd.description}\n"
+
+        embed.description = description or "Esta categoría no tiene comandos para mostrar."
+        await ctx.send(embed=embed, ephemeral=True)
+
 
     @commands.hybrid_command(name='help', description="Muestra el panel de ayuda interactivo.")
     async def help(self, ctx: commands.Context):
