@@ -1692,6 +1692,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         self.db_lock = lock
         # --- INICIO DE LA CORRECIÓN ---
         # Creamos "mapeos" de cooldowns para work y rob, que guardarán el estado de cada usuario.
+        # El cooldown se establece en 1.0 segundo inicialmente, pero lo cambiaremos dinámicamente.
         self._work_cd = commands.CooldownMapping.from_cooldown(1, 1.0, commands.BucketType.user)
         self._rob_cd = commands.CooldownMapping.from_cooldown(1, 1.0, commands.BucketType.user)
         # --- FIN DE LA CORRECIÓN ---
@@ -1736,20 +1737,14 @@ class EconomyCog(commands.Cog, name="Economía"):
         async with self.db_lock:
             self.cursor.execute("SELECT balance FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
             result = self.cursor.fetchone()
-            if result:
-                return result['balance']
-            else:
-                self.cursor.execute("INSERT INTO balances (guild_id, user_id, balance) VALUES (?, ?, ?)", (guild_id, user_id, 0))
-                self.conn.commit()
-                return 0
+            return result['balance'] if result else 0
 
     async def update_balance(self, guild_id: int, user_id: int, amount: int):
         async with self.db_lock:
-            current_balance = await self.get_balance(guild_id, user_id)
-            new_balance = current_balance + amount
-            self.cursor.execute("REPLACE INTO balances (guild_id, user_id, balance) VALUES (?, ?, ?)", (guild_id, user_id, new_balance))
+            balance = await self.get_balance(guild_id, user_id)
+            self.cursor.execute("REPLACE INTO balances (guild_id, user_id, balance) VALUES (?, ?, ?)", (guild_id, user_id, balance + amount))
             self.conn.commit()
-            return new_balance
+            return balance + amount
 
     @commands.hybrid_command(name='daily', description="Reclama tu recompensa diaria.")
     @commands.cooldown(1, 86400, commands.BucketType.user)
@@ -1777,8 +1772,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         else:
             await ctx.send(f"Ocurrió un error: {error}", ephemeral=True)
             raise error
-            
-    # --- INICIO DEL COMANDO /work CORREGIDO ---
+
     @commands.hybrid_command(name='work', description="Trabaja para ganar un dinero extra.")
     async def work(self, ctx: commands.Context):
         if not ctx.guild: return
@@ -1805,15 +1799,12 @@ class EconomyCog(commands.Cog, name="Economía"):
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
-    # --- FIN DEL COMANDO /work CORREGIDO ---
 
-    # --- INICIO DEL COMANDO /rob CORREGIDO ---
     @commands.hybrid_command(name='rob', description="Intenta robarle a otro usuario. ¡Cuidado, puedes fallar!")
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
         if not ctx.guild: return
         
         settings = await self.get_guild_settings(ctx.guild.id)
-        # Misma lógica de corrección que en /work
         bucket = self._rob_cd.get_bucket(ctx.message)
         bucket.per = settings['rob_cooldown']
         retry_after = bucket.update_rate_limit()
@@ -1848,8 +1839,8 @@ class EconomyCog(commands.Cog, name="Economía"):
             embed = discord.Embed(title="🚓 ¡Te Pillaron!", description=f"¡Torpe! {miembro.mention} te vio venir y llamó a la policía. Perdiste **{amount_lost} {settings['currency_name']}**.", color=discord.Color.dark_red())
             
         await ctx.send(embed=embed)
-    # --- FIN DEL COMANDO /rob CORREGIDO ---
 
+    # (El resto de los comandos como shop, balance, etc. no necesitan cambios)
     @commands.hybrid_command(name='shop', description="Muestra los artículos disponibles en la tienda.")
     async def shop(self, ctx: commands.Context):
         if not ctx.guild: return
@@ -1974,7 +1965,7 @@ class EconomyCog(commands.Cog, name="Economía"):
             self.cursor.execute("UPDATE economy_settings SET rob_cooldown = ? WHERE guild_id = ?", (cooldown_seconds, ctx.guild.id))
             self.conn.commit()
         await ctx.send(f"✅ Cooldown de `/rob` actualizado a **{cooldown_en_horas} hora(s)**.", ephemeral=True)
-        
+
 # --- COG DE JUEGOS Y APUESTAS ---
 class BlackJackView(discord.ui.View):
     def __init__(self, cog: 'GamblingCog', ctx: commands.Context, bet: int):
