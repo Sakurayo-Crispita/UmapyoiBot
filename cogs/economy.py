@@ -117,15 +117,20 @@ class EconomyCog(commands.Cog, name="Economía"):
         return await asyncio.to_thread(self._get_leaderboard_sync, guild_id)
 
     async def is_economy_active(self, ctx: commands.Context) -> bool:
-        if not ctx.guild: return False
+        if not ctx.guild:
+            return False
+
         active_channels = await self.get_active_channels(ctx.guild.id)
         if not active_channels:
-            if not ctx.author.guild_permissions.manage_guild: 
+            if ctx.author.guild_permissions.administrator:
                 await ctx.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True, delete_after=10)
-                return False
-        elif ctx.channel.id not in active_channels and not ctx.author.guild_permissions.manage_guild:
-             await ctx.send("Los comandos de economía no están permitidos aquí.", ephemeral=True, delete_after=10)
-             return False
+            return False
+
+        if ctx.channel.id not in active_channels:
+            if not ctx.author.guild_permissions.manage_guild:
+                await ctx.send("Los comandos de economía solo están permitidos en los canales designados.", ephemeral=True, delete_after=10)
+            return False
+            
         return True
 
     async def log_transaction(self, guild: discord.Guild, author: discord.Member, message: str):
@@ -187,6 +192,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.hybrid_command(name="add-money", description="Añade dinero a la cartera de un usuario.")
     @commands.has_permissions(manage_guild=True)
     async def add_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
+        if not await self.is_economy_active(ctx): return
         if cantidad <= 0: return await ctx.send("La cantidad debe ser positiva.", ephemeral=True)
         await self.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         await ctx.send(f"✅ Se han añadido **{cantidad}** a la cartera de {miembro.mention}.", ephemeral=True)
@@ -195,6 +201,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.hybrid_command(name="remove-money", description="Quita dinero de la cartera de un usuario.")
     @commands.has_permissions(manage_guild=True)
     async def remove_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
+        if not await self.is_economy_active(ctx): return
         if cantidad <= 0: return await ctx.send("La cantidad debe ser positiva.", ephemeral=True)
         await self.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
         await ctx.send(f"✅ Se han quitado **{cantidad}** de la cartera de {miembro.mention}.", ephemeral=True)
@@ -203,6 +210,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.hybrid_command(name="reset-economy", description="Reinicia la economía del servidor (ACCIÓN PELIGROSA).")
     @commands.has_permissions(administrator=True)
     async def reset_economy(self, ctx: commands.Context):
+        if not await self.is_economy_active(ctx): return
         await self.db_execute("DELETE FROM balances WHERE guild_id = ?", (ctx.guild.id,))
         await ctx.send("💥 **¡La economía del servidor ha sido reiniciada!**", ephemeral=False)
         await self.log_transaction(ctx.guild, ctx.author, "🚨 **REINICIÓ LA ECONOMÍA DEL SERVIDOR.**")

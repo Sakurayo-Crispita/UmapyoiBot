@@ -16,7 +16,6 @@ DB_FILE = "bot_data.db" # Solo guardamos el nombre del archivo
 class UmapyoiBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # AÑADIMOS una propiedad para el nombre del archivo de la DB
         self.db_file = DB_FILE
 
         # --- CONSTANTES GLOBALES DEL BOT ---
@@ -35,7 +34,6 @@ class UmapyoiBot(commands.Bot):
         }
 
     async def setup_hook(self):
-        # Nos aseguramos de que la base de datos y las tablas existan al iniciar
         print("Verificando y creando tablas de la base de datos si no existen...")
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
@@ -43,6 +41,8 @@ class UmapyoiBot(commands.Bot):
             cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
+            # Tablas de GamblingCog (NUEVA TABLA)
+            cursor.execute('''CREATE TABLE IF NOT EXISTS gambling_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
             # Tablas de LevelingCog
             cursor.execute('''CREATE TABLE IF NOT EXISTS levels (guild_id INTEGER, user_id INTEGER, level INTEGER DEFAULT 1, xp INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS role_rewards (guild_id INTEGER, level INTEGER, role_id INTEGER, PRIMARY KEY (guild_id, level))''')
@@ -71,7 +71,6 @@ class UmapyoiBot(commands.Bot):
         print("¡Comandos sincronizados!")
 
     async def close(self):
-        # Ya no es necesario cerrar una conexión global
         await super().close()
 
 # --- DEFINICIÓN DE INTENTS E INICIO DEL BOT ---
