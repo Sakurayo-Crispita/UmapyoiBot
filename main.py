@@ -16,6 +16,7 @@ from enum import Enum
 from dotenv import load_dotenv
 from gtts import gTTS
 from typing import Literal, Optional
+import io
 
 # --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
 load_dotenv()
@@ -1260,15 +1261,12 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         view = HelpView(self.bot)
         await ctx.send(embed=embed, view=view)
         
-    @commands.hybrid_command(name='announce', description="[Dueño] Envía un mensaje a todos los servidores.")
+    # --- COMANDO ANNOUNCE OCULTO ---
+    @commands.command(name='announce', hidden=True)
     @commands.is_owner()
     async def announce(self, ctx: commands.Context, *, mensaje: str):
         """Envía un anuncio a todos los servidores donde está el bot."""
-        is_interaction = ctx.interaction is not None
-        if is_interaction:
-            await ctx.defer(ephemeral=True)
-        else:
-            await ctx.typing()
+        await ctx.typing()
 
         embed = discord.Embed(
             title="📢 Anuncio del Bot",
@@ -1303,38 +1301,49 @@ class UtilityCog(commands.Cog, name="Utilidad"):
                 failed_sends += 1
 
         response_message = f"✅ Anuncio enviado con éxito a **{successful_sends} servidores**.\n❌ Falló en **{failed_sends} servidores**."
+        await ctx.send(response_message)
 
-        if is_interaction:
-            await ctx.send(response_message, ephemeral=True)
-        else:
-            await ctx.send(response_message)
-
-    # --- INICIO DE LA CORRECCIÓN FINAL ---
     @announce.error
     async def announce_error(self, ctx: commands.Context, error: commands.CommandError):
         """Manejador de errores local y exclusivo para el comando 'announce'."""
-        
-        # Obtenemos la causa real del error, que a veces viene "envuelta".
         root_error = getattr(error, 'original', error)
 
-        # Caso 1: Falta el mensaje.
         if isinstance(root_error, commands.MissingRequiredArgument):
-            await ctx.send("⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`")
-            return # Importante: Detenemos la ejecución aquí.
+            await ctx.send("⚠️ ¡Oye! Olvidaste incluir el mensaje que quieres anunciar.\n**Uso correcto:** `!announce <tu mensaje aquí>`", delete_after=15)
+            return
 
-        # Caso 2: El usuario no es el dueño del bot.
         if isinstance(root_error, commands.NotOwner):
-            await ctx.send("❌ Este comando es solo para el dueño del bot.", ephemeral=True)
-            return # Importante: Detenemos la ejecución aquí.
+            await ctx.send("❌ Este comando es solo para el dueño del bot.", delete_after=10)
+            return
 
-        # Caso 3: Cualquier otro error. Lo registramos en la consola para que lo veas
-        # y enviamos un mensaje genérico, pero solo para este comando.
         print(f"Ocurrió un error inesperado en el comando 'announce': {root_error}")
-        import traceback
-        traceback.print_exception(type(root_error), root_error, root_error.__traceback__)
-        await ctx.send("❌ Hubo un problema técnico al intentar ejecutar el comando de anuncio.")
-        return # Importante: Detenemos la ejecución aquí para que no llegue al manejador global.
-    # --- FIN DE LA CORRECCIÓN FINAL ---
+        await ctx.send("❌ Hubo un problema técnico al intentar ejecutar el comando de anuncio.", delete_after=10)
+        return
+
+    # --- COMANDO SERVERLIST OCULTO ---
+    @commands.command(name='serverlist', hidden=True)
+    @commands.is_owner()
+    async def serverlist(self, ctx: commands.Context):
+        """Envía al dueño una lista de los servidores donde está el bot."""
+        await ctx.typing()
+
+        server_list_str = f"Lista de Servidores de Umapyoi ({len(self.bot.guilds)} en total):\n"
+        server_list_str += "=============================================\n\n"
+        
+        for i, guild in enumerate(self.bot.guilds):
+            server_list_str += f"{i+1}. {guild.name}\n"
+            server_list_str += f"   ID: {guild.id}\n"
+            server_list_str += f"   Miembros: {guild.member_count}\n\n"
+
+        file_buffer = io.StringIO(server_list_str)
+        file_to_send = discord.File(fp=file_buffer, filename="lista_de_servidores.txt")
+
+        try:
+            await ctx.author.send("Aquí tienes la lista de servidores donde estoy:", file=file_to_send)
+            if ctx.guild:
+                await ctx.send("✅ Te he enviado la lista de servidores por mensaje directo.", delete_after=10)
+        except discord.Forbidden:
+            await ctx.send("No pude enviarte la lista por DM. Aquí la tienes:", file=file_to_send)
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
