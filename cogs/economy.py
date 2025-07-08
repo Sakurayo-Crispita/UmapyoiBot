@@ -13,12 +13,13 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     # --- FUNCIONES SÍNCRONAS PARA LA BASE DE DATOS ---
     
-    def _get_guild_settings_sync(self, guild_id: int) -> sqlite3.Row:
+    def _get_guild_settings_sync(self, guild_id: int) -> Optional[sqlite3.Row]:
         with sqlite3.connect(self.db_file) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
-            if not (settings := cursor.fetchone()):
+            settings = cursor.fetchone()
+            if not settings:
                 cursor.execute("INSERT OR IGNORE INTO economy_settings (guild_id) VALUES (?)", (guild_id,))
                 conn.commit()
                 cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
@@ -52,7 +53,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     def _update_balance_sync(self, guild_id: int, user_id: int, wallet_change: int = 0, bank_change: int = 0) -> tuple[int, int]:
         with sqlite3.connect(self.db_file) as conn:
             conn.row_factory = sqlite3.Row
-            # Usamos una función interna para evitar abrir y cerrar conexiones anidadas innecesariamente
+            
             def get_balance_internal(cur, g_id, u_id):
                 cur.execute("SELECT wallet, bank FROM balances WHERE guild_id = ? AND user_id = ?", (g_id, u_id))
                 if res := cur.fetchone():
@@ -98,7 +99,7 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     # --- FUNCIONES ASÍNCRONAS (WRAPPERS) ---
 
-    async def get_guild_settings(self, guild_id: int) -> sqlite3.Row:
+    async def get_guild_settings(self, guild_id: int) -> Optional[sqlite3.Row]:
         return await asyncio.to_thread(self._get_guild_settings_sync, guild_id)
             
     async def get_active_channels(self, guild_id: int) -> list[int]:
@@ -116,53 +117,82 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def get_leaderboard(self, guild_id: int) -> list[sqlite3.Row]:
         return await asyncio.to_thread(self._get_leaderboard_sync, guild_id)
 
+    # --- LÓGICA CENTRAL ---
+
     async def is_economy_active(self, ctx: commands.Context) -> bool:
         if not ctx.guild: return False
+
+        settings = await self.get_guild_settings(ctx.guild.id)
+        if not settings or not settings['economy_enabled']:
+            if ctx.author.guild_permissions.administrator:
+                await ctx.send("La economía está desactivada. Usa `/economy toggle state:on` para activarla.", ephemeral=True)
+            else:
+                await ctx.send("La economía no está activada en este servidor.", ephemeral=True)
+            return False
+
         active_channels = await self.get_active_channels(ctx.guild.id)
         if not active_channels:
-            if not ctx.author.guild_permissions.manage_guild: 
-                await ctx.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True, delete_after=10)
-                return False
-        elif ctx.channel.id not in active_channels and not ctx.author.guild_permissions.manage_guild:
-             await ctx.send("Los comandos de economía no están permitidos aquí.", ephemeral=True, delete_after=10)
+            if ctx.author.guild_permissions.manage_guild: 
+                await ctx.send("La economía está activada, pero ningún canal ha sido configurado. Usa `/economy addchannel`.", ephemeral=True, delete_after=10)
+            return False
+            
+        if ctx.channel.id not in active_channels and not ctx.author.guild_permissions.manage_guild:
+             await ctx.send("Los comandos de economía no están permitidos en este canal.", ephemeral=True, delete_after=10)
              return False
         return True
 
     async def log_transaction(self, guild: discord.Guild, author: discord.Member, message: str):
         settings = await self.get_guild_settings(guild.id)
-        if log_channel_id := settings.get('log_channel_id'):
+        if settings and (log_channel_id := settings.get('log_channel_id')):
             if channel := guild.get_channel(log_channel_id):
                 embed = discord.Embed(description=message, color=self.bot.CREAM_COLOR, timestamp=datetime.datetime.now())
                 embed.set_author(name=f"Auditoría Económica | {author.display_name}", icon_url=author.display_avatar.url)
                 try: await channel.send(embed=embed)
                 except discord.Forbidden: pass
 
+    # --- COMANDOS ---
+
     @commands.hybrid_group(name="economy", description="Comandos para configurar la economía del servidor.")
     @commands.has_permissions(administrator=True)
     async def economy(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
             settings = await self.get_guild_settings(ctx.guild.id)
+            if not settings: return await ctx.send("Error al cargar la configuración.", ephemeral=True)
+            
+            status = "✅ Activada" if settings['economy_enabled'] else "❌ Desactivada"
             active_channels = await self.get_active_channels(ctx.guild.id)
             channels = "\n".join([f"<#{cid}>" for cid in active_channels]) if active_channels else "Ninguno"
             max_bal = f"{settings['max_balance']}" if settings['max_balance'] is not None else "Sin límite"
-            embed = discord.Embed(title="⚙️ Estado de la Economía", color=self.bot.CREAM_COLOR, description="Usa los subcomandos para configurar el sistema.")
+            
+            embed = discord.Embed(title="⚙️ Estado de la Economía", color=self.bot.CREAM_COLOR, description=f"**Estado General:** {status}")
             embed.add_field(name="Canales Activos", value=channels, inline=False)
             embed.add_field(name="Moneda", value=f"{settings['currency_name']} {settings['currency_emoji']}", inline=True)
             embed.add_field(name="Saldo Inicial", value=f"{settings['start_balance']}", inline=True)
             embed.add_field(name="Saldo Máximo", value=max_bal, inline=True)
             await ctx.send(embed=embed, ephemeral=True)
 
+    @economy.command(name="toggle", description="Activa o desactiva la economía en el servidor.")
+    @commands.has_permissions(administrator=True)
+    async def economy_toggle(self, ctx: commands.Context, state: Literal['on', 'off'], nombre_moneda: Optional[str] = 'créditos', emoji_moneda: Optional[str] = '🪙'):
+        is_enabled = 1 if state == 'on' else 0
+        await self.db_execute("UPDATE economy_settings SET economy_enabled = ? WHERE guild_id = ?", (is_enabled, ctx.guild.id))
+        if is_enabled:
+            await self.db_execute("UPDATE economy_settings SET currency_name = ?, currency_emoji = ? WHERE guild_id = ?", (nombre_moneda, emoji_moneda, ctx.guild.id))
+            await ctx.send(f"✅ La economía ha sido **activada**. La moneda ahora es **{nombre_moneda} {emoji_moneda}**.", ephemeral=True)
+        else:
+            await ctx.send("❌ La economía ha sido **desactivada**.", ephemeral=True)
+
     @economy.command(name="addchannel", description="Activa los comandos de economía en un canal.")
     @commands.has_permissions(administrator=True)
     async def add_channel(self, ctx: commands.Context, canal: discord.TextChannel):
         await self.db_execute("INSERT OR IGNORE INTO economy_active_channels (guild_id, channel_id) VALUES (?, ?)", (ctx.guild.id, canal.id))
-        await ctx.send(f"✅ La economía ha sido **activada** en {canal.mention}.", ephemeral=True)
+        await ctx.send(f"✅ Los comandos de economía ahora están permitidos en {canal.mention}.", ephemeral=True)
 
     @economy.command(name="removechannel", description="Desactiva los comandos de economía en un canal.")
     @commands.has_permissions(administrator=True)
     async def remove_channel(self, ctx: commands.Context, canal: discord.TextChannel):
         await self.db_execute("DELETE FROM economy_active_channels WHERE guild_id = ? AND channel_id = ?", (ctx.guild.id, canal.id))
-        await ctx.send(f"❌ La economía ha sido **desactivada** en {canal.mention}.", ephemeral=True)
+        await ctx.send(f"❌ Los comandos de economía ya no están permitidos en {canal.mention}.", ephemeral=True)
 
     @economy.command(name="setstartbalance", description="Establece el saldo inicial para los nuevos miembros.")
     @commands.has_permissions(administrator=True)
@@ -171,41 +201,53 @@ class EconomyCog(commands.Cog, name="Economía"):
         await self.db_execute("UPDATE economy_settings SET start_balance = ? WHERE guild_id = ?", (cantidad, ctx.guild.id))
         await ctx.send(f"✅ El saldo inicial para nuevos miembros ahora es **{cantidad}**.", ephemeral=True)
 
-    @economy.command(name="setmaxbalance", description="Establece un límite de dinero en la cartera.")
+    @economy.command(name="setmaxbalance", description="Establece un límite de dinero en la cartera (0 para sin límite).")
     @commands.has_permissions(administrator=True)
     async def set_max_balance(self, ctx: commands.Context, cantidad: int):
-        if cantidad <= 0: return await ctx.send("La cantidad debe ser positiva.", ephemeral=True)
-        await self.db_execute("UPDATE economy_settings SET max_balance = ? WHERE guild_id = ?", (cantidad, ctx.guild.id))
-        await ctx.send(f"✅ El límite de dinero en cartera se ha fijado en **{cantidad}**.", ephemeral=True)
+        if cantidad < 0: return await ctx.send("La cantidad no puede ser negativa.", ephemeral=True)
+        max_val = cantidad if cantidad > 0 else None
+        await self.db_execute("UPDATE economy_settings SET max_balance = ? WHERE guild_id = ?", (max_val, ctx.guild.id))
+        await ctx.send(f"✅ El límite de dinero en cartera se ha fijado en **{cantidad if max_val else 'infinito'}**.", ephemeral=True)
 
     @economy.command(name="setauditlog", description="Designa un canal para registrar transacciones importantes.")
     @commands.has_permissions(administrator=True)
-    async def set_audit_log(self, ctx: commands.Context, canal: discord.TextChannel):
-        await self.db_execute("UPDATE economy_settings SET log_channel_id = ? WHERE guild_id = ?", (canal.id, ctx.guild.id))
-        await ctx.send(f"✅ El canal de auditoría económica ahora es {canal.mention}.", ephemeral=True)
+    async def set_audit_log(self, ctx: commands.Context, canal: Optional[discord.TextChannel]):
+        log_id = canal.id if canal else None
+        await self.db_execute("UPDATE economy_settings SET log_channel_id = ? WHERE guild_id = ?", (log_id, ctx.guild.id))
+        msg = f"✅ El canal de auditoría económica ahora es {canal.mention}." if canal else "❌ Se ha desactivado la auditoría económica."
+        await ctx.send(msg, ephemeral=True)
 
-    @commands.hybrid_command(name="add-money", description="Añade dinero a la cartera de un usuario.")
+    @commands.hybrid_command(name="add-money", description="[Admin] Añade dinero a la cartera de un usuario.")
     @commands.has_permissions(manage_guild=True)
     async def add_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
+        if not await self.is_economy_active(ctx): return
         if cantidad <= 0: return await ctx.send("La cantidad debe ser positiva.", ephemeral=True)
         await self.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         await ctx.send(f"✅ Se han añadido **{cantidad}** a la cartera de {miembro.mention}.", ephemeral=True)
         await self.log_transaction(ctx.guild, ctx.author, f"Añadió **{cantidad}** a la cartera de {miembro.mention} (`{miembro.id}`).")
 
-    @commands.hybrid_command(name="remove-money", description="Quita dinero de la cartera de un usuario.")
+    @commands.hybrid_command(name="remove-money", description="[Admin] Quita dinero de la cartera de un usuario.")
     @commands.has_permissions(manage_guild=True)
     async def remove_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
+        if not await self.is_economy_active(ctx): return
         if cantidad <= 0: return await ctx.send("La cantidad debe ser positiva.", ephemeral=True)
         await self.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
         await ctx.send(f"✅ Se han quitado **{cantidad}** de la cartera de {miembro.mention}.", ephemeral=True)
         await self.log_transaction(ctx.guild, ctx.author, f"Quitó **{cantidad}** de la cartera de {miembro.mention} (`{miembro.id}`).")
 
-    @commands.hybrid_command(name="reset-economy", description="Reinicia la economía del servidor (ACCIÓN PELIGROSA).")
+    @commands.hybrid_command(name="reset-economy", description="[Admin] Reinicia la economía del servidor (ACCIÓN PELIGROSA).")
     @commands.has_permissions(administrator=True)
     async def reset_economy(self, ctx: commands.Context):
-        await self.db_execute("DELETE FROM balances WHERE guild_id = ?", (ctx.guild.id,))
-        await ctx.send("💥 **¡La economía del servidor ha sido reiniciada!**", ephemeral=False)
-        await self.log_transaction(ctx.guild, ctx.author, "🚨 **REINICIÓ LA ECONOMÍA DEL SERVIDOR.**")
+        if not await self.is_economy_active(ctx): return
+        view = ConfirmView(ctx.author.id)
+        msg = await ctx.send("⚠️ **¿Estás seguro de que quieres reiniciar TODA la economía?** Se borrarán los balances de todos los usuarios. Esta acción es irreversible.", view=view, ephemeral=True)
+        await view.wait()
+        if view.value:
+            await self.db_execute("DELETE FROM balances WHERE guild_id = ?", (ctx.guild.id,))
+            await msg.edit(content="💥 **¡La economía del servidor ha sido reiniciada!**", view=None)
+            await self.log_transaction(ctx.guild, ctx.author, "🚨 **REINICIÓ LA ECONOMÍA DEL SERVIDOR.**")
+        else:
+            await msg.edit(content="Acción cancelada.", view=None)
 
     @commands.hybrid_command(name='deposit', aliases=['dep'], description="Deposita dinero de tu cartera al banco.")
     async def deposit(self, ctx: commands.Context, cantidad: str):
@@ -234,7 +276,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         await ctx.send(f"💸 Has retirado **{amount}**. Tu cartera ahora tiene **{new_wallet}**.", ephemeral=True)
 
     @commands.hybrid_command(name='balance', aliases=['bal'], description="Muestra tu balance de cartera y banco.")
-    async def balance(self, ctx: commands.Context, miembro: discord.Member | None = None):
+    async def balance(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
         if not await self.is_economy_active(ctx): return
         target = miembro or ctx.author
         settings = await self.get_guild_settings(ctx.guild.id)
@@ -263,20 +305,23 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def work(self, ctx: commands.Context):
         if not await self.is_economy_active(ctx): return
         settings = await self.get_guild_settings(ctx.guild.id)
-        bucket = self._work_cd.get_bucket(ctx.message); bucket.per = settings['work_cooldown']
+        bucket = self._work_cd.get_bucket(ctx.message)
+        bucket.per = settings['work_cooldown']
         if retry_after := bucket.update_rate_limit():
             m, s = divmod(retry_after, 60)
             await ctx.send(f"Descansa y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
             return
         amount = random.randint(settings['work_min'], settings['work_max'])
         await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount)
+        settings = await self.get_guild_settings(ctx.guild.id) # Recargar por si cambió
         await ctx.send(embed=discord.Embed(title="💼 ¡A trabajar!", description=f"Ganaste **{amount} {settings['currency_name']}**.", color=discord.Color.green()))
 
     @commands.hybrid_command(name='rob', description="Intenta robarle a otro usuario de su cartera.")
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
         if not await self.is_economy_active(ctx): return
         settings = await self.get_guild_settings(ctx.guild.id)
-        bucket = self._rob_cd.get_bucket(ctx.message); bucket.per = settings['rob_cooldown']
+        bucket = self._rob_cd.get_bucket(ctx.message)
+        bucket.per = settings['rob_cooldown']
         if retry_after := bucket.update_rate_limit():
             h, rem = divmod(retry_after, 3600); m, _ = divmod(rem, 60)
             await ctx.send(f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m**.", ephemeral=True)
@@ -288,7 +333,8 @@ class EconomyCog(commands.Cog, name="Economía"):
         if victim_wallet < 200: return await ctx.send(f"{miembro.display_name} no tiene suficiente en su cartera.", ephemeral=True)
         if random.random() < 0.5:
             amount = int(victim_wallet * random.uniform(0.1, 0.25))
-            await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount); await self.update_balance(ctx.guild.id, miembro.id, wallet_change=-amount)
+            await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount)
+            await self.update_balance(ctx.guild.id, miembro.id, wallet_change=-amount)
             embed = discord.Embed(title="🎭 ¡Robo Exitoso!", description=f"Robaste **{amount}** de la cartera a {miembro.mention}.", color=discord.Color.dark_green())
         else:
             amount = max(50, int(robber_wallet * random.uniform(0.05, 0.15)))
@@ -304,9 +350,11 @@ class EconomyCog(commands.Cog, name="Economía"):
         if cantidad <= 0: return await ctx.send("La cantidad debe ser positiva.", ephemeral=True)
         sender_wallet, _ = await self.get_balance(ctx.guild.id, ctx.author.id)
         if sender_wallet < cantidad: return await ctx.send(f"No tienes suficientes {settings['currency_name']}. Tienes: **{sender_wallet}**.", ephemeral=True)
-        await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-cantidad); await self.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
+        await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-cantidad)
+        await self.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         embed = discord.Embed(title="💸 Transferencia Realizada", description=f"{ctx.author.mention} ha transferido **{cantidad}** a {miembro.mention}.", color=self.bot.CREAM_COLOR)
-        await ctx.send(embed=embed); await self.log_transaction(ctx.guild, ctx.author, f"Transfirió **{cantidad}** a {miembro.mention}.")
+        await ctx.send(embed=embed)
+        await self.log_transaction(ctx.guild, ctx.author, f"Transfirió **{cantidad}** a {miembro.mention}.")
 
     @commands.hybrid_command(name='leaderboard', aliases=['lb'], description="Muestra a los usuarios más ricos del servidor.")
     async def leaderboard(self, ctx: commands.Context):
@@ -326,6 +374,35 @@ class EconomyCog(commands.Cog, name="Economía"):
             description += f"{rank} **{name}**: {row['total']} (Cartera: {row['wallet']} / Banco: {row['bank']})\n"
         embed.description = description
         await ctx.send(embed=embed)
+
+# --- Vista de Confirmación para acciones peligrosas ---
+class ConfirmView(discord.ui.View):
+    def __init__(self, author_id: int):
+        super().__init__(timeout=30.0)
+        self.value = None
+        self.author_id = author_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("No puedes usar los botones de otra persona.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label='Confirmar', style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = True
+        self.stop()
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label='Cancelar', style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = False
+        self.stop()
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(view=self)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(EconomyCog(bot))
