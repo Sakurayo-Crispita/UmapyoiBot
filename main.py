@@ -846,7 +846,8 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 log_channel_id INTEGER, autorole_id INTEGER, welcome_message TEXT,
                 welcome_banner_url TEXT, goodbye_message TEXT, goodbye_banner_url TEXT,
                 automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT,
-                temp_channel_creator_id INTEGER
+                temp_channel_creator_id INTEGER,
+                leveling_enabled INTEGER DEFAULT
             )''')
         # ... (el resto del setup de la DB sin cambios)
 
@@ -857,7 +858,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             "welcome_channel_id": res[1], "goodbye_channel_id": res[2], "log_channel_id": res[3],
             "autorole_id": res[4], "welcome_message": res[5], "welcome_banner_url": res[6],
             "goodbye_message": res[7], "goodbye_banner_url": res[8], "automod_anti_invite": res[9],
-            "automod_banned_words": res[10], "temp_channel_creator_id": res[11]
+            "automod_banned_words": res[10], "temp_channel_creator_id": res[11], "leveling_enabled": res[12]
         } if res else {}
 
     def save_setting(self, guild_id: int, key: str, value):
@@ -929,6 +930,15 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         # Establece el valor a NULL en la base de datos, desactivando la función
         self.save_setting(ctx.guild.id, 'temp_channel_creator_id', None)
         await ctx.send("✅ La función de crear salas de voz temporales ha sido desactivada.", ephemeral=True)
+
+    # Dentro de ServerConfigCog
+    @commands.hybrid_command(name='levels', description="Activa o desactiva el sistema de niveles en el servidor.")
+    @commands.has_permissions(manage_guild=True)
+    async def toggle_leveling(self, ctx: commands.Context, estado: Literal['on', 'off']):
+        is_on = 1 if estado == 'on' else 0
+        self.save_setting(ctx.guild.id, 'leveling_enabled', is_on)
+        status_text = "activado" if is_on else "desactivado"
+        await ctx.send(f"✅ El sistema de niveles ha sido **{status_text}** en este servidor.", ephemeral=True)
 
 
     @automod.command(name="anti_invites", description="Activa o desactiva el borrado de invitaciones de Discord.")
@@ -1660,9 +1670,12 @@ async def on_message(message: discord.Message):
         return # Detener aquí para no dar XP por una simple mención
 
     # Distribuir el mensaje a los cogs relevantes
-    level_cog = bot.get_cog("Niveles")
-    if level_cog:
-        await level_cog.process_xp(message)
+    if config_cog:
+        settings = config_cog.get_settings(message.guild.id)
+        if settings.get("leveling_enabled", 1): # Por defecto está activado (1)
+            level_cog = bot.get_cog("Niveles")
+            if level_cog:
+                await level_cog.process_xp(message)
 
     tts_cog = bot.get_cog("Texto a Voz")
     if tts_cog:
