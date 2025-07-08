@@ -278,6 +278,7 @@ class MusicPanelView(discord.ui.View):
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
     async def leave_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'leave')
+
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
     """Comandos para reproducir música de alta calidad."""
@@ -386,22 +387,49 @@ class MusicCog(commands.Cog, name="Música"):
         if error: print(f'Error after play: {error}')
         self.bot.loop.call_soon_threadsafe(self.play_next_song, ctx)
 
+    # --- Dentro de la clase MusicCog ---
+
     async def disconnect_after_inactivity(self, ctx: commands.Context):
+        """
+        Espera 120 segundos y si el bot sigue inactivo, se desconecta.
+        Ahora avisa al usuario para evitar confusiones.
+        """
+        # Avisa en el canal que la cola ha terminado
+        target_channel = ctx.channel or (ctx.interaction and ctx.interaction.channel)
+        if target_channel:
+            try:
+                await target_channel.send("🎵 La cola ha terminado. Me desconectaré en 2 minutos si no se añaden más canciones.", delete_after=115)
+            except discord.Forbidden:
+                pass # No puede enviar el mensaje de aviso, pero continuará.
+
         await asyncio.sleep(120)
+
         lock = self.get_voice_lock(ctx.guild.id)
         async with lock:
             vc = ctx.guild.voice_client
             state = self.get_guild_state(ctx.guild.id)
-            # Solo desconectar si no hay canción, ni en la cola, ni está pausado
+            
+            # Comprueba de nuevo si sigue inactivo antes de desconectar
             if vc and not vc.is_playing() and not vc.is_paused() and not state.queue:
+                # Edita el panel de música para que muestre que se detuvo y quita los botones
                 if state.active_panel:
-                    try: await state.active_panel.delete()
-                    except (discord.NotFound, discord.HTTPException): pass
+                    try:
+                        embed = state.active_panel.embeds[0]
+                        embed.title = "⏹️ Reproducción Finalizada"
+                        embed.description = "La cola de canciones ha terminado."
+                        # Quita la vista (los botones) para que no se puedan usar más
+                        await state.active_panel.edit(embed=embed, view=None)
+                    except (discord.NotFound, discord.HTTPException):
+                        pass # El panel ya no existe, no hay problema
                     state.active_panel = None
+
                 await vc.disconnect()
-                target_channel = ctx.channel or (ctx.interaction and ctx.interaction.channel)
+                
                 if target_channel:
-                    await target_channel.send("👋 ¡Adiós! Desconectado por inactividad.")
+                    try:
+                        await target_channel.send("👋 ¡Adiós! Desconectado por inactividad.")
+                    except discord.Forbidden:
+                        pass
 
     @commands.hybrid_command(name='join', description="Hace que el bot se una a tu canal de voz.")
     async def join(self, ctx: commands.Context):
@@ -517,16 +545,26 @@ class MusicCog(commands.Cog, name="Música"):
     async def stop(self, ctx: commands.Context):
         state = self.get_guild_state(ctx.guild.id)
         vc = ctx.guild.voice_client
-        if vc:
-            state.queue.clear()
-            state.current_song = None
-            state.autoplay = False
-            state.loop_state = LoopState.OFF
+
+        # Limpia el estado interno de la cola y la canción actual INCONDICIONALMENTE.
+        # Esto asegura que el reproductor se reinicie correctamente la próxima vez.
+        state.queue.clear()
+        state.current_song = None
+        state.autoplay = False
+        state.loop_state = LoopState.OFF
+
+        # Ahora, si el bot está conectado, detiene el audio y el panel.
+        if vc and (vc.is_playing() or vc.is_paused()):
             vc.stop()
-            if state.active_panel:
-                try: await state.active_panel.delete()
-                except (discord.NotFound, discord.HTTPException): pass
-                state.active_panel = None
+        
+        if state.active_panel:
+            try:
+                # Actualiza el panel para mostrar que se detuvo y quita los botones.
+                await state.active_panel.edit(content="⏹️ La reproducción ha sido detenida.", embed=None, view=None)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+            state.active_panel = None
+
         await self.send_response(ctx, "⏹️ Reproducción detenida y cola limpiada.", ephemeral=True)
 
     @commands.hybrid_command(name='pause', description="Pausa o reanuda la canción actual.")
