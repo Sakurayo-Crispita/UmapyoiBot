@@ -1415,12 +1415,6 @@ class FunCog(commands.Cog, name="Juegos e IA"):
     def __init__(self, bot: UmapyoiBot):
         self.bot = bot
         self.game_in_progress: dict[int, bool] = {}
-        # Lista de ejemplo. ¡Añade más canciones!
-        self.song_list = [
-            {'url': 'yC-AJy51g-69w', 'answers': ['despacito', 'luis fonsi']},
-            {'url': 'fJ9rUzIMcZQ', 'answers': ['old town road', 'lil nas x']},
-            {'url': 'Ck27G3n3Jc', 'answers': ['tusa', 'karol g', 'nicki minaj']}
-        ]
 
     @commands.hybrid_command(name='pregunta', description="Hazme cualquier pregunta y usaré mi IA para responder.")
     async def pregunta(self, ctx: commands.Context, *, pregunta: str):
@@ -1497,52 +1491,73 @@ class FunCog(commands.Cog, name="Juegos e IA"):
     @commands.hybrid_command(name='adivina', description="Inicia un juego de 'Adivina la Canción'.")
     async def adivina(self, ctx: commands.Context):
         await ctx.defer()
-        if self.game_in_progress.get(ctx.guild.id): return await ctx.send("Ya hay un juego en curso.")
-        if not ctx.author.voice: return await ctx.send("Debes estar en un canal de voz.")
+        if self.game_in_progress.get(ctx.guild.id):
+            return await ctx.send("Ya hay un juego en curso en este servidor.", ephemeral=True)
+        if not ctx.author.voice:
+            return await ctx.send("Debes estar en un canal de voz para iniciar el juego.", ephemeral=True)
 
         channel = ctx.author.voice.channel
         music_cog = self.bot.get_cog("Música")
-        if not music_cog: return
+        if not music_cog: return await ctx.send("Error: El módulo de música no está disponible.", ephemeral=True)
 
         vc = await music_cog.ensure_voice_client(channel)
-        if not vc: return await ctx.send("❌ No pude conectarme al canal de voz.")
+        if not vc: return await ctx.send("❌ No pude conectarme a tu canal de voz.", ephemeral=True)
         if vc.is_playing() or music_cog.get_guild_state(ctx.guild.id).current_song:
-            return await ctx.send("No puedo iniciar un juego mientras reproduzco música.")
+            return await ctx.send("No puedo iniciar un juego mientras reproduzco música.", ephemeral=True)
 
         self.game_in_progress[ctx.guild.id] = True
+        msg = await ctx.send("Buscando una canción para el juego... 🎲")
+        
         try:
-            song_to_guess = random.choice(self.song_list)
-            loop = asyncio.get_event_loop()
+            loop = self.bot.loop or asyncio.get_event_loop()
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                info = await loop.run_in_executor(None, lambda: ydl.extract_info(song_to_guess['url'], download=False))
-            # Reproducir un fragmento de 15 segundos desde una parte aleatoria de la canción
-            duration = int(info.get('duration', 90))
+                # Buscamos una playlist de éxitos y tomamos los primeros 50 resultados
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info("ytsearch50:Top 100 Global Hits", download=False))
+                
+                if not info or not info.get('entries'):
+                    await msg.edit(content="❌ No pude encontrar canciones para el juego. Inténtalo de nuevo.")
+                    self.game_in_progress[ctx.guild.id] = False
+                    return
+
+                # Elegimos una canción aleatoria de la lista
+                song_to_guess = random.choice(info['entries'])
+                video_title = song_to_guess.get('title', 'Canción Desconocida')
+                video_url = song_to_guess.get('webpage_url')
+                
+                # Preparamos las respuestas correctas (título y artista si está disponible)
+                answers = [video_title.lower()]
+                if artist := song_to_guess.get('artist'):
+                    answers.append(artist.lower())
+                
+            duration = int(song_to_guess.get('duration', 90))
             start_time = random.randint(30, duration - 20) if duration > 50 else 0
-            source = discord.FFmpegPCMAudio(info['url'], before_options=f'-ss {start_time} -t 15', options='-vn')
+            
+            source = discord.FFmpegPCMAudio(song_to_guess['url'], before_options=f'-ss {start_time} -t 15', options='-vn')
             vc.play(source)
-            await ctx.send("🎧 **¡Adivina la Canción!** Tienes 30 segundos para escribir el título o el artista...")
+            await msg.edit(content="🎧 **¡Adivina la Canción!** Tienes 30 segundos para escribir el título o el artista...")
 
             def check(m):
-                # Ignorar mayúsculas/minúsculas y caracteres especiales para una comparación más flexible
-                normalized_content = re.sub(r'[^a-z0-9]', '', m.content.lower())
-                return m.channel == ctx.channel and any(re.sub(r'[^a-z0-9]', '', a) in normalized_content for a in song_to_guess['answers'])
+                normalized_content = re.sub(r'[^a-z0-9\s]', '', m.content.lower()).strip()
+                return m.channel == ctx.channel and any(ans in normalized_content for ans in answers)
 
             try:
                 winner = await self.bot.wait_for('message', check=check, timeout=30.0)
-                await ctx.send(f"🎉 ¡Correcto, {winner.author.mention}! La canción era **{info.get('title')}**.")
+                await ctx.send(f"🎉 ¡Correcto, {winner.author.mention}! La canción era **{video_title}**.")
             except asyncio.TimeoutError:
-                await ctx.send(f"⌛ ¡Se acabó el tiempo! La respuesta era **{info.get('title')}**.")
+                await ctx.send(f"⌛ ¡Se acabó el tiempo! La respuesta correcta era **{video_title}**.")
+        
         except Exception as e:
-            await ctx.send(f"❌ Hubo un problema al iniciar el juego: {e}")
+            await msg.edit(content=f"❌ Hubo un problema al iniciar el juego: {e}")
+            print(f"Error en /adivina: {e}")
         finally:
-            if vc.is_playing(): vc.stop()
+            if vc and vc.is_playing(): vc.stop()
             self.game_in_progress[ctx.guild.id] = False
-            # Esperar antes de desconectar para que los mensajes de resultado se lean
             await asyncio.sleep(5)
-            music_state = music_cog.get_guild_state(ctx.guild.id)
-            if vc.is_connected() and not vc.is_playing() and not music_state.current_song and not music_state.queue:
-                await vc.disconnect()
-
+            if vc and vc.is_connected():
+                music_state = music_cog.get_guild_state(ctx.guild.id)
+                if not music_state.current_song and not music_state.queue:
+                    await vc.disconnect()
+                    
     @commands.hybrid_command(name='anime', description="Busca información detallada sobre un anime.")
     async def anime(self, ctx: commands.Context, *, nombre: str):
         await ctx.defer()
@@ -1857,13 +1872,16 @@ async def on_message(message: discord.Message):
                 return
 
             # Filtro de Palabras Prohibidas
-            banned_words_str = settings["automod_banned_words"]
+            banned_words_str = settings["automod_banned_words"] or "" 
             if banned_words_str:
-                banned_words = [word.strip() for word in banned_words_str.split(',')]
-                if any(word in message.content.lower() for word in banned_words if word):
+                # Convertimos las palabras a minúsculas para una comparación sin errores
+                banned_words = [word.strip().lower() for word in banned_words_str.split(',') if word.strip()]
+                message_content_lower = message.content.lower()
+                
+                if any(banned_word in message_content_lower for banned_word in banned_words):
                     await message.delete()
                     await message.channel.send(f"⚠️ {message.author.mention}, tu mensaje contiene una palabra no permitida.", delete_after=10)
-                    return
+                    return 
     
     # Procesar comandos después del automod
     await bot.process_commands(message)
