@@ -1733,18 +1733,33 @@ class EconomyCog(commands.Cog, name="Economía"):
                 self.cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
                 return self.cursor.fetchone()
 
+# --- DENTRO DE LA CLASE EconomyCog ---
+
     async def get_balance(self, guild_id: int, user_id: int) -> int:
+        """Obtiene el balance de un usuario en un servidor específico."""
         async with self.db_lock:
             self.cursor.execute("SELECT balance FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
             result = self.cursor.fetchone()
+            # Si el usuario no se encuentra, simplemente devuelve 0.
             return result['balance'] if result else 0
 
     async def update_balance(self, guild_id: int, user_id: int, amount: int):
+        """Actualiza el balance de un usuario en un servidor específico de forma segura."""
         async with self.db_lock:
-            balance = await self.get_balance(guild_id, user_id)
-            self.cursor.execute("REPLACE INTO balances (guild_id, user_id, balance) VALUES (?, ?, ?)", (guild_id, user_id, balance + amount))
+            # Realizamos toda la lógica dentro de este único bloque para evitar deadlocks.
+            
+            # 1. Obtenemos el balance actual.
+            self.cursor.execute("SELECT balance FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+            result = self.cursor.fetchone()
+            current_balance = result['balance'] if result else 0
+            
+            # 2. Calculamos el nuevo balance.
+            new_balance = current_balance + amount
+
+            # 3. Usamos REPLACE INTO para actualizar o crear el registro del usuario en un solo paso.
+            self.cursor.execute("REPLACE INTO balances (guild_id, user_id, balance) VALUES (?, ?, ?)", (guild_id, user_id, new_balance))
             self.conn.commit()
-            return balance + amount
+            return new_balance
 
     @commands.hybrid_command(name='daily', description="Reclama tu recompensa diaria.")
     @commands.cooldown(1, 86400, commands.BucketType.user)
