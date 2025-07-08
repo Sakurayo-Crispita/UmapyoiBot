@@ -1511,34 +1511,40 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         try:
             loop = self.bot.loop or asyncio.get_event_loop()
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                # Buscamos una playlist de éxitos y tomamos los primeros 50 resultados
-                info = await loop.run_in_executor(None, lambda: ydl.extract_info("ytsearch50:Top 100 Global Hits", download=False))
-                
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Usamos un enlace directo a una playlist para que sea mucho más rápido.
+                playlist_url = "https://www.youtube.com/playlist?list=PL4fGSI1pDJn6jG_r5p1h3T-1-pEw9V7gB"
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info(playlist_url, download=False, process=False))
+                # --- FIN DE LA CORRECCIÓN ---
+
                 if not info or not info.get('entries'):
                     await msg.edit(content="❌ No pude encontrar canciones para el juego. Inténtalo de nuevo.")
                     self.game_in_progress[ctx.guild.id] = False
                     return
 
                 # Elegimos una canción aleatoria de la lista
-                song_to_guess = random.choice(info['entries'])
-                video_title = song_to_guess.get('title', 'Canción Desconocida')
-                video_url = song_to_guess.get('webpage_url')
+                song_entry = random.choice(info['entries'])
+                
+                # Ahora procesamos solo la información de esa canción
+                song_info = await loop.run_in_executor(None, lambda: ydl.extract_info(song_entry['url'], download=False))
+
+                video_title = song_info.get('title', 'Canción Desconocida')
                 
                 # Preparamos las respuestas correctas (título y artista si está disponible)
-                answers = [video_title.lower()]
-                if artist := song_to_guess.get('artist'):
-                    answers.append(artist.lower())
+                answers = [re.sub(r'[^a-z0-9\s]', '', video_title.lower()).strip()]
+                if artist := song_info.get('artist'):
+                    answers.append(re.sub(r'[^a-z0-9\s]', '', artist.lower()).strip())
                 
-            duration = int(song_to_guess.get('duration', 90))
+            duration = int(song_info.get('duration', 90))
             start_time = random.randint(30, duration - 20) if duration > 50 else 0
             
-            source = discord.FFmpegPCMAudio(song_to_guess['url'], before_options=f'-ss {start_time} -t 15', options='-vn')
+            source = discord.FFmpegPCMAudio(song_info['url'], before_options=f'-ss {start_time} -t 15', options='-vn')
             vc.play(source)
             await msg.edit(content="🎧 **¡Adivina la Canción!** Tienes 30 segundos para escribir el título o el artista...")
 
             def check(m):
                 normalized_content = re.sub(r'[^a-z0-9\s]', '', m.content.lower()).strip()
-                return m.channel == ctx.channel and any(ans in normalized_content for ans in answers)
+                return m.channel == ctx.channel and any(ans in normalized_content for ans in answers if ans)
 
             try:
                 winner = await self.bot.wait_for('message', check=check, timeout=30.0)
@@ -1549,6 +1555,8 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         except Exception as e:
             await msg.edit(content=f"❌ Hubo un problema al iniciar el juego: {e}")
             print(f"Error en /adivina: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             if vc and vc.is_playing(): vc.stop()
             self.game_in_progress[ctx.guild.id] = False
