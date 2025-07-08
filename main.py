@@ -167,36 +167,53 @@ class MusicPanelView(discord.ui.View):
             else: pause_button.label, pause_button.emoji = "Pausa", "⏸️"
 
         try:
+            # Usamos la interacción original para editar el mensaje
             await interaction.message.edit(view=self)
         except discord.NotFound:
             pass # El mensaje ya fue borrado
+        except discord.HTTPException as e:
+            print(f"Error al actualizar el panel: {e}")
+
 
     async def _execute_command(self, interaction: discord.Interaction, command_name: str):
-        """Función auxiliar para ejecutar un comando desde un botón."""
+        """Función auxiliar para ejecutar un comando desde un botón (versión corregida)."""
         command = self.music_cog.bot.get_command(command_name)
-        if command:
-            # Creamos un contexto falso para el comando
-            ctx = await self.music_cog.bot.get_context(interaction.message)
-            ctx.author = interaction.user # Aseguramos que el autor sea quien presionó el botón
-            ctx.interaction = interaction # Adjuntamos la interacción al contexto
+        if not command:
+            return await interaction.response.send_message("Error: Comando del botón no encontrado.", ephemeral=True, delete_after=5)
 
-            # Silenciamos la respuesta del botón para que solo la respuesta del comando sea visible.
-            await interaction.response.defer()
-            # Usamos el bot.invoke para asegurar que todos los checks y hooks del comando se ejecutan
-            await self.music_cog.bot.invoke(ctx)
+        # Crear un contexto falso necesario para que los comandos se ejecuten
+        ctx = await self.music_cog.bot.get_context(interaction.message)
+        ctx.author = interaction.user
+        ctx.interaction = interaction
+
+        try:
+            # Llama directamente a la función del comando. Es más fiable.
+            await command.callback(self.music_cog, ctx)
+        except Exception as e:
+            print(f"Error al ejecutar el comando '{command_name}' desde un botón: {e}")
+            import traceback
+            traceback.print_exc()
+            # Asegurarse de que el usuario sepa que algo falló
+            if not interaction.response.is_done():
+                await interaction.response.send_message("❌ Ocurrió un error al usar este botón.", ephemeral=True, delete_after=10)
+            else:
+                await interaction.followup.send("❌ Ocurrió un error al usar este botón.", ephemeral=True, delete_after=10)
+
 
     @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary, emoji="⏪", row=0, custom_id="previous_button")
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._execute_command(interaction, 'previous')
+        # No actualizamos panel aquí porque el comando skip/previous lo hará al cambiar de canción
 
     @discord.ui.button(label="Pausa", style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
     async def pause_resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._execute_command(interaction, 'pause')
-        await self.update_panel(interaction) # Actualizamos el panel después
+        await self.update_panel(interaction)
 
     @discord.ui.button(label="Saltar", style=discord.ButtonStyle.primary, emoji="⏭️", row=0, custom_id="skip_button")
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._execute_command(interaction, 'skip')
+        # No actualizamos panel aquí porque el comando skip/previous lo hará al cambiar de canción
 
     @discord.ui.button(label="Barajar", style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
     async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -231,7 +248,6 @@ class MusicPanelView(discord.ui.View):
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
     async def leave_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._execute_command(interaction, 'leave')
-
 
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
