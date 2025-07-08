@@ -326,7 +326,9 @@ class MusicCog(commands.Cog, name="Música"):
                 self.bot.loop.create_task(self.send_music_panel(ctx, state.current_song))
             except Exception as e:
                 print(f"Error al reproducir: {e}")
-                self.bot.loop.create_task(ctx.channel.send('❌ Error al reproducir. Saltando.'))
+                target_channel = ctx.channel or (ctx.interaction and ctx.interaction.channel)
+                if target_channel:
+                    self.bot.loop.create_task(target_channel.send('❌ Error al reproducir. Saltando.'))
                 self.play_next_song(ctx)
 
     def handle_after_play(self, ctx: commands.Context, error: Exception | None):
@@ -346,7 +348,9 @@ class MusicCog(commands.Cog, name="Música"):
                     except (discord.NotFound, discord.HTTPException): pass
                     state.active_panel = None
                 await vc.disconnect()
-                await ctx.channel.send("👋 ¡Adiós! Desconectado por inactividad.")
+                target_channel = ctx.channel or (ctx.interaction and ctx.interaction.channel)
+                if target_channel:
+                    await target_channel.send("👋 ¡Adiós! Desconectado por inactividad.")
 
     @commands.hybrid_command(name='join', description="Hace que el bot se una a tu canal de voz.")
     async def join(self, ctx: commands.Context):
@@ -1100,8 +1104,8 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 
     async def log_event(self, guild_id, embed):
         settings = await self.get_settings(guild_id)
-        if settings and (log_channel_id := settings.get("log_channel_id")):
-            if log_channel := self.bot.get_channel(log_channel_id):
+        if settings and settings["log_channel_id"]:
+            if log_channel := self.bot.get_channel(settings["log_channel_id"]):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
@@ -1110,7 +1114,8 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         guild_id = member.guild.id
         settings = await self.get_settings(guild_id)
         if not settings: return
-        creator_channel_id = settings.get("temp_channel_creator_id")
+        
+        creator_channel_id = settings["temp_channel_creator_id"]
 
         if after.channel and after.channel.id == creator_channel_id:
             try:
@@ -1141,11 +1146,11 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         settings = await self.get_settings(member.guild.id)
         if not settings: return
 
-        if channel_id := settings.get("welcome_channel_id"):
+        if channel_id := settings["welcome_channel_id"]:
             if channel := self.bot.get_channel(channel_id):
-                message_format = settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE
-                message = message_format.format(user=member, server=member.guild, member=member, user_name=member.name, member_count=member.guild.member_count)
-                banner_url = settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER
+                message_format = settings["welcome_message"] or self.DEFAULT_WELCOME_MESSAGE
+                message = message_format.format(user=member, server=member.guild, member_count=member.guild.member_count)
+                banner_url = settings["welcome_banner_url"] or self.DEFAULT_WELCOME_BANNER
                 embed = discord.Embed(description=message, color=discord.Color.green())
                 embed.set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url)
                 if banner_url: embed.set_image(url=banner_url)
@@ -1153,7 +1158,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 try: await channel.send(embed=embed)
                 except discord.Forbidden: pass
 
-        if role_id := settings.get("autorole_id"):
+        if role_id := settings["autorole_id"]:
             if role := member.guild.get_role(role_id):
                 try: await member.add_roles(role, reason="Autorol al unirse")
                 except discord.Forbidden: pass
@@ -1161,11 +1166,11 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
-        if settings and (channel_id := settings.get("goodbye_channel_id")):
+        if settings and (channel_id := settings["goodbye_channel_id"]):
             if channel := self.bot.get_channel(channel_id):
-                message_format = settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE
-                message = message_format.format(user=member, server=member.guild, member=member, user_name=member.name, member_count=member.guild.member_count)
-                banner_url = settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER
+                message_format = settings["goodbye_message"] or self.DEFAULT_GOODBYE_MESSAGE
+                message = message_format.format(user=member, server=member.guild, member_count=member.guild.member_count)
+                banner_url = settings["goodbye_banner_url"] or self.DEFAULT_GOODBYE_BANNER
                 embed = discord.Embed(description=message, color=discord.Color.red())
                 embed.set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url)
                 if banner_url: embed.set_image(url=banner_url)
@@ -1231,6 +1236,45 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
         view = HelpView(self.bot)
         await ctx.send(embed=embed, view=view)
+        
+    @commands.hybrid_command(name='announce', description="[Dueño] Envía un mensaje a todos los servidores.")
+    @commands.is_owner()
+    async def announce(self, ctx: commands.Context, *, mensaje: str):
+        """Envía un anuncio a todos los servidores donde está el bot."""
+        await ctx.defer(ephemeral=True)
+        
+        embed = discord.Embed(
+            title="📢 Anuncio del Bot",
+            description=mensaje,
+            color=CREAM_COLOR,
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_footer(text=f"Enviado por el desarrollador de Umapyoi")
+
+        successful_sends = 0
+        failed_sends = 0
+
+        for guild in self.bot.guilds:
+            target_channel = None
+            if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+                target_channel = guild.system_channel
+            else:
+                for channel in guild.text_channels:
+                    if channel.permissions_for(guild.me).send_messages:
+                        target_channel = channel
+                        break
+            
+            if target_channel:
+                try:
+                    await target_channel.send(embed=embed)
+                    successful_sends += 1
+                except Exception:
+                    failed_sends += 1
+            else:
+                failed_sends += 1
+
+        await ctx.send(f"✅ Anuncio enviado con éxito a **{successful_sends} servidores**.\n❌ Falló en **{failed_sends} servidores**.", ephemeral=True)
+
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
@@ -1296,46 +1340,6 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             await ctx.message.delete()
             await ctx.send(mensaje)
 
-    @commands.hybrid_command(name='announce', description="[Dueño] Envía un mensaje a todos los servidores.")
-    @commands.is_owner()
-    async def announce(self, ctx: commands.Context, *, mensaje: str):
-        """Envía un anuncio a todos los servidores donde está el bot."""
-        await ctx.defer(ephemeral=True)
-        
-        embed = discord.Embed(
-            title="📢 Anuncio del Bot",
-            description=mensaje,
-            color=CREAM_COLOR,
-            timestamp=datetime.datetime.now()
-        )
-        embed.set_footer(text=f"Enviado por el desarrollador de Umapyoi")
-
-        successful_sends = 0
-        failed_sends = 0
-
-        for guild in self.bot.guilds:
-            # Intenta encontrar el mejor canal para enviar el mensaje
-            target_channel = None
-            if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
-                target_channel = guild.system_channel
-            else:
-                for channel in guild.text_channels:
-                    if channel.permissions_for(guild.me).send_messages:
-                        target_channel = channel
-                        break
-            
-            # Si se encontró un canal, envía el embed
-            if target_channel:
-                try:
-                    await target_channel.send(embed=embed)
-                    successful_sends += 1
-                except Exception:
-                    failed_sends += 1
-            else:
-                failed_sends += 1
-
-        await ctx.send(f"✅ Anuncio enviado con éxito a **{successful_sends} servidores**.\n❌ Falló en **{failed_sends} servidores**.", ephemeral=True)
-
 # --- COG DE JUEGOS ---
 class FunCog(commands.Cog, name="Juegos e IA"):
     """Comandos interactivos y divertidos para pasar el rato."""
@@ -1344,9 +1348,9 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         self.game_in_progress: dict[int, bool] = {}
         # Lista de ejemplo. ¡Añade más canciones!
         self.song_list = [
-            {'url': 'y C-AJy51g-69w', 'answers': ['despacito', 'luis fonsi']},
-            {'url': 'y fJ9rUzIMcZQ', 'answers': ['old town road', 'lil nas x']},
-            {'url': 'y Ck27G3n3Jc', 'answers': ['tusa', 'karol g', 'nicki minaj']}
+            {'url': 'yC-AJy51g-69w', 'answers': ['despacito', 'luis fonsi']},
+            {'url': 'fJ9rUzIMcZQ', 'answers': ['old town road', 'lil nas x']},
+            {'url': 'Ck27G3n3Jc', 'answers': ['tusa', 'karol g', 'nicki minaj']}
         ]
 
     @commands.hybrid_command(name='pregunta', description="Hazme cualquier pregunta y usaré mi IA para responder.")
@@ -1443,7 +1447,8 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
                 info = await loop.run_in_executor(None, lambda: ydl.extract_info(song_to_guess['url'], download=False))
             # Reproducir un fragmento de 15 segundos desde una parte aleatoria de la canción
-            start_time = random.randint(30, int(info.get('duration', 90)) - 20)
+            duration = int(info.get('duration', 90))
+            start_time = random.randint(30, duration - 20) if duration > 50 else 0
             source = discord.FFmpegPCMAudio(info['url'], before_options=f'-ss {start_time} -t 15', options='-vn')
             vc.play(source)
             await ctx.send("🎧 **¡Adivina la Canción!** Tienes 30 segundos para escribir el título o el artista...")
@@ -1466,7 +1471,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             # Esperar antes de desconectar para que los mensajes de resultado se lean
             await asyncio.sleep(5)
             music_state = music_cog.get_guild_state(ctx.guild.id)
-            if not vc.is_playing() and not music_state.current_song and not music_state.queue:
+            if vc.is_connected() and not vc.is_playing() and not music_state.current_song and not music_state.queue:
                 await vc.disconnect()
 
     @commands.hybrid_command(name='anime', description="Busca información detallada sobre un anime.")
@@ -1777,13 +1782,13 @@ async def on_message(message: discord.Message):
         settings = await config_cog.get_settings(message.guild.id)
         if settings:
             # Filtro Anti-invites
-            if settings.get("automod_anti_invite", 1) and ("discord.gg/" in message.content or "discord.com/invite/" in message.content):
+            if settings["automod_anti_invite"] and ("discord.gg/" in message.content or "discord.com/invite/" in message.content):
                 await message.delete()
                 await message.channel.send(f"⚠️ {message.author.mention}, no se permiten invitaciones en este servidor.", delete_after=10)
                 return
 
             # Filtro de Palabras Prohibidas
-            banned_words_str = settings.get("automod_banned_words", "")
+            banned_words_str = settings["automod_banned_words"]
             if banned_words_str:
                 banned_words = [word.strip() for word in banned_words_str.split(',')]
                 if any(word in message.content.lower() for word in banned_words if word):
@@ -1805,7 +1810,7 @@ async def on_message(message: discord.Message):
     # Procesar XP si los niveles están activados
     if config_cog and level_cog:
         settings = await config_cog.get_settings(message.guild.id)
-        if settings and settings.get("leveling_enabled", 1):
+        if settings and settings["leveling_enabled"]:
             await level_cog.process_xp(message)
 
     # Procesar TTS
