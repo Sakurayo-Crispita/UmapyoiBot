@@ -774,6 +774,173 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         self.set_guild_lang(ctx.guild.id, idioma.value)
         await ctx.send(f"✅ El idioma por defecto del servidor para TTS ha sido establecido a **{idioma.name}**.")
 
+# --- COG DE CONFIGURACIÓN DEL SERVIDOR ---
+
+# (Las clases de los Modales de configuración van aquí primero)
+class WelcomeConfigModal(discord.ui.Modal, title='Configuración de Bienvenida'):
+    # ... (El código del Modal de bienvenida es exactamente el mismo, no es necesario copiarlo de nuevo si ya lo tienes) ...
+    def __init__(self, welcome_cog, default_message, default_banner):
+        super().__init__()
+        self.server_config_cog = welcome_cog # Cambiamos el nombre de la variable para mayor claridad
+        self.add_item(discord.ui.TextInput(
+            label="Mensaje de Bienvenida", style=discord.TextStyle.long,
+            placeholder="Usa {user.mention}, {user.name}, {server.name}, {member.count}",
+            default=default_message, required=True
+        ))
+        self.add_item(discord.ui.TextInput(
+            label="URL del Banner de Bienvenida",
+            placeholder="https://i.imgur.com/WwexK3G.png",
+            default=default_banner, required=False
+        ))
+    async def on_submit(self, interaction: discord.Interaction):
+        guild_id = interaction.guild.id
+        welcome_message = self.children[0].value
+        welcome_banner_url = self.children[1].value or self.server_config_cog.DEFAULT_WELCOME_BANNER
+        self.server_config_cog.save_welcome_settings(guild_id, message=welcome_message, banner_url=welcome_banner_url)
+        await interaction.response.send_message("✅ Configuración de bienvenida guardada.", ephemeral=True)
+
+
+class GoodbyeConfigModal(discord.ui.Modal, title='Configuración de Despedida'):
+    # ... (El código del Modal de despedida es exactamente el mismo) ...
+    def __init__(self, welcome_cog, default_message, default_banner):
+        super().__init__()
+        self.server_config_cog = welcome_cog
+        self.add_item(discord.ui.TextInput(
+            label="Mensaje de Despedida", style=discord.TextStyle.long,
+            placeholder="Usa {user.name}, {server.name}, {member.count}",
+            default=default_message, required=True
+        ))
+        self.add_item(discord.ui.TextInput(
+            label="URL del Banner de Despedida",
+            placeholder="https://i.imgur.com/WwexK3G.png",
+            default=default_banner, required=False
+        ))
+    async def on_submit(self, interaction: discord.Interaction):
+        guild_id = interaction.guild.id
+        goodbye_message = self.children[0].value
+        goodbye_banner_url = self.children[1].value or self.server_config_cog.DEFAULT_GOODBYE_BANNER
+        self.server_config_cog.save_goodbye_settings(guild_id, message=goodbye_message, banner_url=goodbye_banner_url)
+        await interaction.response.send_message("✅ Configuración de despedida guardada.", ephemeral=True)
+
+
+# RENOMBRAMOS EL COG PARA QUE TENGA MÁS SENTIDO A FUTURO
+class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
+    """Comandos para que los administradores configuren el bot en el servidor."""
+    
+    DEFAULT_WELCOME_MESSAGE = "¡Bienvenido a {server.name}, {user.mention}! 🎉"
+    DEFAULT_WELCOME_BANNER = "https://i.imgur.com/WwexK3G.png" 
+    DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima! 😢"
+    DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/WwexK3G.png"
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.conn = sqlite3.connect(DB_FILE)
+        self.cursor = self.conn.cursor()
+        self.setup_database()
+
+    def setup_database(self):
+        # Renombramos la tabla para que sea más genérica
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS server_settings (
+                guild_id INTEGER PRIMARY KEY,
+                welcome_channel_id INTEGER,
+                goodbye_channel_id INTEGER,
+                welcome_message TEXT,
+                welcome_banner_url TEXT,
+                goodbye_message TEXT,
+                goodbye_banner_url TEXT
+            )
+        ''')
+        self.conn.commit()
+    
+    def get_settings(self, guild_id: int):
+        self.cursor.execute("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
+        result = self.cursor.fetchone()
+        if result:
+            return {"guild_id": result[0], "welcome_channel_id": result[1], "goodbye_channel_id": result[2], "welcome_message": result[3], "welcome_banner_url": result[4], "goodbye_message": result[5], "goodbye_banner_url": result[6]}
+        return None
+
+    def save_welcome_settings(self, guild_id: int, channel_id: int = None, message: str = None, banner_url: str = None):
+        if not self.get_settings(guild_id): self.cursor.execute("INSERT INTO server_settings (guild_id) VALUES (?)", (guild_id,))
+        if channel_id: self.cursor.execute("UPDATE server_settings SET welcome_channel_id = ? WHERE guild_id = ?", (channel_id, guild_id))
+        if message: self.cursor.execute("UPDATE server_settings SET welcome_message = ? WHERE guild_id = ?", (message, guild_id))
+        if banner_url: self.cursor.execute("UPDATE server_settings SET welcome_banner_url = ? WHERE guild_id = ?", (banner_url, guild_id))
+        self.conn.commit()
+
+    def save_goodbye_settings(self, guild_id: int, channel_id: int = None, message: str = None, banner_url: str = None):
+        if not self.get_settings(guild_id): self.cursor.execute("INSERT INTO server_settings (guild_id) VALUES (?)", (guild_id,))
+        if channel_id: self.cursor.execute("UPDATE server_settings SET goodbye_channel_id = ? WHERE guild_id = ?", (channel_id, guild_id))
+        if message: self.cursor.execute("UPDATE server_settings SET goodbye_message = ? WHERE guild_id = ?", (message, guild_id))
+        if banner_url: self.cursor.execute("UPDATE server_settings SET goodbye_banner_url = ? WHERE guild_id = ?", (banner_url, guild_id))
+        self.conn.commit()
+
+    # --- Comandos ---
+    @commands.hybrid_command(name='setwelcomechannel', description="Establece el canal para los mensajes de bienvenida.")
+    @commands.has_permissions(manage_guild=True)
+    async def set_welcome_channel(self, ctx: commands.Context, canal: discord.TextChannel):
+        if not ctx.guild: return
+        self.save_welcome_settings(ctx.guild.id, channel_id=canal.id)
+        await ctx.send(f"✅ ¡Perfecto! Los mensajes de bienvenida se enviarán ahora en {canal.mention}.", ephemeral=True)
+
+    @commands.hybrid_command(name='setgoodbyechannel', description="Establece el canal para los mensajes de despedida.")
+    @commands.has_permissions(manage_guild=True)
+    async def set_goodbye_channel(self, ctx: commands.Context, canal: discord.TextChannel):
+        if not ctx.guild: return
+        self.save_goodbye_settings(ctx.guild.id, channel_id=canal.id)
+        await ctx.send(f"✅ ¡Perfecto! Los mensajes de despedida se enviarán ahora en {canal.mention}.", ephemeral=True)
+    
+    @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje y banner de bienvenida.")
+    @commands.has_permissions(manage_guild=True)
+    async def config_welcome(self, ctx: commands.Context):
+        if not ctx.guild: return
+        settings = self.get_settings(ctx.guild.id) or {}
+        await ctx.interaction.response.send_modal(WelcomeConfigModal(self, settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE, settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER))
+
+    @commands.hybrid_command(name='configgoodbye', description="Personaliza el mensaje y banner de despedida.")
+    @commands.has_permissions(manage_guild=True)
+    async def config_goodbye(self, ctx: commands.Context):
+        if not ctx.guild: return
+        settings = self.get_settings(ctx.guild.id) or {}
+        await ctx.interaction.response.send_modal(GoodbyeConfigModal(self, settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE, settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER))
+
+    @commands.hybrid_command(name='removeconfigs', description="Desactiva y resetea las configuraciones del servidor (bienvenidas, etc.).")
+    @commands.has_permissions(manage_guild=True)
+    async def remove_configs(self, ctx: commands.Context):
+        if not ctx.guild: return
+        self.cursor.execute("DELETE FROM server_settings WHERE guild_id = ?", (ctx.guild.id,))
+        self.conn.commit()
+        await ctx.send("🗑️ Se han desactivado y reseteado todas las configuraciones de bienvenida y despedida.", ephemeral=True)
+
+    # --- Listeners (Eventos) ---
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        settings = self.get_settings(member.guild.id)
+        if settings and (channel_id := settings.get("welcome_channel_id")):
+            if channel := self.bot.get_channel(channel_id):
+                message = (settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member=member)
+                banner_url = settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER
+                embed = discord.Embed(description=message, color=discord.Color.from_str("#F0EAD6"))
+                embed.set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url)
+                embed.set_thumbnail(url=member.display_avatar.url)
+                if banner_url: embed.set_image(url=banner_url)
+                embed.set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
+                try: await channel.send(embed=embed)
+                except discord.Forbidden: print(f"Error de permisos en el canal de bienvenida de {member.guild.name}")
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member):
+        settings = self.get_settings(member.guild.id)
+        if settings and (channel_id := settings.get("goodbye_channel_id")):
+            if channel := self.bot.get_channel(channel_id):
+                message = (settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member=member)
+                banner_url = settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER
+                embed = discord.Embed(description=message, color=discord.Color.from_str("#660000"))
+                embed.set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url)
+                if banner_url: embed.set_image(url=banner_url)
+                embed.set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
+                try: await channel.send(embed=embed)
+                except discord.Forbidden: print(f"Error de permisos en el canal de despedida de {member.guild.name}")
+
 # --- COG DE UTILIDAD ---
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
@@ -1065,6 +1232,7 @@ async def on_ready():
     await bot.add_cog(EconomyCog(bot))
     await bot.add_cog(LevelingCog(bot))
     await bot.add_cog(TTSCog(bot))
+    await bot.add_cog(ServerConfigCog(bot))
     print("Cogs cargados.")
     print("-----------------------------------------")
     print("Sincronizando comandos slash...")
