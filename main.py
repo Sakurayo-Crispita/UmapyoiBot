@@ -1059,11 +1059,63 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     async def create_reaction_role(self, ctx: commands.Context):
         await ctx.interaction.response.send_modal(ReactionRoleModal(self))
 
+    # --- INICIO DE LA CORRECCIÓN DE PERMISOS ---
     @commands.hybrid_group(name="automod", description="Configura las opciones de auto-moderación.")
-    @commands.has_permissions(manage_guild=True)
+    @commands.has_permissions(manage_guild=True) # Permiso para el grupo principal
     async def automod(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
             await ctx.send("Comando de automod inválido. Usa `/automod anti-invites` o `/automod badwords`.", ephemeral=True)
+
+    @automod.command(name="anti_invites", description="Activa o desactiva el borrado de invitaciones de Discord.")
+    @commands.has_permissions(manage_guild=True) # Permiso para el sub-comando
+    async def anti_invites(self, ctx: commands.Context, estado: Literal['on', 'off']):
+        is_on = 1 if estado == 'on' else 0
+        await self.save_setting(ctx.guild.id, 'automod_anti_invite', is_on)
+        await ctx.send(f"✅ El filtro anti-invitaciones ha sido **{estado}**.", ephemeral=True)
+
+    @automod.group(name="badwords", description="Gestiona la lista de palabras prohibidas.")
+    @commands.has_permissions(manage_guild=True) # Permiso para el sub-grupo
+    async def badwords(self, ctx: commands.Context):
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Comando de badwords inválido. Usa `/automod badwords add/remove/list`.", ephemeral=True)
+
+    @badwords.command(name="add", description="Añade una palabra a la lista de palabras prohibidas.")
+    @commands.has_permissions(manage_guild=True) # Permiso para el comando final
+    async def badwords_add(self, ctx: commands.Context, palabra: str):
+        settings = await self.get_settings(ctx.guild.id)
+        current_words_str = (settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "")
+        word_list = [word.strip() for word in current_words_str.split(',') if word.strip()]
+
+        if palabra.lower() not in word_list:
+            word_list.append(palabra.lower())
+            new_words_str = ",".join(word_list)
+            await self.save_setting(ctx.guild.id, 'automod_banned_words', new_words_str)
+            await ctx.send(f"✅ La palabra `{palabra}` ha sido añadida a la lista de palabras prohibidas.", ephemeral=True)
+        else:
+            await ctx.send(f"⚠️ La palabra `{palabra}` ya estaba en la lista.", ephemeral=True)
+
+    @badwords.command(name="remove", description="Quita una palabra de la lista de prohibidas.")
+    @commands.has_permissions(manage_guild=True) # Permiso para el comando final
+    async def badwords_remove(self, ctx: commands.Context, palabra: str):
+        settings = await self.get_settings(ctx.guild.id)
+        current_words_str = (settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "")
+        word_list = [word.strip() for word in current_words_str.split(',') if word.strip()]
+
+        if palabra.lower() in word_list:
+            word_list.remove(palabra.lower())
+            new_words_str = ",".join(word_list)
+            await self.save_setting(ctx.guild.id, 'automod_banned_words', new_words_str)
+            await ctx.send(f"✅ La palabra `{palabra}` ha sido eliminada de la lista.", ephemeral=True)
+        else:
+            await ctx.send(f"⚠️ La palabra `{palabra}` no se encontró en la lista.", ephemeral=True)
+
+    @badwords.command(name="list", description="Muestra la lista de palabras prohibidas.")
+    @commands.has_permissions(manage_guild=True) # Permiso para el comando final
+    async def badwords_list(self, ctx: commands.Context):
+        settings = await self.get_settings(ctx.guild.id)
+        words = (settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "La lista está vacía.")
+        await ctx.send(f"**Lista de palabras prohibidas:**\n`{words}`", ephemeral=True)
+    # --- FIN DE LA CORRECCIÓN DE PERMISOS ---
 
     @commands.hybrid_command(name='setcreatorchannel', description="Establece el canal de voz para crear salas temporales.")
     @commands.has_permissions(manage_guild=True)
@@ -1084,52 +1136,6 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         await self.save_setting(ctx.guild.id, 'leveling_enabled', is_on)
         status_text = "activado" if is_on else "desactivado"
         await ctx.send(f"✅ El sistema de niveles ha sido **{status_text}** en este servidor.", ephemeral=True)
-
-
-    @automod.command(name="anti_invites", description="Activa o desactiva el borrado de invitaciones de Discord.")
-    async def anti_invites(self, ctx: commands.Context, estado: Literal['on', 'off']):
-        is_on = 1 if estado == 'on' else 0
-        await self.save_setting(ctx.guild.id, 'automod_anti_invite', is_on)
-        await ctx.send(f"✅ El filtro anti-invitaciones ha sido **{estado}**.", ephemeral=True)
-
-    @automod.group(name="badwords", description="Gestiona la lista de palabras prohibidas.")
-    async def badwords(self, ctx: commands.Context):
-        if ctx.invoked_subcommand is None:
-            await ctx.send("Comando de badwords inválido. Usa `/automod badwords add/remove/list`.", ephemeral=True)
-
-    @badwords.command(name="add", description="Añade una palabra a la lista de palabras prohibidas.")
-    async def badwords_add(self, ctx: commands.Context, palabra: str):
-        settings = await self.get_settings(ctx.guild.id)
-        current_words_str = (settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "")
-        word_list = [word.strip() for word in current_words_str.split(',') if word.strip()]
-
-        if palabra.lower() not in word_list:
-            word_list.append(palabra.lower())
-            new_words_str = ",".join(word_list)
-            await self.save_setting(ctx.guild.id, 'automod_banned_words', new_words_str)
-            await ctx.send(f"✅ La palabra `{palabra}` ha sido añadida a la lista de palabras prohibidas.", ephemeral=True)
-        else:
-            await ctx.send(f"⚠️ La palabra `{palabra}` ya estaba en la lista.", ephemeral=True)
-
-    @badwords.command(name="remove", description="Quita una palabra de la lista de prohibidas.")
-    async def badwords_remove(self, ctx: commands.Context, palabra: str):
-        settings = await self.get_settings(ctx.guild.id)
-        current_words_str = (settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "")
-        word_list = [word.strip() for word in current_words_str.split(',') if word.strip()]
-
-        if palabra.lower() in word_list:
-            word_list.remove(palabra.lower())
-            new_words_str = ",".join(word_list)
-            await self.save_setting(ctx.guild.id, 'automod_banned_words', new_words_str)
-            await ctx.send(f"✅ La palabra `{palabra}` ha sido eliminada de la lista.", ephemeral=True)
-        else:
-            await ctx.send(f"⚠️ La palabra `{palabra}` no se encontró en la lista.", ephemeral=True)
-
-    @badwords.command(name="list", description="Muestra la lista de palabras prohibidas.")
-    async def badwords_list(self, ctx: commands.Context):
-        settings = await self.get_settings(ctx.guild.id)
-        words = (settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "La lista está vacía.")
-        await ctx.send(f"**Lista de palabras prohibidas:**\n`{words}`", ephemeral=True)
 
 
     async def log_event(self, guild_id, embed):
