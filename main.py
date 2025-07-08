@@ -390,15 +390,14 @@ class MusicCog(commands.Cog, name="Música"):
         if not ctx.author.voice or not ctx.author.voice.channel:
             return await self.send_response(ctx, "Debes estar en un canal de voz.", ephemeral=True)
 
-        # Usar defer() para interacciones de slash, que son más comunes
         if ctx.interaction:
             await ctx.interaction.response.defer()
 
         channel = ctx.author.voice.channel
         vc = await self.ensure_voice_client(channel)
-        if not vc: return await self.send_response(ctx, "❌ No pude conectarme al canal de voz.", ephemeral=True)
+        if not vc:
+            return await self.send_response(ctx, "❌ No pude conectarme al canal de voz.", ephemeral=True)
 
-        # La respuesta inicial varía si es comando de prefijo o slash
         if ctx.interaction:
             msg = await ctx.interaction.followup.send(f'🔎 Procesando: "**{search_query}**"...')
         else:
@@ -406,15 +405,27 @@ class MusicCog(commands.Cog, name="Música"):
 
         state = self.get_guild_state(ctx.guild.id)
         try:
+            # --- INICIO DE LA CORRECCIÓN ---
+            # Determinar si la entrada es una URL o una búsqueda de texto
+            is_url = re.match(r'https?://', search_query)
+            search_term = search_query if is_url else f"ytsearch:{search_query}"
+            # --- FIN DE LA CORRECCIÓN ---
+
             loop = self.bot.loop or asyncio.get_event_loop()
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                info = await loop.run_in_executor(None, lambda: ydl.extract_info(f"ytsearch:{search_query}", download=False))
+                # Usar el término de búsqueda corregido
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info(search_term, download=False))
 
-            entries = info.get('entries', [])
-            if not entries: return await msg.edit(content="❌ No encontré nada con esa búsqueda.")
+            # Si es una URL y no una búsqueda de playlist, la info puede no estar en 'entries'
+            if is_url and 'entries' not in info:
+                 entries = [info]
+            else:
+                 entries = info.get('entries', [])
 
-            is_playlist = 'playlist' in info.get('extractor', '')
-            songs_to_add = entries if is_playlist else [entries[0]]
+            if not entries:
+                return await msg.edit(content="❌ No encontré nada con esa búsqueda.")
+            
+            songs_to_add = entries
 
             added_count = 0
             for entry in songs_to_add:
@@ -431,14 +442,15 @@ class MusicCog(commands.Cog, name="Música"):
                     added_count += 1
 
             if added_count > 0:
-                await msg.edit(content=f'✅ ¡Añadido{"s" if added_count > 1 else ""} {added_count} canci{"ón" if added_count == 1 else "ones"} a la cola!')
+                playlist_msg = "de la playlist " if len(songs_to_add) > 1 and is_url else ""
+                await msg.edit(content=f'✅ ¡Añadido{"s" if added_count > 1 else ""} {added_count} canci{"ón" if added_count == 1 else "ones"} {playlist_msg}a la cola!')
             else:
                 await msg.edit(content="❌ No se pudieron procesar las canciones.")
 
             if not vc.is_playing() and not state.current_song:
                 self.play_next_song(ctx)
         except Exception as e:
-            await msg.edit(content=f'❌ Ocurrió un error al buscar la canción: {e}')
+            await msg.edit(content=f'❌ Ocurrió un error al procesar tu solicitud: {e}')
             print(f"Error en Play: {e}")
 
     @commands.hybrid_command(name='skip', description="Salta la canción actual.")
