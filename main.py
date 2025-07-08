@@ -1690,10 +1690,14 @@ class EconomyCog(commands.Cog, name="Economía"):
         self.conn = conn
         self.cursor = self.conn.cursor()
         self.db_lock = lock
+        # --- INICIO DE LA CORRECIÓN ---
+        # Creamos "mapeos" de cooldowns para work y rob, que guardarán el estado de cada usuario.
+        self._work_cd = commands.CooldownMapping.from_cooldown(1, 1.0, commands.BucketType.user)
+        self._rob_cd = commands.CooldownMapping.from_cooldown(1, 1.0, commands.BucketType.user)
+        # --- FIN DE LA CORRECIÓN ---
         self.setup_database()
 
     def setup_database(self):
-        # La tabla de balances ahora es por servidor para evitar conflictos entre servidores.
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS balances (
                 guild_id INTEGER, user_id INTEGER,
@@ -1701,7 +1705,6 @@ class EconomyCog(commands.Cog, name="Economía"):
                 PRIMARY KEY (guild_id, user_id)
             )
         ''')
-        # Nueva tabla para guardar la configuración de cada servidor.
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS economy_settings (
                 guild_id INTEGER PRIMARY KEY,
@@ -1717,24 +1720,19 @@ class EconomyCog(commands.Cog, name="Economía"):
         ''')
         self.conn.commit()
 
-    # --- FUNCIONES AUXILIARES ---
-
     async def get_guild_settings(self, guild_id: int) -> sqlite3.Row:
-        """Obtiene la configuración de economía para un servidor. Devuelve valores por defecto si no existe."""
         async with self.db_lock:
             self.cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
             settings = self.cursor.fetchone()
             if settings:
                 return settings
             else:
-                # Si no hay configuración, la creamos con valores por defecto y la devolvemos.
                 self.cursor.execute("INSERT INTO economy_settings (guild_id) VALUES (?)", (guild_id,))
                 self.conn.commit()
                 self.cursor.execute("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
                 return self.cursor.fetchone()
 
     async def get_balance(self, guild_id: int, user_id: int) -> int:
-        """Obtiene el balance de un usuario en un servidor específico."""
         async with self.db_lock:
             self.cursor.execute("SELECT balance FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
             result = self.cursor.fetchone()
@@ -1746,15 +1744,12 @@ class EconomyCog(commands.Cog, name="Economía"):
                 return 0
 
     async def update_balance(self, guild_id: int, user_id: int, amount: int):
-        """Actualiza el balance de un usuario en un servidor específico."""
         async with self.db_lock:
             current_balance = await self.get_balance(guild_id, user_id)
             new_balance = current_balance + amount
             self.cursor.execute("REPLACE INTO balances (guild_id, user_id, balance) VALUES (?, ?, ?)", (guild_id, user_id, new_balance))
             self.conn.commit()
             return new_balance
-
-    # --- COMANDOS PARA USUARIOS ---
 
     @commands.hybrid_command(name='daily', description="Reclama tu recompensa diaria.")
     @commands.cooldown(1, 86400, commands.BucketType.user)
@@ -1782,15 +1777,20 @@ class EconomyCog(commands.Cog, name="Economía"):
         else:
             await ctx.send(f"Ocurrió un error: {error}", ephemeral=True)
             raise error
-
+            
+    # --- INICIO DEL COMANDO /work CORREGIDO ---
     @commands.hybrid_command(name='work', description="Trabaja para ganar un dinero extra.")
     async def work(self, ctx: commands.Context):
         if not ctx.guild: return
-        # El cooldown se maneja dinámicamente
+        
         settings = await self.get_guild_settings(ctx.guild.id)
-        # Aplicamos el cooldown dinámicamente
-        bucket = commands.Cooldown(1, settings['work_cooldown'])
-        retry_after = bucket.update_rate_limit(ctx.message)
+        # Obtenemos el "bucket" (el registro de cooldown para este usuario)
+        bucket = self._work_cd.get_bucket(ctx.message)
+        # Actualizamos el tiempo de espera del bucket con el valor del servidor
+        bucket.per = settings['work_cooldown']
+        # Comprobamos si el usuario está en cooldown
+        retry_after = bucket.update_rate_limit()
+
         if retry_after:
             m, s = divmod(retry_after, 60)
             return await ctx.send(f"Estás cansado de tanto trabajar. Descansa un poco y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
@@ -1805,17 +1805,22 @@ class EconomyCog(commands.Cog, name="Economía"):
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
-        
+    # --- FIN DEL COMANDO /work CORREGIDO ---
+
+    # --- INICIO DEL COMANDO /rob CORREGIDO ---
     @commands.hybrid_command(name='rob', description="Intenta robarle a otro usuario. ¡Cuidado, puedes fallar!")
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
         if not ctx.guild: return
+        
         settings = await self.get_guild_settings(ctx.guild.id)
-
-        # Aplicamos el cooldown dinámicamente
-        bucket = commands.Cooldown(1, settings['rob_cooldown'])
-        retry_after = bucket.update_rate_limit(ctx.message)
+        # Misma lógica de corrección que en /work
+        bucket = self._rob_cd.get_bucket(ctx.message)
+        bucket.per = settings['rob_cooldown']
+        retry_after = bucket.update_rate_limit()
+        
         if retry_after:
-            h, m = divmod(retry_after, 60*60)
+            h, m_total = divmod(retry_after, 3600)
+            m, s = divmod(m_total, 60)
             return await ctx.send(f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m** para planear el siguiente.", ephemeral=True)
             
         if miembro.id == ctx.author.id:
@@ -1831,19 +1836,19 @@ class EconomyCog(commands.Cog, name="Economía"):
         if victim_balance < 100:
             return await ctx.send(f"{miembro.display_name} no tiene suficiente dinero para que valga la pena robarle.", ephemeral=True)
 
-        # 50% de probabilidad de éxito
-        if random.choice([True, False]):
-            amount_stolen = int(victim_balance * random.uniform(0.1, 0.25)) # Roba entre el 10% y 25%
+        if random.choice([True, False]): # 50% de probabilidad
+            amount_stolen = int(victim_balance * random.uniform(0.1, 0.25))
             await self.update_balance(ctx.guild.id, ctx.author.id, amount_stolen)
             await self.update_balance(ctx.guild.id, miembro.id, -amount_stolen)
             embed = discord.Embed(title="🎭 ¡Robo Exitoso!", description=f"¡Qué sigilo! Le has robado **{amount_stolen} {settings['currency_name']}** a {miembro.mention}.", color=discord.Color.dark_green())
         else:
-            amount_lost = int(robber_balance * random.uniform(0.05, 0.15)) # Pierde entre el 5% y 15%
-            amount_lost = max(50, amount_lost) # Pierde como mínimo 50
+            amount_lost = int(robber_balance * random.uniform(0.05, 0.15))
+            amount_lost = max(50, amount_lost)
             await self.update_balance(ctx.guild.id, ctx.author.id, -amount_lost)
             embed = discord.Embed(title="🚓 ¡Te Pillaron!", description=f"¡Torpe! {miembro.mention} te vio venir y llamó a la policía. Perdiste **{amount_lost} {settings['currency_name']}**.", color=discord.Color.dark_red())
             
         await ctx.send(embed=embed)
+    # --- FIN DEL COMANDO /rob CORREGIDO ---
 
     @commands.hybrid_command(name='shop', description="Muestra los artículos disponibles en la tienda.")
     async def shop(self, ctx: commands.Context):
@@ -1853,7 +1858,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         embed.set_footer(text="¡Vuelve pronto para ver nuevos artículos!")
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='balance', aliases=['bal'], description="Muestra cuántos Umapesos tienes.")
+    @commands.hybrid_command(name='balance', aliases=['bal'], description="Muestra el balance de un usuario.")
     async def balance(self, ctx: commands.Context, miembro: discord.Member | None = None):
         if not ctx.guild: return
         await ctx.defer(ephemeral=True)
@@ -1918,15 +1923,23 @@ class EconomyCog(commands.Cog, name="Economía"):
         )
         await ctx.send(embed=embed)
 
-    # --- COMANDOS DE CONFIGURACIÓN ---
     @commands.hybrid_group(name="econconfig", description="Configura la economía del servidor.")
     @commands.has_permissions(administrator=True)
     async def econconfig(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
-            await ctx.send("Comando inválido. Usa `/econconfig currency`, `/econconfig daily`, etc.", ephemeral=True)
+            settings = await self.get_guild_settings(ctx.guild.id)
+            embed = discord.Embed(title="⚙️ Configuración de Economía Actual", color=CREAM_COLOR)
+            embed.add_field(name="Moneda", value=f"{settings['currency_name']} {settings['currency_emoji']}", inline=False)
+            embed.add_field(name="Ganancia Diaria (/daily)", value=f"Entre {settings['daily_min']} y {settings['daily_max']}", inline=False)
+            embed.add_field(name="Ganancia por Trabajo (/work)", value=f"Entre {settings['work_min']} y {settings['work_max']}", inline=True)
+            embed.add_field(name="Cooldown de /work", value=f"{settings['work_cooldown']/3600} horas", inline=True)
+            embed.add_field(name="Cooldown de /rob", value=f"{settings['rob_cooldown']/3600} horas", inline=False)
+            embed.set_footer(text="Usa los subcomandos para cambiar estos valores.")
+            await ctx.send(embed=embed, ephemeral=True)
 
     @econconfig.command(name="currency", description="Establece el nombre y emoji de la moneda.")
     async def currency(self, ctx: commands.Context, nombre: str, emoji: str):
+        if not ctx.guild: return
         async with self.db_lock:
             self.cursor.execute("UPDATE economy_settings SET currency_name = ?, currency_emoji = ? WHERE guild_id = ?", (nombre, emoji, ctx.guild.id))
             self.conn.commit()
@@ -1934,6 +1947,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         
     @econconfig.command(name="daily", description="Configura el rango de ganancia del comando /daily.")
     async def daily_config(self, ctx: commands.Context, minimo: int, maximo: int):
+        if not ctx.guild: return
         if minimo <= 0 or maximo <= minimo:
             return await ctx.send("El valor mínimo debe ser mayor que 0 y el máximo debe ser mayor que el mínimo.", ephemeral=True)
         async with self.db_lock:
@@ -1943,6 +1957,7 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     @econconfig.command(name="work", description="Configura la ganancia y cooldown del comando /work.")
     async def work_config(self, ctx: commands.Context, minimo: int, maximo: int, cooldown_en_horas: float):
+        if not ctx.guild: return
         if minimo <= 0 or maximo <= minimo:
             return await ctx.send("El valor mínimo debe ser mayor que 0 y el máximo debe ser mayor que el mínimo.", ephemeral=True)
         cooldown_seconds = int(cooldown_en_horas * 3600)
@@ -1953,12 +1968,13 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     @econconfig.command(name="rob", description="Configura el cooldown del comando /rob en horas.")
     async def rob_config(self, ctx: commands.Context, cooldown_en_horas: float):
+        if not ctx.guild: return
         cooldown_seconds = int(cooldown_en_horas * 3600)
         async with self.db_lock:
             self.cursor.execute("UPDATE economy_settings SET rob_cooldown = ? WHERE guild_id = ?", (cooldown_seconds, ctx.guild.id))
             self.conn.commit()
         await ctx.send(f"✅ Cooldown de `/rob` actualizado a **{cooldown_en_horas} hora(s)**.", ephemeral=True)
-
+        
 # --- COG DE JUEGOS Y APUESTAS ---
 class BlackJackView(discord.ui.View):
     def __init__(self, cog: 'GamblingCog', ctx: commands.Context, bet: int):
