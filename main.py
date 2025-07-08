@@ -837,7 +837,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.conn = sqlite3.connect(DB_FILE)
         self.cursor = self.conn.cursor()
         self.setup_database()
-        
+
     def setup_database(self):
         # VERSIÓN CORREGIDA SIN LA COMA EXTRA AL FINAL
         self.cursor.execute('''
@@ -1640,6 +1640,11 @@ async def on_message(message: discord.Message):
     # Ignorar mensajes de bots y mensajes privados
     if message.author.bot or not message.guild:
         return
+    
+    # 2. Obtener los Cogs importantes al principio.
+    config_cog = bot.get_cog("Configuración del Servidor")
+    level_cog = bot.get_cog("Niveles")
+    tts_cog = bot.get_cog("Texto a Voz")
 
     # --- NUEVA LÓGICA DE AUTOMOD ---
     # No aplicar automod a moderadores
@@ -1665,10 +1670,6 @@ async def on_message(message: discord.Message):
 
     # Procesar comandos primero
     await bot.process_commands(message)
-
-    # Si el mensaje es un comando, no procesar XP ni TTS
-    if message.content.startswith(bot.command_prefix):
-        return
     
      # 3. Crear un "contexto" para saber si el mensaje fue un comando
     ctx = await bot.get_context(message)
