@@ -131,7 +131,9 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         settings = await self.get_settings(member.guild.id)
-        if not settings or not (creator_id := settings.get("temp_channel_creator_id")): return
+        if not settings or not settings["temp_channel_creator_id"]: return
+        
+        creator_id = settings["temp_channel_creator_id"]
         if after.channel and after.channel.id == creator_id:
             overwrites = { member.guild.default_role: discord.PermissionOverwrite(view_channel=True), member: discord.PermissionOverwrite(view_channel=True, manage_channels=True, manage_permissions=True, move_members=True) }
             try:
@@ -146,15 +148,15 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     async def on_member_join(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
         if not settings: return
-        if channel_id := settings.get("welcome_channel_id"):
+        if channel_id := settings["welcome_channel_id"]:
             if channel := self.bot.get_channel(channel_id):
-                msg = (settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
-                banner = settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER
+                msg = (settings["welcome_message"] or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                banner = settings["welcome_banner_url"] or self.DEFAULT_WELCOME_BANNER
                 embed = discord.Embed(description=msg, color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                 if banner: embed.set_image(url=banner)
                 try: await channel.send(embed=embed)
                 except discord.Forbidden: pass
-        if role_id := settings.get("autorole_id"):
+        if role_id := settings["autorole_id"]:
             if role := member.guild.get_role(role_id):
                 try: await member.add_roles(role, reason="Autorol al unirse")
                 except discord.Forbidden: pass
@@ -162,10 +164,10 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
-        if settings and (channel_id := settings.get("goodbye_channel_id")):
+        if settings and (channel_id := settings["goodbye_channel_id"]):
             if channel := self.bot.get_channel(channel_id):
-                msg = (settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
-                banner = settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER
+                msg = (settings["goodbye_message"] or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                banner = settings["goodbye_banner_url"] or self.DEFAULT_GOODBYE_BANNER
                 embed = discord.Embed(description=msg, color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                 if banner: embed.set_image(url=banner)
                 try: await channel.send(embed=embed)

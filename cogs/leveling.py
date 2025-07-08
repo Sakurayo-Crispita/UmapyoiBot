@@ -90,7 +90,7 @@ class LevelingCog(commands.Cog, name="Niveles"):
         config_cog = self.bot.get_cog("Configuración del Servidor")
         if not config_cog: return
         settings = await config_cog.get_settings(message.guild.id)
-        if settings and settings.get("leveling_enabled", 1):
+        if settings and settings["leveling_enabled"]:
             await self.process_xp(message)
 
     async def process_xp(self, message: discord.Message):
