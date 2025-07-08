@@ -1645,40 +1645,42 @@ class EconomyCog(commands.Cog, name="Economía"):
         await ctx.send(embed=embed)
 
 # --- COG DE JUEGOS Y APUESTAS ---
-
 class BlackJackView(discord.ui.View):
     def __init__(self, cog: 'GamblingCog', ctx: commands.Context, bet: int):
         super().__init__(timeout=120.0)
         self.cog = cog
-        self.ctx = ctx
-        self.author = ctx.author  # Guardamos quién inició el juego
+        # No necesitamos guardar todo el contexto, solo el autor para los checks
+        self.author = ctx.author
         self.bet = bet
         self.player_hand = [self.cog.deal_card(), self.cog.deal_card()]
         self.dealer_hand = [self.cog.deal_card(), self.cog.deal_card()]
-        self.update_buttons()
+        # El atributo self.message se asignará automáticamente cuando se envíe la vista.
+        self.message: Optional[discord.Message] = None
 
-    # --- INICIO DE LA CORRECCIÓN ---
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # Comprueba si el usuario que interactúa es el autor original del comando
         if interaction.user.id != self.author.id:
-            # Envía un mensaje oculto al usuario que intentó pulsar el botón
             await interaction.response.send_message("No puedes interactuar con el juego de otra persona.", ephemeral=True, delete_after=10)
-            return False  # Deniega la interacción
-        return True  # Permite la interacción
-    # --- FIN DE LA CORRECCIÓN ---
+            return False
+        return True
 
     async def on_timeout(self):
-        # Desactiva los botones y avisa que el juego terminó cuando se acaba el tiempo
+        # Cuando se acaba el tiempo, desactivamos los botones
         for item in self.children:
             item.disabled = True
         
         timeout_embed = self.create_embed()
         timeout_embed.description = "⌛ El juego ha terminado por inactividad."
-        # Usamos try/except por si el mensaje original fue borrado
-        try:
-            await self.ctx.edit_original_response(embed=timeout_embed, view=self)
-        except discord.NotFound:
-            pass
+        
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Usamos self.message.edit() que es el método correcto para editar
+        # el mensaje al que está adjunta esta vista.
+        if self.message:
+            try:
+                await self.message.edit(embed=timeout_embed, view=self)
+            except discord.NotFound:
+                pass # El mensaje original fue borrado, no hay nada que hacer.
+        # --- FIN DE LA CORRECCIÓN ---
 
     def update_buttons(self):
         player_score = self.cog.calculate_score(self.player_hand)
@@ -1691,17 +1693,15 @@ class BlackJackView(discord.ui.View):
     async def hit(self, interaction: discord.Interaction, _: discord.ui.Button):
         self.player_hand.append(self.cog.deal_card())
         self.update_buttons()
-        # Usamos la interacción del botón para editar el mensaje
         await interaction.response.edit_message(embed=self.create_embed(), view=self)
         if self.cog.calculate_score(self.player_hand) >= 21:
+            # Pasamos la interacción para que el final del juego pueda responder.
             await self.cog.end_blackjack_game(interaction, self)
 
     @discord.ui.button(label="Plantarse", style=discord.ButtonStyle.danger, emoji="🛑")
     async def stand(self, interaction: discord.Interaction, _: discord.ui.Button):
         for item in self.children:
-            if isinstance(item, discord.ui.Button):
-                item.disabled = True
-        # Usamos la interacción del botón para editar la vista (desactivar botones)
+            item.disabled = True
         await interaction.response.edit_message(view=self)
         await self.cog.end_blackjack_game(interaction, self)
 
@@ -1719,7 +1719,7 @@ class BlackJackView(discord.ui.View):
 
         embed.set_footer(text=f"Apuesta: {self.bet} Umapesos")
         return embed
-
+    
 class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
     """Juegos para apostar tus Umapesos y probar tu suerte."""
     def __init__(self, bot: UmapyoiBot, conn: sqlite3.Connection, lock: asyncio.Lock):
