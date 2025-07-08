@@ -105,23 +105,25 @@ class GuildState:
         self.active_panel: discord.Message | None = None
 
 class HelpSelect(discord.ui.Select):
+    """El menú desplegable para el panel de ayuda interactivo."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         options = [discord.SelectOption(label="Inicio", description="Vuelve al panel principal de ayuda.", emoji="🏠")]
         if bot.cogs:
-            # Ordenar los cogs alfabéticamente por nombre
             sorted_cogs = sorted(bot.cogs.items())
             for cog_name, cog in sorted_cogs:
-                # Solo mostrar cogs que tengan comandos públicos
-                if len(cog.get_commands()) > 0:
+                # Solo mostrar cogs que tengan comandos de app visibles
+                if any(isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden for cmd in cog.get_commands()):
                     options.append(discord.SelectOption(label=cog_name, description=getattr(cog, "description", "Sin descripción."), emoji="➡️"))
         super().__init__(placeholder="Selecciona una categoría para ver los comandos...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         selected_cog_name = self.values[0]
-        embed = discord.Embed(title=f"📜 Ayuda de Umapyoi", color=CREAM_COLOR)
-        
+        # Crear un nuevo embed para la respuesta
+        embed = discord.Embed(color=CREAM_COLOR)
+
         if selected_cog_name == "Inicio":
+            embed.title = "📜 Ayuda de Umapyoi"
             embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
             embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
@@ -130,20 +132,22 @@ class HelpSelect(discord.ui.Select):
             if cog:
                 embed.title = f"Comandos de: {selected_cog_name}"
                 description = ""
-                # Ordenar los comandos alfabéticamente
                 command_list = sorted(cog.get_commands(), key=lambda c: c.name)
                 for cmd in command_list:
-                    if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden:
-                        if cmd.name != 'help': # Excluir el grupo de ayuda de su propia categoría
-                            description += f"**`/{cmd.name}`** - {cmd.description}\n"
-                embed.description = description
-        
+                    # Comprobar que sea un comando de app visible y no el propio grupo de ayuda
+                    if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden and cmd.name != 'help':
+                        description += f"**`/{cmd.name}`** - {cmd.description}\n"
+                embed.description = description or "Esta categoría no tiene comandos para mostrar."
+
+        # Editar el mensaje original con el nuevo embed
         await interaction.response.edit_message(embed=embed)
 
 class HelpView(discord.ui.View):
+    """La vista que contiene el menú desplegable de ayuda."""
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=180)
         self.add_item(HelpSelect(bot))
+
 
 class MusicPanelView(discord.ui.View):
     """Vista de panel de música independiente del contexto original."""
