@@ -251,7 +251,7 @@ class MusicPanelView(discord.ui.View):
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
     async def leave_button(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self._execute_command(interaction, 'leave')
-        
+
 # --- COG DE MÚSICA ---
 class MusicCog(commands.Cog, name="Música"):
     """Comandos para reproducir música de alta calidad."""
@@ -1264,8 +1264,14 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     @commands.is_owner()
     async def announce(self, ctx: commands.Context, *, mensaje: str):
         """Envía un anuncio a todos los servidores donde está el bot."""
-        await ctx.defer(ephemeral=True)
         
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Primero, verificamos si es una interacción de slash command para poder usar defer()
+        if ctx.interaction:
+            await ctx.defer(ephemeral=True)
+        # Si es un comando de prefijo, no hacemos nada aquí y el bot responde al final.
+        # --- FIN DE LA CORRECCIÓN ---
+
         embed = discord.Embed(
             title="📢 Anuncio del Bot",
             description=mensaje,
@@ -1279,8 +1285,10 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
         for guild in self.bot.guilds:
             target_channel = None
+            # Intentar usar el canal del sistema (donde se dan las bienvenidas)
             if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
                 target_channel = guild.system_channel
+            # Si no, buscar el primer canal de texto disponible
             else:
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).send_messages:
@@ -1291,13 +1299,18 @@ class UtilityCog(commands.Cog, name="Utilidad"):
                 try:
                     await target_channel.send(embed=embed)
                     successful_sends += 1
-                except Exception:
+                except Exception as e:
+                    print(f"No se pudo enviar anuncio a '{guild.name}' (ID: {guild.id}). Error: {e}")
                     failed_sends += 1
             else:
+                print(f"No se encontró un canal válido en '{guild.name}' (ID: {guild.id}).")
                 failed_sends += 1
 
-        await ctx.send(f"✅ Anuncio enviado con éxito a **{successful_sends} servidores**.\n❌ Falló en **{failed_sends} servidores**.", ephemeral=True)
+        response_message = f"✅ Anuncio enviado con éxito a **{successful_sends} servidores**.\n❌ Falló en **{failed_sends} servidores**."
 
+        # Enviamos la respuesta final. `ctx.send` es lo suficientemente inteligente
+        # para manejar tanto slash como prefix commands si el defer() se hizo correctamente.
+        await ctx.send(response_message, ephemeral=True)
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
