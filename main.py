@@ -732,6 +732,7 @@ class LevelingCog(commands.Cog, name="Niveles"):
 
     @commands.hybrid_command(name='set_level_role', description="Asigna un rol como recompensa por alcanzar un nivel.")
     @commands.has_permissions(administrator=True)
+    @commands.bot_has_permissions(manage_roles=True)
     async def set_level_role(self, ctx: commands.Context, nivel: int, rol: discord.Role):
         if not ctx.guild: return await ctx.send("Este comando solo se puede usar en un servidor.")
         async with self.db_lock:
@@ -1034,6 +1035,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 
     @commands.hybrid_command(name='setautorole', description="Establece un rol para asignar a nuevos miembros.")
     @commands.has_permissions(manage_guild=True)
+    @commands.bot_has_permissions(manage_roles=True)
     async def set_autorole(self, ctx: commands.Context, rol: discord.Role):
         await self.save_setting(ctx.guild.id, 'autorole_id', rol.id)
         await ctx.send(f"✅ El rol {rol.mention} se asignará automáticamente a los nuevos miembros.", ephemeral=True)
@@ -1056,6 +1058,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 
     @commands.hybrid_command(name='createreactionrole', description="Crea un nuevo rol por reacción.")
     @commands.has_permissions(manage_guild=True)
+    @commands.bot_has_permissions(manage_roles=True)
     async def create_reaction_role(self, ctx: commands.Context):
         await ctx.interaction.response.send_modal(ReactionRoleModal(self))
 
@@ -1119,6 +1122,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 
     @commands.hybrid_command(name='setcreatorchannel', description="Establece el canal de voz para crear salas temporales.")
     @commands.has_permissions(manage_guild=True)
+    @commands.bot_has_permissions(manage_roles=True)
     async def set_creator_channel(self, ctx: commands.Context, canal: discord.VoiceChannel):
         await self.save_setting(ctx.guild.id, 'temp_channel_creator_id', canal.id)
         await ctx.send(f"✅ ¡Perfecto! Ahora, quien se una a **{canal.name}** creará su propia sala de voz.", ephemeral=True)
@@ -1413,6 +1417,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
     @commands.hybrid_command(name='say', description="Hace que el bot repita tu mensaje.")
     @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_roles=True)
     async def say(self, ctx: commands.Context, *, mensaje: str):
         if ctx.interaction:
             await ctx.interaction.response.send_message("Mensaje enviado.", ephemeral=True)
