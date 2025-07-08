@@ -1903,20 +1903,40 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     # --- COMANDOS DE BANCO ---
     @commands.hybrid_command(name='deposit', aliases=['dep'], description="Deposita dinero de tu cartera al banco.")
-    async def deposit(self, ctx: commands.Context, cantidad: int | Literal['all']):
+    async def deposit(self, ctx: commands.Context, cantidad: str):
         if not await self.is_economy_active(ctx): return
+
         wallet, bank = await self.get_balance(ctx.guild.id, ctx.author.id)
-        amount_to_deposit = wallet if cantidad == 'all' else int(cantidad)
+
+        # Convertimos el texto a número, o usamos el total si es 'all'
+        if cantidad.lower() == 'all':
+            amount_to_deposit = wallet
+        else:
+            try:
+                amount_to_deposit = int(cantidad)
+            except ValueError:
+                return await ctx.send("Por favor, introduce un número válido o la palabra 'all'.", ephemeral=True)
+
         if amount_to_deposit <= 0: return await ctx.send("Debes depositar una cantidad positiva.", ephemeral=True)
         if wallet < amount_to_deposit: return await ctx.send(f"No tienes suficiente dinero. Cartera: **{wallet}**.", ephemeral=True)
         await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-amount_to_deposit, bank_change=amount_to_deposit)
         await ctx.send(f"🏦 Has depositado **{amount_to_deposit}**. Tu banco ahora tiene **{bank + amount_to_deposit}**.", ephemeral=True)
 
     @commands.hybrid_command(name='withdraw', description="Retira dinero de tu banco a tu cartera.")
-    async def withdraw(self, ctx: commands.Context, cantidad: int | Literal['all']):
+    async def withdraw(self, ctx: commands.Context, cantidad: str):
         if not await self.is_economy_active(ctx): return
-        wallet, bank = await self.get_balance(ctx.guild.id, ctx.author.id)
-        amount_to_withdraw = bank if cantidad == 'all' else int(cantidad)
+
+        _, bank = await self.get_balance(ctx.guild.id, ctx.author.id)
+
+        # Convertimos el texto a número, o usamos el total si es 'all'
+        if cantidad.lower() == 'all':
+            amount_to_withdraw = bank
+        else:
+            try:
+                amount_to_withdraw = int(cantidad)
+            except ValueError:
+                return await ctx.send("Por favor, introduce un número válido o la palabra 'all'.", ephemeral=True)
+
         if amount_to_withdraw <= 0: return await ctx.send("Debes retirar una cantidad positiva.", ephemeral=True)
         if bank < amount_to_withdraw: return await ctx.send(f"No tienes suficiente dinero en el banco. Banco: **{bank}**.", ephemeral=True)
         new_wallet, _ = await self.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount_to_withdraw, bank_change=-amount_to_withdraw)
