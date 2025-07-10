@@ -78,7 +78,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             "juegos": "Juegos e IA",
             "interaccion": "Interacción",
             "nsfw": "NSFW",
-            "moderacion": "Moderacion",
+            "moderacion": "Moderación",
             "configuracion": "Configuración del Servidor",
             "tts": "Texto a Voz",
             "utilidad": "Utilidad"
