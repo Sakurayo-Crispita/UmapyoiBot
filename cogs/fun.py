@@ -6,10 +6,24 @@ from io import BytesIO
 from typing import Literal, Optional
 import aiohttp
 from utils.constants import WANTED_TEMPLATE_URL
+# Importamos nuestros helpers de API
 from utils.api_helpers import ask_gemini, search_anime
 
-# Importamos nuestros nuevos helpers de API
-from utils.api_helpers import ask_gemini, search_anime
+# --- DICCIONARIOS DE TRADUCCIÓN ---
+# Para traducir campos que vienen en inglés de la API
+STATUS_TRANSLATIONS = {
+    "Finished Airing": "Finalizado",
+    "Currently Airing": "En Emisión",
+    "Not yet aired": "Próximamente"
+}
+
+GENRE_TRANSLATIONS = {
+    "Action": "Acción", "Adventure": "Aventura", "Comedy": "Comedia", "Drama": "Drama",
+    "Sci-Fi": "Ciencia Ficción", "Fantasy": "Fantasía", "Horror": "Terror", "Romance": "Romance",
+    "Mystery": "Misterio", "Slice of Life": "Recuentos de la vida", "Supernatural": "Sobrenatural",
+    "Sports": "Deportes", "Suspense": "Suspense", "Award Winning": "Galardonado"
+}
+
 
 class FunCog(commands.Cog, name="Juegos e IA"):
     """Comandos de juegos, IA y otros entretenimientos."""
@@ -31,7 +45,6 @@ class FunCog(commands.Cog, name="Juegos e IA"):
     async def anime(self, ctx: commands.Context, *, nombre: str):
         await ctx.defer()
         
-        # Llamamos a nuestra función de ayuda centralizada
         anime_data = await search_anime(nombre)
 
         if not anime_data:
@@ -40,14 +53,35 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         if "error" in anime_data:
             return await ctx.send(f"❌ Hubo un error con la API (Código: {anime_data['error']}). Inténtalo de nuevo más tarde.", ephemeral=True)
 
-        synopsis = anime_data.get('synopsis', 'No hay sinopsis disponible.')
-        if len(synopsis) > 1000:
-            synopsis = synopsis[:1000] + "..."
+        # --- LÓGICA DE TRADUCCIÓN ---
 
+        # 1. Buscar el título en español
+        title_es = next((t['title'] for t in anime_data.get('titles', []) if t['type'] == 'Spanish'), None)
+        display_title = title_es or anime_data.get('title', 'N/A')
+
+        # 2. Traducir la sinopsis usando la IA
+        synopsis_en = anime_data.get('synopsis', 'No hay sinopsis disponible.')
+        if synopsis_en and len(synopsis_en) > 20: # Solo traducir si hay algo sustancial
+            prompt = f"Traduce el siguiente resumen de un anime al español de forma natural y atractiva:\n\n---\n{synopsis_en}\n---"
+            synopsis_es = await ask_gemini(self.bot.GEMINI_API_KEY, prompt)
+        else:
+            synopsis_es = "No hay sinopsis disponible."
+
+        if len(synopsis_es) > 1024:
+            synopsis_es = synopsis_es[:1021] + "..."
+        
+        # 3. Traducir estado y géneros
+        status_en = anime_data.get('status', 'N/A')
+        status_es = STATUS_TRANSLATIONS.get(status_en, status_en)
+
+        genres_en = [genre['name'] for genre in anime_data.get('genres', [])]
+        genres_es = [GENRE_TRANSLATIONS.get(g, g) for g in genres_en]
+
+        # --- CREACIÓN DEL EMBED EN ESPAÑOL ---
         embed = discord.Embed(
-            title=anime_data.get('title', 'N/A'),
+            title=display_title,
             url=anime_data.get('url', ''),
-            description=synopsis,
+            description=synopsis_es,
             color=discord.Color.blue()
         )
 
@@ -56,11 +90,10 @@ class FunCog(commands.Cog, name="Juegos e IA"):
 
         embed.add_field(name="Puntuación", value=f"⭐ {anime_data.get('score', 'N/A')}", inline=True)
         embed.add_field(name="Episodios", value=anime_data.get('episodes', 'N/A'), inline=True)
-        embed.add_field(name="Estado", value=anime_data.get('status', 'N/A'), inline=True)
+        embed.add_field(name="Estado", value=status_es, inline=True)
 
-        genres = [genre['name'] for genre in anime_data.get('genres', [])]
-        if genres:
-            embed.add_field(name="Géneros", value=", ".join(genres), inline=False)
+        if genres_es:
+            embed.add_field(name="Géneros", value=", ".join(genres_es), inline=False)
 
         embed.set_footer(text=f"Fuente: MyAnimeList | ID: {anime_data.get('mal_id')}")
 
@@ -94,7 +127,6 @@ class FunCog(commands.Cog, name="Juegos e IA"):
                     if resp.status != 200: return await ctx.send("❌ No pude descargar el avatar.")
                     avatar_bytes = await resp.read()
             
-            # Usamos run_in_executor para no bloquear el bot con el procesamiento de imagen
             buffer = await self.bot.loop.run_in_executor(None, self.process_wanted_image, template_bytes, avatar_bytes)
             
             file = discord.File(buffer, filename="wanted.png")

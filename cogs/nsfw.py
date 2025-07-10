@@ -48,10 +48,12 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "{author} y {target} lo están haciendo apasionadamente.",
             "¡Las cosas se pusieron calientes! {author} está teniendo sexo con {target}.",
             "{target} está recibiendo todo el amor de {author}.",
-            "{author} y {target} están enredados en un acto de pura pasión.",
             "La habitación se llena de gemidos mientras {author} se une a {target}.",
             "{target} se entrega por completo al placer que {author} le está dando.",
             "Una conexión íntima y salvaje entre {author} y {target}.",
+            "{author} y {target} están enredados en un acto de pura pasión.",
+            "Los cuerpos de {author} y {target} se mueven al unísono.",
+            "El deseo se desborda en este encuentro entre {author} y {target}.",
         ]
         await get_interactive_gif(ctx, "fuck", "nsfw", target=miembro, action_templates=action_phrases)
 
@@ -64,8 +66,9 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "¡Un final feliz! {author} terminó sobre {target}.",
             "{author} llega al clímax, cubriendo a {target} con su esencia.",
             "Un final explosivo para {target}, cortesía de {author}.",
-            "{target} recibe una cálida recompensa de {author}.",
+            "{target} recibe una cálida y pegajosa recompensa de {author}.",
             "La pasión de {author} culmina sobre el cuerpo de {target}.",
+            "Un desastre placentero ha sido creado por {author} sobre {target}.",
         ]
         await get_interactive_gif(ctx, "cum", "nsfw", target=miembro, action_templates=action_phrases)
 
@@ -78,7 +81,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "{target} se estremece ante el hábil toque de {author}.",
             "{author} sabe exactamente cómo usar sus manos para llevar a {target} al límite.",
             "Un trabajo manual experto de {author} para el deleite de {target}.",
-            "El ritmo de {author} enloquece a {target}.",
+            "El ritmo de las manos de {author} está volviendo loco/a a {target}.",
+            "{target} gime de placer gracias a la maestría de {author}.",
         ]
         await get_interactive_gif(ctx, "handjob", "nsfw", target=miembro, action_templates=action_phrases)
 
@@ -90,8 +94,9 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "¡Por la puerta de atrás! {author} y {target} tienen una sesión anal.",
             "{author} explora las profundidades de {target} con una intensidad ardiente.",
             "Un encuentro apasionado por la puerta trasera entre {author} y {target}.",
-            "{target} se arquea de placer mientras {author} lo toma.",
+            "{target} se arquea de placer mientras {author} lo/la toma.",
             "La conexión entre {author} y {target} es profunda y prohibida.",
+            "Gemidos ahogados llenan el aire mientras {author} y {target} exploran nuevos límites.",
         ]
         await get_interactive_gif(ctx, "anal", "nsfw", target=miembro, action_templates=action_phrases)
 
@@ -105,8 +110,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "El paraíso se encuentra entre los pechos de {author}, y {target} lo sabe bien.",
             "Una suave y placentera sesión de 'paizuri' de {author} para {target}.",
             "{target} se pierde en un mar de suavidad gracias a {author}.",
+            "La calidez y suavidad de {author} llevan a {target} a un nuevo nivel de éxtasis.",
         ]
-        # El helper ahora sabe que para 'paizuri' debe usar la API correcta.
         await get_interactive_gif(ctx, "paizuri", "nsfw", target=miembro, action_templates=action_phrases)
 
 async def setup(bot: commands.Bot):
