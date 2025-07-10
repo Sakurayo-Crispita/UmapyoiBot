@@ -32,21 +32,23 @@ class NSFWCog(commands.Cog, name="NSFW"):
                 print(f"Error en el comando {category}: {e}")
                 await ctx.send("Ocurrió un error inesperado.", ephemeral=True)
 
-    # --- Función para obtener GIFs interactivos (nekos.best) ---
-    async def get_nekos_best_gif(self, ctx: commands.Context, target: discord.Member, category: str, action_templates: list[str]):
+    # --- Función para obtener GIFs interactivos ---
+    async def get_interactive_gif(self, ctx: commands.Context, target: discord.Member, category: str, action_templates: list[str]):
         await ctx.defer(ephemeral=False)
         
         if ctx.author == target:
             await ctx.send("No puedes realizar esta acción contigo mismo.", ephemeral=True)
             return
+
+        # Usamos una API que sabemos que tiene las categorías
+        url = f"https://api.mywaifulist.moe/v1/nsfw/{category}"
         
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.get(f"https://nekos.best/api/v2/{category}") as response:
+                async with session.get(url) as response:
                     if response.status == 200:
                         data = await response.json()
-                        gif_url = data["results"][0]["url"]
-                        anime_name = data["results"][0]["anime_name"]
+                        gif_url = data.get("image")
                         
                         if gif_url:
                             action_text = random.choice(action_templates).format(
@@ -55,25 +57,11 @@ class NSFWCog(commands.Cog, name="NSFW"):
                             )
                             embed = discord.Embed(description=action_text, color=discord.Color.random())
                             embed.set_image(url=gif_url)
-                            if anime_name != "Desconocido":
-                                embed.set_footer(text=f"Anime: {anime_name}")
                             await ctx.send(embed=embed)
                         else:
-                            await ctx.send("No se pudo obtener un GIF.", ephemeral=True)
+                            await ctx.send("No se pudo obtener un GIF de la API.", ephemeral=True)
                     else:
-                        async with session.get(f"https://api.waifu.pics/nsfw/{category}") as backup_response:
-                            if backup_response.status == 200:
-                                data = await backup_response.json()
-                                gif_url = data.get("url")
-                                if gif_url:
-                                    action_text = random.choice(action_templates).format(author=ctx.author.mention, target=target.mention)
-                                    embed = discord.Embed(description=action_text, color=discord.Color.random())
-                                    embed.set_image(url=gif_url)
-                                    await ctx.send(embed=embed)
-                                else:
-                                    await ctx.send("Ambas APIs fallaron. Inténtalo de nuevo más tarde.", ephemeral=True)
-                            else:
-                                await ctx.send(f"Error al contactar ambas APIs (Estados: {response.status}, {backup_response.status}).", ephemeral=True)
+                        await ctx.send(f"Error al contactar la API (Estado: {response.status}).", ephemeral=True)
             except Exception as e:
                 print(f"Error en el comando interactivo {category}: {e}")
                 await ctx.send("Ocurrió un error inesperado.", ephemeral=True)
@@ -98,7 +86,6 @@ class NSFWCog(commands.Cog, name="NSFW"):
     @commands.hybrid_command(name="boobs_nsfw", description="Muestra una imagen NSFW de pechos.")
     @commands.is_nsfw()
     async def boobs_nsfw(self, ctx: commands.Context):
-        # Esta categoría no está en waifu.pics, usamos nekos.best para una imagen estática
         async with aiohttp.ClientSession() as session:
             async with session.get("https://nekos.best/api/v2/boobs") as response:
                 if response.status == 200:
@@ -111,7 +98,6 @@ class NSFWCog(commands.Cog, name="NSFW"):
     @commands.hybrid_command(name="pussy_nsfw", description="Muestra una imagen NSFW de una vagina.")
     @commands.is_nsfw()
     async def pussy_nsfw(self, ctx: commands.Context):
-        # Esta categoría no está en waifu.pics, usamos nekos.best para una imagen estática
         async with aiohttp.ClientSession() as session:
             async with session.get("https://nekos.best/api/v2/pussy") as response:
                 if response.status == 200:
@@ -134,19 +120,7 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "Una sesión intensa entre {author} y {target}.",
             "{author} se pierde en el cuerpo de {target}."
         ]
-        await self.get_nekos_best_gif(ctx, miembro, "fuck", action_phrases)
-
-    @commands.hybrid_command(name="lick_nsfw", description="Lame a otro usuario.")
-    @commands.is_nsfw()
-    async def lick_nsfw(self, ctx: commands.Context, miembro: discord.Member):
-        action_phrases = [
-            "{author} le está dando una lamida a {target}.",
-            "{target} siente la lengua de {author}...",
-            "¡Una lamida juguetona de {author} para {target}!",
-            "{author} saborea a {target} con una lamida.",
-            "La lengua de {author} explora a {target}."
-        ]
-        await self.get_nekos_best_gif(ctx, miembro, "lick", action_phrases)
+        await self.get_interactive_gif(ctx, miembro, "fuck", action_phrases)
 
     @commands.hybrid_command(name="cum_nsfw", description="Termina sobre otro usuario.")
     @commands.is_nsfw()
@@ -158,7 +132,7 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "Una recompensa pegajosa de {author} para {target}.",
             "{author} deja su marca en {target}."
         ]
-        await self.get_nekos_best_gif(ctx, miembro, "cum", action_phrases)
+        await self.get_interactive_gif(ctx, miembro, "cum", action_phrases)
 
     @commands.hybrid_command(name="handjob_nsfw", description="Hazle una paja a otro usuario.")
     @commands.is_nsfw()
@@ -168,7 +142,9 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "Las manos de {author} trabajan hábilmente sobre {target}.",
             "{target} disfruta de una buena paja de parte de {author}."
         ]
-        await self.get_nekos_best_gif(ctx, miembro, "handjob", action_phrases)
+        # Esta categoría no está en las APIs comunes, usamos otra como placeholder
+        await self.get_interactive_gif(ctx, miembro, "lick", action_phrases)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(NSFWCog(bot))
