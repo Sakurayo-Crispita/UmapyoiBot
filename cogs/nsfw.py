@@ -145,6 +145,27 @@ class NSFWCog(commands.Cog, name="NSFW"):
         # Esta categoría no está en las APIs comunes, usamos otra como placeholder
         await self.get_interactive_gif(ctx, miembro, "lick", action_phrases)
 
+    @commands.hybrid_command(name="anal_nsfw", description="Ten sexo anal con otro usuario.")
+    @commands.is_nsfw()
+    async def anal_nsfw(self, ctx: commands.Context, miembro: discord.Member):
+        action_phrases = [
+            "{author} toma a {target} por detrás.",
+            "¡Por la puerta de atrás! {author} y {target} tienen una sesión anal.",
+            "{target} se prepara para recibir a {author}."
+        ]
+        await self.get_interactive_gif(ctx, miembro, "anal", action_phrases)
+
+    @commands.hybrid_command(name="boobjob_nsfw", description="Hazle una paja con los pechos a alguien.")
+    @commands.is_nsfw()
+    async def boobjob_nsfw(self, ctx: commands.Context, miembro: discord.Member):
+        action_phrases = [
+            "{author} usa sus pechos para darle placer a {target}.",
+            "{target} se pierde entre los pechos de {author}.",
+            "¡Una rusa perfecta! {author} complace a {target}."
+        ]
+        await self.get_interactive_gif(ctx, miembro, "boobjob", action_phrases)
+
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(NSFWCog(bot))

@@ -151,5 +151,38 @@ class InteractionCog(commands.Cog, name="Interacción"):
         ]
         await self.get_interactive_gif(ctx, miembro, "baka", action_phrases, discord.Color.dark_red())
 
+    @commands.hybrid_command(name="highfive", description="Choca esos cinco con alguien.")
+    async def highfive(self, ctx: commands.Context, miembro: discord.Member):
+        action_phrases = [
+            "¡Choca esos cinco! {author} y {target} celebran.",
+            "{author} le da un high five a {target}. ¡Buen trabajo!",
+            "¡Arriba esas manos! {author} choca con {target}."
+        ]
+        await self.get_interactive_gif(ctx, miembro, "highfive", action_phrases, [], discord.Color.blue())
+
+    @commands.hybrid_command(name="bonk", description="Envía a alguien a la cárcel de los hornys.")
+    async def bonk(self, ctx: commands.Context, miembro: discord.Member):
+        action_phrases = [
+            "¡BONK! {author} envía a {target} a la cárcel de los hornys.",
+            "{author} le da un golpe a {target} con el bate anti-horny.",
+            "{target} ha sido bonkeado por {author}. ¡A la esquina!",
+            "Se escuchó un 'bonk' a lo lejos. {author} encontró a {target}."
+        ]
+        await self.get_interactive_gif(ctx, miembro, "bonk", action_phrases, [], discord.Color.dark_gold())
+
+    @commands.hybrid_command(name="blush", description="Sonrójate por alguien o por algo.")
+    async def blush(self, ctx: commands.Context, por: Optional[discord.Member] = None):
+        action_phrases = [
+            "{author} se sonroja por culpa de {target}.",
+            "¡Mira lo que hiciste, {target}! {author} está todo rojo.",
+            "{author} no puede evitar sonrojarse al ver a {target}."
+        ]
+        self_action_phrases = [
+            "{author} se sonrojó.",
+            "{author} se puso rojo como un tomate.",
+            "Algo hizo que {author} se sonrojara."
+        ]
+        await self.get_interactive_gif(ctx, por, "blush", action_phrases, self_action_phrases, discord.Color.from_rgb(255, 182, 193)) # Rosa claro
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(InteractionCog(bot))
