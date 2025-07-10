@@ -3,15 +3,17 @@ from discord.ext import commands
 import aiohttp, random, asyncio
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
-from typing import Literal
+from typing import Literal, Optional
 
-class FunCog(commands.Cog, name="Diversión e interacción"):
+class FunCog(commands.Cog, name="Juegos e IA"):
     """Comandos interactivos y divertidos para pasar el rato."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    # --- Función para obtener GIFs interactivos ---
     async def get_interactive_gif(self, ctx: commands.Context, target: discord.Member, category: str, action_templates: list[str], color: discord.Color):
         await ctx.defer(ephemeral=False)
-
+        
         if ctx.author == target:
             await ctx.send("No puedes realizar esta acción contigo mismo.", ephemeral=True)
             return
@@ -39,17 +41,15 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
                 print(f"Error en el comando interactivo {category}: {e}")
                 await ctx.send("Ocurrió un error inesperado.", ephemeral=True)
 
-    # cogs/fun.py
+    # --- Comandos existentes ---
 
     @commands.hybrid_command(name='pregunta', description="Hazme cualquier pregunta y usaré mi IA para responder.")
     async def pregunta(self, ctx: commands.Context, *, pregunta: str):
         await ctx.defer()
         
-        # Usamos self.bot.GEMINI_API_KEY
         if not self.bot.GEMINI_API_KEY:
             return await ctx.send("❌ La función de IA no está configurada por el dueño del bot.")
             
-        # Usamos self.bot.GEMINI_API_KEY
         API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={self.bot.GEMINI_API_KEY}"
         
         payload = {"contents": [{"parts": [{"text": pregunta}]}]}
@@ -60,7 +60,6 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
                 async with session.post(API_URL, json=payload, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
-                        # Agregamos una comprobación por si la respuesta no tiene el formato esperado
                         if 'candidates' in data and data['candidates']:
                             respuesta_ia = data['candidates'][0]['content']['parts'][0]['text']
                         else:
@@ -88,7 +87,7 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
         return final_buffer
 
     @commands.hybrid_command(name='wanted', description="Crea un cartel de 'Se Busca' para un usuario.")
-    async def wanted(self, ctx: commands.Context, miembro: discord.Member | None = None):
+    async def wanted(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
         await ctx.defer()
         miembro = miembro or ctx.author
         try:
@@ -168,12 +167,20 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
         except Exception as e:
             await ctx.send(f"❌ Ocurrió un error inesperado: {e}", ephemeral=True)
 
+    # --- Comandos Interactivos (SFW) ---
+    
     @commands.hybrid_command(name="kiss", description="Besa a otro usuario.")
     async def kiss(self, ctx: commands.Context, miembro: discord.Member):
         action_phrases = [
             "{author} le dio un tierno beso a {target}.",
             "¡Un beso robado! {author} acaba de besar a {target}.",
-            "Los labios de {author} y {target} se encontraron en un dulce beso."
+            "Los labios de {author} y {target} se encontraron en un dulce beso.",
+            "{author} se acercó y le plantó un beso suave a {target}.",
+            "Un momento mágico: {author} besó a {target} con ternura.",
+            "{target} se sonrojó después de recibir un beso de {author}.",
+            "¡Qué romántico! {author} y {target} compartieron un beso.",
+            "{author} no pudo resistirse y besó a {target}.",
+            "El aire se llenó de chispas cuando {author} besó a {target}."
         ]
         await self.get_interactive_gif(ctx, miembro, "kiss", action_phrases, discord.Color.magenta())
 
@@ -182,7 +189,9 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
         action_phrases = [
             "{author} se acurrucó tiernamente con {target}.",
             "{author} y {target} están en un abrazo muy cercano.",
-            "¡Qué momento tan tierno! {author} está abrazando a {target}."
+            "¡Qué momento tan tierno! {author} está abrazando a {target}.",
+            "Nada como un buen acurrucamiento entre {author} y {target}.",
+            "{author} encontró consuelo en los brazos de {target}."
         ]
         await self.get_interactive_gif(ctx, miembro, "cuddle", action_phrases, discord.Color.green())
 
@@ -191,7 +200,9 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
         action_phrases = [
             "{author} le dio un gran abrazo a {target}.",
             "{target} recibió un cálido abrazo de {author}.",
-            "{author} rodeó a {target} con sus brazos en un abrazo."
+            "{author} rodeó a {target} con sus brazos en un abrazo.",
+            "¡Abrazo grupal! Bueno, solo entre {author} y {target} por ahora.",
+            "Un abrazo de oso de {author} para {target}."
         ]
         await self.get_interactive_gif(ctx, miembro, "hug", action_phrases, discord.Color.teal())
 
@@ -200,7 +211,9 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
         action_phrases = [
             "{author} le dio unas palmaditas en la cabeza a {target}. ¡Qué tierno!",
             "{target} recibió unas suaves palmaditas de {author}.",
-            "¡Buen chico/a! {author} acaricia la cabeza de {target}."
+            "¡Buen chico/a! {author} acaricia la cabeza de {target}.",
+            "Una palmadita de aprobación de {author} para {target}.",
+            "{author} le muestra su afecto a {target} con una palmadita."
         ]
         await self.get_interactive_gif(ctx, miembro, "pat", action_phrases, discord.Color.gold())
 
@@ -209,10 +222,11 @@ class FunCog(commands.Cog, name="Diversión e interacción"):
         action_phrases = [
             "¡ZAS! {author} le dio una bofetada a {target}.",
             "{target} sintió la mano de {author} en su mejilla.",
-            "Parece que {target} se lo merecía... {author} le dio una cachetada."
+            "Parece que {target} se lo merecía... {author} le dio una cachetada.",
+            "¡Auch! Esa bofetada de {author} a {target} debió doler.",
+            "{author} le dejó la cara roja a {target} con una bofetada."
         ]
         await self.get_interactive_gif(ctx, miembro, "slap", action_phrases, discord.Color.orange())
-
 
 
 async def setup(bot: commands.Bot):

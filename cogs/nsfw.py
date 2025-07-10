@@ -40,14 +40,23 @@ class NSFWCog(commands.Cog, name="NSFW"):
             await ctx.send("No puedes realizar esta acción contigo mismo.", ephemeral=True)
             return
 
+        # CORRECCIÓN: Usamos una nueva API para las categorías que fallaban
+        base_url = "https://api.mywaifulist.moe/v1/nsfw/" if category in ["cum", "fuck"] else "https://nekos.best/api/v2/"
+        full_url = f"{base_url}{category}"
+        
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.get(f"https://nekos.best/api/v2/{category}") as response:
+                async with session.get(full_url) as response:
                     if response.status == 200:
                         data = await response.json()
-                        # La estructura de esta API es diferente
-                        gif_url = data["results"][0]["url"]
-                        anime_name = data["results"][0]["anime_name"]
+                        
+                        # Extraer la URL del GIF según la estructura de la API
+                        if "api.mywaifulist.moe" in base_url:
+                            gif_url = data.get("image")
+                            anime_name = "Desconocido"
+                        else:
+                            gif_url = data["results"][0]["url"]
+                            anime_name = data["results"][0]["anime_name"]
                         
                         if gif_url:
                             action_text = random.choice(action_templates).format(
@@ -56,7 +65,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
                             )
                             embed = discord.Embed(description=action_text, color=discord.Color.random())
                             embed.set_image(url=gif_url)
-                            embed.set_footer(text=f"Anime: {anime_name}")
+                            if anime_name != "Desconocido":
+                                embed.set_footer(text=f"Anime: {anime_name}")
                             await ctx.send(embed=embed)
                         else:
                             await ctx.send("No se pudo obtener un GIF.", ephemeral=True)
@@ -96,7 +106,9 @@ class NSFWCog(commands.Cog, name="NSFW"):
         action_phrases = [
             "{author} y {target} lo están haciendo apasionadamente.",
             "¡Las cosas se pusieron calientes! {author} está teniendo sexo con {target}.",
-            "{target} está recibiendo todo el amor de {author}."
+            "{target} está recibiendo todo el amor de {author}.",
+            "Una sesión intensa entre {author} y {target}.",
+            "{author} se pierde en el cuerpo de {target}."
         ]
         await self.get_nekos_best_gif(ctx, miembro, "fuck", action_phrases)
 
@@ -106,7 +118,9 @@ class NSFWCog(commands.Cog, name="NSFW"):
         action_phrases = [
             "{author} le está dando una lamida a {target}.",
             "{target} siente la lengua de {author}...",
-            "¡Una lamida juguetona de {author} para {target}!"
+            "¡Una lamida juguetona de {author} para {target}!",
+            "{author} saborea a {target} con una lamida.",
+            "La lengua de {author} explora a {target}."
         ]
         await self.get_nekos_best_gif(ctx, miembro, "lick", action_phrases)
 
@@ -116,10 +130,33 @@ class NSFWCog(commands.Cog, name="NSFW"):
         action_phrases = [
             "{author} se corrió sobre {target}!",
             "{target} quedó cubierto por {author}.",
-            "¡Un final feliz! {author} terminó sobre {target}."
+            "¡Un final feliz! {author} terminó sobre {target}.",
+            "Una recompensa pegajosa de {author} para {target}.",
+            "{author} deja su marca en {target}."
         ]
         await self.get_nekos_best_gif(ctx, miembro, "cum", action_phrases)
 
+    @commands.hybrid_command(name="spank_nsfw", description="Dale una nalgada a alguien.")
+    @commands.is_nsfw()
+    async def spank_nsfw(self, ctx: commands.Context, miembro: discord.Member):
+        action_phrases = [
+            "{author} le dio una buena nalgada a {target}!",
+            "{target} recibió unas nalgadas de parte de {author}.",
+            "¡Cachetada en la nalga! {author} acaba de nalguear a {target}.",
+            "Esa nalga de {target} ahora está roja gracias a {author}.",
+            "{author} disciplina a {target} con una nalgada."
+        ]
+        # La API de waifu.pics no tiene "spank" en nsfw, usamos una SFW como ejemplo.
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://api.waifu.pics/sfw/spank") as response:
+                 if response.status == 200:
+                    data = await response.json()
+                    gif_url = data.get("url")
+                    if gif_url:
+                        action_text = random.choice(action_phrases).format(author=ctx.author.mention, target=miembro.mention)
+                        embed = discord.Embed(description=action_text, color=discord.Color.orange())
+                        embed.set_image(url=gif_url)
+                        await ctx.send(embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(NSFWCog(bot))
