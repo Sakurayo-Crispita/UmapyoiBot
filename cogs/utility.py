@@ -204,6 +204,19 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         else:
             await ctx.message.delete()
             await ctx.send(mensaje)
+    
+    @commands.command(name='sync', hidden=True)
+    @commands.is_owner()
+    async def sync(self, ctx: commands.Context):
+        await ctx.typing()
+        try:
+            # Sincroniza los comandos globalmente
+            synced = await self.bot.tree.sync()
+            await ctx.send(f"✅ Sincronizados **{len(synced)}** comandos globalmente.")
+            print(f"Sincronizados {len(synced)} comandos.")
+        except Exception as e:
+            await ctx.send(f"❌ Error al sincronizar: {e}")
+            print(f"Error al sincronizar: {e}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(UtilityCog(bot))

@@ -61,7 +61,6 @@ class NSFWCog(commands.Cog, name="NSFW"):
                         else:
                             await ctx.send("No se pudo obtener un GIF.", ephemeral=True)
                     else:
-                        # Si nekos.best falla, intentamos con otra API como respaldo
                         async with session.get(f"https://api.waifu.pics/nsfw/{category}") as backup_response:
                             if backup_response.status == 200:
                                 data = await backup_response.json()
@@ -90,11 +89,6 @@ class NSFWCog(commands.Cog, name="NSFW"):
     @commands.is_nsfw()
     async def waifu_nsfw(self, ctx: commands.Context):
         await self.get_waifu_pics_image(ctx, "waifu", "Waifu NSFW", discord.Color.pink())
-
-    @commands.hybrid_command(name="trap_nsfw", description="Muestra una imagen NSFW de una trap.")
-    @commands.is_nsfw()
-    async def trap_nsfw(self, ctx: commands.Context):
-        await self.get_waifu_pics_image(ctx, "trap", "Trap NSFW", discord.Color.blue())
 
     @commands.hybrid_command(name="blowjob_nsfw", description="Muestra una imagen NSFW de un blowjob.")
     @commands.is_nsfw()
