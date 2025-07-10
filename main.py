@@ -6,17 +6,19 @@ import asyncio
 import sqlite3
 from typing import Optional
 from dotenv import load_dotenv
+from utils import database_manager
 
 # --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-DB_FILE = "bot_data.db" # Solo guardamos el nombre del archivo
+DB_FILE = "bot_data.db" 
 
 # --- CLASE DE BOT PERSONALIZADA ---
 class UmapyoiBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.db_file = DB_FILE
+        # OJO: La constante DB_FILE aquí debe coincidir con el nombre de tu archivo de DB
+        self.db_file = DB_FILE 
 
         # --- CONSTANTES GLOBALES DEL BOT ---
         self.GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
@@ -35,28 +37,8 @@ class UmapyoiBot(commands.Bot):
 
     async def setup_hook(self):
         print("Verificando y creando tablas de la base de datos si no existen...")
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            # Tablas de EconomyCog
-            cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
-            # Tablas de GamblingCog (NUEVA TABLA)
-            cursor.execute('''CREATE TABLE IF NOT EXISTS gambling_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
-            # Tablas de LevelingCog
-            cursor.execute('''CREATE TABLE IF NOT EXISTS levels (guild_id INTEGER, user_id INTEGER, level INTEGER DEFAULT 1, xp INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS role_rewards (guild_id INTEGER, level INTEGER, role_id INTEGER, PRIMARY KEY (guild_id, level))''')
-            # Tablas de ModerationCog (NUEVAS TABLAS)
-            cursor.execute('''CREATE TABLE IF NOT EXISTS warnings (warning_id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, user_id INTEGER, moderator_id INTEGER, reason TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS mod_logs (log_id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, user_id INTEGER, moderator_id INTEGER, action TEXT, reason TEXT, duration TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-            # Tablas de ServerConfigCog
-            cursor.execute('''CREATE TABLE IF NOT EXISTS server_settings (guild_id INTEGER PRIMARY KEY, welcome_channel_id INTEGER, goodbye_channel_id INTEGER, log_channel_id INTEGER, autorole_id INTEGER, welcome_message TEXT, welcome_banner_url TEXT, goodbye_message TEXT, goodbye_banner_url TEXT, automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT, temp_channel_creator_id INTEGER, leveling_enabled INTEGER DEFAULT 1)''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS reaction_roles (guild_id INTEGER, message_id INTEGER, emoji TEXT, role_id INTEGER, PRIMARY KEY (guild_id, message_id, emoji))''')
-            # Tablas de TTSCog
-            cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
-            conn.commit()
-        print("Verificación de base de datos completada.")
+        # Llama a la función de configuración desde el gestor
+        database_manager.setup_database()
         print('-----------------------------------------')
         
         print("Cargando Cogs...")

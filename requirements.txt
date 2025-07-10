@@ -5,5 +5,5 @@ requests
 flask
 pillow
 python-dotenv
-replit
 lyricsgenius
+gTTS
