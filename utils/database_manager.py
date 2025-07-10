@@ -1,13 +1,14 @@
 import sqlite3
 import asyncio
-from typing import Optional, Any
+# Se añaden List y Dict a la importación para solucionar el error.
+from typing import Optional, Any, List, Dict
 
 DB_FILE = "bot_data.db"
 
 def run_migrations(conn):
     """
     Añade columnas faltantes a las tablas existentes para evitar errores
-    después de una actualización. Es la solución para los errores de economía.
+    después de una actualización.
     """
     cursor = conn.cursor()
     
@@ -16,7 +17,6 @@ def run_migrations(conn):
         cursor.execute("PRAGMA table_info(economy_settings)")
         columns = [row[1] for row in cursor.fetchall()]
         
-        # Columnas que deberían existir y su tipo de dato + valor por defecto
         expected_columns = {
             "daily_min": "INTEGER DEFAULT 100",
             "daily_max": "INTEGER DEFAULT 500",
@@ -34,20 +34,15 @@ def run_migrations(conn):
     except sqlite3.Error as e:
         print(f"Error durante la migración de 'economy_settings': {e}")
 
-    # Aquí se pueden añadir futuras migraciones para otras tablas
-    
     conn.commit()
 
 
 def setup_database():
     """Crea todas las tablas necesarias y ejecuta migraciones si es necesario."""
     with sqlite3.connect(DB_FILE) as conn:
-        # Ejecutamos las migraciones ANTES de crear las tablas
-        # para asegurarnos de que las tablas existentes estén actualizadas.
         run_migrations(conn)
 
         cursor = conn.cursor()
-        # El resto de las sentencias CREATE TABLE IF NOT EXISTS no cambian.
         cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
@@ -63,26 +58,32 @@ def setup_database():
         conn.commit()
     print("Base de datos verificada, configurada y migrada.")
 
-# --- El resto del archivo (fetchone, fetchall, execute, etc.) no necesita cambios ---
-async def fetchone(query: str, params: tuple = ()) -> Optional[Any]:
+# --- Funciones genéricas para interactuar con la DB ---
+
+async def fetchone(query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
+    """Ejecuta una consulta y devuelve una sola fila como un diccionario."""
     def _sync_fetchone():
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(query, params)
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            return dict(row) if row else None
     return await asyncio.to_thread(_sync_fetchone)
 
-async def fetchall(query: str, params: tuple = ()) -> list[Any]:
+async def fetchall(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    """Ejecuta una consulta y devuelve todas las filas como una lista de diccionarios."""
     def _sync_fetchall():
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(query, params)
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
     return await asyncio.to_thread(_sync_fetchall)
 
 async def execute(query: str, params: tuple = ()):
+    """Ejecuta una consulta que modifica datos (INSERT, UPDATE, DELETE)."""
     def _sync_execute():
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
@@ -90,7 +91,9 @@ async def execute(query: str, params: tuple = ()):
             conn.commit()
     return await asyncio.to_thread(_sync_execute)
 
-async def get_guild_economy_settings(guild_id: int) -> Optional[sqlite3.Row]:
+# --- Funciones específicas por Cog (No necesitan cambios) ---
+
+async def get_guild_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
     settings = await fetchone("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
     if not settings:
         await execute("INSERT OR IGNORE INTO economy_settings (guild_id) VALUES (?)", (guild_id,))
