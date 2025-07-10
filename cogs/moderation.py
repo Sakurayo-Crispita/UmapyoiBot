@@ -7,7 +7,7 @@ import sqlite3
 from typing import Optional, Literal
 
 # --- Función para parsear la duración del timeout ---
-def parse_duration(duration_str: str) -> datetime.timedelta:
+def parse_duration(duration_str: str) -> Optional[datetime.timedelta]:
     regex = re.compile(r'(\d+)([smhd])')
     matches = regex.findall(duration_str.lower())
     if not matches:
@@ -25,8 +25,7 @@ def parse_duration(duration_str: str) -> datetime.timedelta:
         elif unit == 'd':
             total_seconds += value * 86400
             
-    # Discord tiene un límite de 28 días para los timeouts
-    if total_seconds > 2419200:
+    if total_seconds > 2419200: # Límite de Discord de 28 días
         total_seconds = 2419200
 
     return datetime.timedelta(seconds=total_seconds)
@@ -38,37 +37,27 @@ class ModerationCog(commands.Cog, name="Moderación"):
         self.bot = bot
         self.db_file = bot.db_file
 
-    # --- FUNCIONES DE BASE DE DATOS PARA ADVERTENCIAS ---
-    def _add_warning_sync(self, guild_id: int, user_id: int, moderator_id: int, reason: str):
+    # --- FUNCIONES DE BASE DE DATOS ---
+    def _add_mod_log_sync(self, guild_id: int, user_id: int, moderator_id: int, action: str, reason: str, duration: Optional[str] = None):
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES (?, ?, ?, ?)",
-                           (guild_id, user_id, moderator_id, reason))
+            cursor.execute("INSERT INTO mod_logs (guild_id, user_id, moderator_id, action, reason, duration) VALUES (?, ?, ?, ?, ?, ?)",
+                           (guild_id, user_id, moderator_id, action, reason, duration))
             conn.commit()
 
-    def _get_warnings_sync(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
+    def _get_mod_logs_sync(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
         with sqlite3.connect(self.db_file) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT moderator_id, reason, timestamp FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
+            cursor.execute("SELECT moderator_id, action, reason, duration, timestamp FROM mod_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
                            (guild_id, user_id))
             return cursor.fetchall()
 
-    def _clear_warnings_sync(self, guild_id: int, user_id: int):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-            conn.commit()
+    async def add_mod_log(self, guild_id: int, user_id: int, moderator_id: int, action: str, reason: str, duration: Optional[str] = None):
+        await asyncio.to_thread(self._add_mod_log_sync, guild_id, user_id, moderator_id, action, reason, duration)
 
-    async def add_warning(self, guild_id: int, user_id: int, moderator_id: int, reason: str):
-        await asyncio.to_thread(self._add_warning_sync, guild_id, user_id, moderator_id, reason)
-
-    async def get_warnings(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
-        return await asyncio.to_thread(self._get_warnings_sync, guild_id, user_id)
-
-    async def clear_warnings(self, guild_id: int, user_id: int):
-        await asyncio.to_thread(self._clear_warnings_sync, guild_id, user_id)
-
+    async def get_mod_logs(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
+        return await asyncio.to_thread(self._get_mod_logs_sync, guild_id, user_id)
 
     # --- COMANDOS DE MODERACIÓN ---
 
@@ -89,13 +78,9 @@ class ModerationCog(commands.Cog, name="Moderación"):
         if miembro.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
             return await ctx.send("❌ No puedes expulsar a alguien con un rol igual o superior al tuyo.", ephemeral=True)
 
-        try:
-            await miembro.send(f"Has sido expulsado de **{ctx.guild.name}** por la siguiente razón: {razon}")
-        except discord.Forbidden:
-            pass
-
         await miembro.kick(reason=f"{razon} (Moderador: {ctx.author.name})")
-        await ctx.send(f"✅ **{miembro.display_name}** ha sido expulsado del servidor.", ephemeral=True)
+        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Kick", razon)
+        await ctx.send(f"✅ **{miembro.display_name}** ha sido expulsado del servidor por: **{razon}**", ephemeral=True)
 
     @commands.hybrid_command(name="ban", description="Banea a un miembro del servidor.")
     @commands.has_permissions(ban_members=True)
@@ -106,31 +91,25 @@ class ModerationCog(commands.Cog, name="Moderación"):
         if miembro.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
             return await ctx.send("❌ No puedes banear a alguien con un rol igual o superior al tuyo.", ephemeral=True)
 
-        try:
-            await miembro.send(f"Has sido baneado permanentemente de **{ctx.guild.name}** por la siguiente razón: {razon}")
-        except discord.Forbidden:
-            pass
-
         await miembro.ban(reason=f"{razon} (Moderador: {ctx.author.name})")
-        await ctx.send(f"✅ **{miembro.display_name}** ha sido baneado permanentemente.", ephemeral=True)
+        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Ban", razon)
+        await ctx.send(f"✅ **{miembro.display_name}** ha sido baneado permanentemente por: **{razon}**", ephemeral=True)
 
     @commands.hybrid_command(name="unban", description="Desbanea a un usuario del servidor.")
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx: commands.Context, usuario_id: str, *, razon: str = "No se especificó una razón."):
         try:
-            user_id = int(usuario_id)
-            user = await self.bot.fetch_user(user_id)
+            user = await self.bot.fetch_user(int(usuario_id))
         except (ValueError, discord.NotFound):
             return await ctx.send("❌ No se encontró a un usuario con esa ID.", ephemeral=True)
 
         try:
             await ctx.guild.unban(user, reason=f"{razon} (Moderador: {ctx.author.name})")
+            await self.add_mod_log(ctx.guild.id, user.id, ctx.author.id, "Unban", razon)
             await ctx.send(f"✅ **{user.name}** ha sido desbaneado.", ephemeral=True)
         except discord.NotFound:
             await ctx.send("❌ Este usuario no se encuentra en la lista de baneados.", ephemeral=True)
-        except discord.Forbidden:
-            await ctx.send("❌ No tengo los permisos para desbanear a este usuario.", ephemeral=True)
 
     @commands.hybrid_command(name="timeout", aliases=["mute"], description="Silencia a un miembro por un tiempo determinado (ej: 10m, 2h, 1d).")
     @commands.has_permissions(moderate_members=True)
@@ -146,7 +125,8 @@ class ModerationCog(commands.Cog, name="Moderación"):
             return await ctx.send("❌ Formato de duración inválido. Usa `d` para días, `h` para horas, `m` para minutos, `s` para segundos.", ephemeral=True)
 
         await miembro.timeout(delta, reason=f"{razon} (Moderador: {ctx.author.name})")
-        await ctx.send(f"✅ **{miembro.display_name}** ha sido silenciado por **{duracion}**.", ephemeral=True)
+        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Timeout", razon, duracion)
+        await ctx.send(f"✅ **{miembro.display_name}** ha sido silenciado por **{duracion}** por la razón: **{razon}**", ephemeral=True)
 
     @commands.hybrid_command(name="unmute", description="Quita el silencio a un miembro.")
     @commands.has_permissions(moderate_members=True)
@@ -156,62 +136,46 @@ class ModerationCog(commands.Cog, name="Moderación"):
             return await ctx.send("Este miembro no está silenciado.", ephemeral=True)
         
         await miembro.timeout(None, reason=f"{razon} (Moderador: {ctx.author.name})")
+        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Unmute", razon)
         await ctx.send(f"✅ Se ha quitado el silencio a **{miembro.display_name}**.", ephemeral=True)
 
-    @commands.hybrid_command(name="lock", description="Bloquea el canal actual para que nadie (excepto mods) pueda hablar.")
-    @commands.has_permissions(manage_channels=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def lock(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
-        channel = canal or ctx.channel
-        overwrite = channel.overwrites_for(ctx.guild.default_role)
-        overwrite.send_messages = False
-        await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal bloqueado por {ctx.author.name}")
-        await ctx.send(f"🔒 El canal {channel.mention} ha sido bloqueado.", ephemeral=True)
-
-    @commands.hybrid_command(name="unlock", description="Desbloquea el canal actual.")
-    @commands.has_permissions(manage_channels=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def unlock(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
-        channel = canal or ctx.channel
-        overwrite = channel.overwrites_for(ctx.guild.default_role)
-        overwrite.send_messages = None
-        await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal desbloqueado por {ctx.author.name}")
-        await ctx.send(f"🔓 El canal {channel.mention} ha sido desbloqueado.", ephemeral=True)
-
-    @commands.hybrid_command(name="warn", description="Advierte a un usuario.")
+    @commands.hybrid_command(name="mutelist", description="Muestra la lista de usuarios silenciados actualmente.")
     @commands.has_permissions(moderate_members=True)
-    async def warn(self, ctx: commands.Context, miembro: discord.Member, *, razon: str):
-        await self.add_warning(ctx.guild.id, miembro.id, ctx.author.id, razon)
-        try:
-            await miembro.send(f"Has recibido una advertencia en **{ctx.guild.name}** por: {razon}")
-        except discord.Forbidden:
-            pass
-        await ctx.send(f"⚠️ **{miembro.display_name}** ha sido advertido.", ephemeral=True)
-
-    @commands.hybrid_command(name="warnings", description="Muestra las advertencias de un usuario.")
-    @commands.has_permissions(moderate_members=True)
-    async def warnings(self, ctx: commands.Context, miembro: discord.Member):
+    async def mutelist(self, ctx: commands.Context):
         await ctx.defer(ephemeral=True)
-        warnings_list = await self.get_warnings(ctx.guild.id, miembro.id)
-        if not warnings_list:
-            return await ctx.send(f"**{miembro.display_name}** no tiene ninguna advertencia.", ephemeral=True)
-
-        embed = discord.Embed(title=f"Advertencias de {miembro.display_name}", color=discord.Color.orange())
-        for warn in warnings_list:
-            moderator = ctx.guild.get_member(warn['moderator_id']) or f"ID: {warn['moderator_id']}"
-            timestamp = discord.utils.format_dt(datetime.datetime.fromisoformat(warn['timestamp']), 'f')
-            embed.add_field(name=f"Advertencia el {timestamp}", 
-                            value=f"**Razón:** {warn['reason']}\n**Moderador:** {moderator}",
-                            inline=False)
+        muted_members = [m for m in ctx.guild.members if m.is_timed_out()]
+        
+        if not muted_members:
+            return await ctx.send("No hay nadie silenciado en este momento.", ephemeral=True)
+            
+        embed = discord.Embed(title="🔇 Usuarios Silenciados", color=discord.Color.orange())
+        description = ""
+        for member in muted_members:
+            if member.timed_out_until:
+                description += f"• {member.mention} - Termina en {discord.utils.format_dt(member.timed_out_until, 'R')}\n"
+        embed.description = description
         await ctx.send(embed=embed, ephemeral=True)
 
-    @commands.hybrid_command(name="clearwarnings", description="Borra todas las advertencias de un usuario.")
-    @commands.has_permissions(manage_guild=True)
-    async def clearwarnings(self, ctx: commands.Context, miembro: discord.Member):
-        await self.clear_warnings(ctx.guild.id, miembro.id)
-        await ctx.send(f"✅ Todas las advertencias de **{miembro.display_name}** han sido borradas.", ephemeral=True)
-            
-    # --- COMANDOS DE AUTOMODERACIÓN ---
+    @commands.hybrid_command(name="modlogs", description="Muestra el historial de moderación de un usuario.")
+    @commands.has_permissions(moderate_members=True)
+    async def modlogs(self, ctx: commands.Context, miembro: discord.Member):
+        await ctx.defer(ephemeral=True)
+        logs = await self.get_mod_logs(ctx.guild.id, miembro.id)
+        
+        if not logs:
+            return await ctx.send(f"**{miembro.display_name}** no tiene historial de moderación.", ephemeral=True)
+
+        embed = discord.Embed(title=f"Historial de Moderación de {miembro.display_name}", color=discord.Color.blue())
+        for log in logs:
+            moderator = ctx.guild.get_member(log['moderator_id']) or f"ID: {log['moderator_id']}"
+            timestamp = discord.utils.format_dt(datetime.datetime.fromisoformat(log['timestamp']), 'f')
+            duration_text = f" (Duración: {log['duration']})" if log['duration'] else ""
+            embed.add_field(name=f"Caso #{log['log_id']} - {log['action']}",
+                            value=f"**Razón:** {log['reason']}{duration_text}\n"
+                                  f"**Moderador:** {moderator}\n"
+                                  f"**Fecha:** {timestamp}",
+                            inline=False)
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_group(name="automod", description="Configura las opciones de auto-moderación.")
     @commands.has_permissions(manage_guild=True)
