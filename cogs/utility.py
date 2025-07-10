@@ -19,6 +19,7 @@ class HelpSelect(discord.ui.Select):
             "Juegos e IA": "🎮",
             "Interacción": "👋",
             "NSFW": "🔞",
+            "Moderación": "🛡️",
             "Configuración del Servidor": "⚙️",
             "Texto a Voz": "🔊",
             "Utilidad": "🛠️"
@@ -77,6 +78,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             "juegos": "Juegos e IA",
             "interaccion": "Interacción",
             "nsfw": "NSFW",
+            "moderacion": "Moderacion",
             "configuracion": "Configuración del Servidor",
             "tts": "Texto a Voz",
             "utilidad": "Utilidad"
