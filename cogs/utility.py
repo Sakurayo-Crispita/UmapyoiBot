@@ -10,11 +10,14 @@ class HelpSelect(discord.ui.Select):
         self.bot = bot
         options = [discord.SelectOption(label="Inicio", description="Vuelve al panel principal de ayuda.", emoji="🏠")]
         if bot.cogs:
-            sorted_cogs = sorted(bot.cogs.items())
+            # Ordenamos los cogs alfabéticamente por su nombre visible
+            sorted_cogs = sorted(bot.cogs.items(), key=lambda c: c[0])
             for cog_name, cog in sorted_cogs:
-                if any(isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden for cmd in cog.get_commands()):
+                # Nos aseguramos de que el cog tenga comandos visibles para mostrar
+                if any(not cmd.hidden for cmd in cog.get_commands()):
                     description = getattr(cog, "description", "Sin descripción.")
-                    options.append(discord.SelectOption(label=cog_name, description=description[:100], emoji="➡️"))
+                    # Usamos el nombre del Cog como la etiqueta
+                    options.append(discord.SelectOption(label=cog_name, description=description[:100]))
         super().__init__(placeholder="Selecciona una categoría para ver los comandos...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
@@ -31,9 +34,11 @@ class HelpSelect(discord.ui.Select):
             if cog:
                 embed.title = f"Comandos de: {selected_cog_name}"
                 description = ""
-                command_list = sorted(cog.get_commands(), key=lambda c: c.name)
+                # Filtramos y ordenamos los comandos
+                command_list = sorted([cmd for cmd in cog.get_commands() if not cmd.hidden], key=lambda c: c.name)
                 for cmd in command_list:
-                    if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden and cmd.name != 'help':
+                    # Aseguramos que solo mostramos comandos que el usuario puede ver
+                    if cmd.name != 'help':
                         description += f"**`/{cmd.name}`** - {cmd.description}\n"
                 embed.description = description or "Esta categoría no tiene comandos para mostrar."
         await interaction.response.edit_message(embed=embed)
@@ -48,10 +53,19 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # --- MAPA DE COGS CORREGIDO ---
+        # Aquí añadimos las nuevas categorías
         self.cog_map = {
-            "música": "Música", "niveles": "Niveles", "economía": "Economía",
-            "apuestas": "Juegos de Apuestas", "juegos": "Juegos e IA",
-            "configuración": "Configuración del Servidor", "tts": "Texto a Voz", "utilidad": "Utilidad"
+            "música": "Música",
+            "niveles": "Niveles",
+            "economía": "Economía",
+            "apuestas": "Juegos de Apuestas",
+            "juegos": "Juegos e IA",
+            "interaccion": "Interacción", # <-- AÑADIDO
+            "nsfw": "NSFW",             # <-- AÑADIDO
+            "configuracion": "Configuración del Servidor",
+            "tts": "Texto a Voz",
+            "utilidad": "Utilidad"
         }
 
     @commands.hybrid_command(name='help', description="Muestra ayuda sobre los comandos del bot.")
@@ -63,11 +77,18 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
             await ctx.send(embed=embed, view=HelpView(self.bot))
         else:
-            if cog_name_real := self.cog_map.get(categoría.lower()):
+            # Buscamos el nombre real del cog en nuestro mapa
+            cog_name_real = self.cog_map.get(categoría.lower())
+            if cog_name_real:
                 cog = self.bot.get_cog(cog_name_real)
-                if not cog: return await ctx.send(f"No se encontró la categoría '{cog_name_real}'.", ephemeral=True)
+                if not cog:
+                    return await ctx.send(f"No se encontró la categoría '{cog_name_real}'.", ephemeral=True)
+                
                 embed = discord.Embed(title=f"📜 Comandos de {cog_name_real}", color=self.bot.CREAM_COLOR)
-                description = "\n".join([f"**`/{cmd.name}`** - {cmd.description}" for cmd in sorted(cog.get_commands(), key=lambda c: c.name) if isinstance(cmd, (commands.HybridCommand, commands.HybridGroup)) and not cmd.hidden and cmd.name != 'help'])
+                
+                command_list = sorted([cmd for cmd in cog.get_commands() if not cmd.hidden], key=lambda c: c.name)
+                description = "\n".join([f"**`/{cmd.name}`** - {cmd.description}" for cmd in command_list if cmd.name != 'help'])
+                
                 embed.description = description or "Esta categoría no tiene comandos para mostrar."
                 await ctx.send(embed=embed, ephemeral=True)
             else:
@@ -75,7 +96,12 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
     @help.autocomplete('categoría')
     async def help_autocomplete(self, interaction: discord.Interaction, current: str) -> list[discord.app_commands.Choice[str]]:
-        return [discord.app_commands.Choice(name=cog_name, value=cmd_name) for cmd_name, cog_name in self.cog_map.items() if current.lower() in cmd_name.lower()][:25]
+        # El autocompletado ahora usa nuestro mapa corregido
+        return [
+            discord.app_commands.Choice(name=cog_name, value=cmd_name)
+            for cmd_name, cog_name in self.cog_map.items()
+            if current.lower() in cmd_name.lower()
+        ][:25]
 
     @commands.command(name='announce', hidden=True)
     @commands.is_owner()
@@ -87,9 +113,13 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         for guild in self.bot.guilds:
             target_channel = guild.system_channel if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages else next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
             if target_channel:
-                try: await target_channel.send(embed=embed); successful += 1
-                except: failed += 1
-            else: failed += 1
+                try: 
+                    await target_channel.send(embed=embed)
+                    successful += 1
+                except: 
+                    failed += 1
+            else: 
+                failed += 1
         await ctx.send(f"✅ Anuncio enviado a **{successful} servidores**.\n❌ Falló en **{failed} servidores**.")
 
     @commands.command(name='serverlist', hidden=True)
@@ -122,13 +152,13 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         await ctx.send(f'🏓 ¡Pong! La latencia es de **{round(self.bot.latency * 1000)}ms**.', ephemeral=True)
 
     @commands.hybrid_command(name='avatar', description="Muestra el avatar de un usuario en grande.")
-    async def avatar(self, ctx: commands.Context, miembro: discord.Member | None = None):
+    async def avatar(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
         target = miembro or ctx.author
         embed = discord.Embed(title=f"Avatar de {target.display_name}", color=target.color).set_image(url=target.display_avatar.url)
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='userinfo', description="Muestra información sobre un usuario.")
-    async def userinfo(self, ctx: commands.Context, miembro: discord.Member | None = None):
+    async def userinfo(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
         target = miembro or ctx.author
         embed = discord.Embed(title=f"Información de {target.display_name}", color=target.color).set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="ID", value=target.id, inline=False)
