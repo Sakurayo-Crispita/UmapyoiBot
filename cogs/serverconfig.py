@@ -53,14 +53,17 @@ async def generate_banner_image(member: discord.Member, message: str, background
         bg.paste(avatar, (372, 20), mask)
 
         # Añadir el texto
+        # Añadir el texto
         draw = ImageDraw.Draw(bg)
         try:
-            # Intenta cargar una fuente bonita. Si no la tienes, usará la por defecto.
-            font_path = "arial.ttf" # Asegúrate de tener esta fuente o cambia la ruta
+            # --- CÓDIGO CORREGIDO ---
+            # Ahora busca la fuente en la carpeta 'utils' de tu proyecto
+            font_path = "utils/arial.ttf" 
             title_font = ImageFont.truetype(font_path, 60)
             subtitle_font = ImageFont.truetype(font_path, 40)
         except IOError:
-            print("Fuente 'arial.ttf' no encontrada, usando la fuente por defecto. Para mejores resultados, instala la fuente en tu sistema.")
+            # Este mensaje ahora te avisará si no encuentra la fuente en 'utils/'
+            print("Fuente 'utils/arial.ttf' no encontrada, usando la fuente por defecto.")
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
 
