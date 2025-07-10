@@ -1,10 +1,9 @@
-# main.py
 import discord
 from discord.ext import commands
 import os
 import traceback
 import datetime
-import glob # Necesario para la limpieza de archivos
+import glob 
 
 # Importamos nuestros módulos de utilidades
 from utils import database_manager
@@ -16,13 +15,9 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DB_FILE = "bot_data.db" 
 
-# --- FUNCIÓN DE LIMPIEZA PARA TTS ---
 def cleanup_tts_files():
-    """Borra los archivos .mp3 de TTS residuales al iniciar."""
     files = glob.glob("tts_*.mp3")
-    if not files:
-        return
-    
+    if not files: return
     deleted_count = 0
     for f in files:
         try:
@@ -30,33 +25,24 @@ def cleanup_tts_files():
             deleted_count += 1
         except OSError as e:
             print(f"Error al borrar el archivo TTS residual {f}: {e}")
-            
     if deleted_count > 0:
         print(f"Limpieza: Se borraron {deleted_count} archivos .mp3 de TTS residuales.")
 
-
-# --- CLASE DE BOT PERSONALIZADA ---
 class UmapyoiBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.db_file = DB_FILE
-
-        # --- CONSTANTES GLOBALES DEL BOT ---
         self.GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-        
         self.CREAM_COLOR = discord.Color(constants.CREAM_COLOR)
         self.FFMPEG_OPTIONS = constants.FFMPEG_OPTIONS
         self.YDL_OPTIONS = constants.YDL_OPTIONS
 
     async def setup_hook(self):
-        # Limpiamos archivos antes de empezar
         cleanup_tts_files()
-
         print("Verificando y creando tablas de la base de datos si no existen...")
         database_manager.setup_database()
         print('-----------------------------------------')
-        
         print("Cargando Cogs...")
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):
@@ -74,7 +60,6 @@ class UmapyoiBot(commands.Bot):
     async def close(self):
         await super().close()
 
-# --- DEFINICIÓN DE INTENTS E INICIO DEL BOT ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
@@ -84,7 +69,6 @@ intents.moderation = True
 
 bot = UmapyoiBot(command_prefix='!', intents=intents, case_insensitive=True, help_command=None)
 
-# --- EVENTOS GLOBALES DEL BOT ---
 @bot.event
 async def on_ready():
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
@@ -100,12 +84,7 @@ async def on_message(message: discord.Message):
 
 @bot.event
 async def on_guild_join(guild: discord.Guild):
-    """
-    Se ejecuta cuando el bot es añadido a un nuevo servidor.
-    Envía un mensaje de bienvenida a quien lo invitó.
-    """
     inviter = None
-    # Añadimos un try/except por si el bot no tiene el permiso
     try:
         if guild.me.guild_permissions.view_audit_log:
             async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=5):
@@ -115,40 +94,25 @@ async def on_guild_join(guild: discord.Guild):
     except discord.Forbidden:
         print(f"No tengo permiso para ver el registro de auditoría en {guild.name}.")
     
-    # Preparar el mensaje de bienvenida
     embed = discord.Embed(
         title=f"¡Gracias por invitar a Umapyoi a {guild.name}!",
         description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. ✨",
         color=bot.CREAM_COLOR
     )
     embed.set_thumbnail(url=bot.user.display_avatar.url)
-    embed.add_field(
-        name="🚀 ¿Cómo empezar?",
-        value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.",
-        inline=False
-    )
-    embed.add_field(
-        name="🎵 Para escuchar música",
-        value="Simplemente únete a un canal de voz y escribe `/play <nombre de la canción o enlace>`.",
-        inline=False
-    )
-    embed.add_field(
-        name="💬 ¿Necesitas ayuda?",
-        value="Si tienes alguna duda o encuentras un error, puedes unirte a mi [servidor de soporte oficial](https://discord.gg/fwNeZsGkSj).",
-        inline=False
-    )
+    embed.add_field(name="🚀 ¿Cómo empezar?", value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.", inline=False)
+    embed.add_field(name="🎵 Para escuchar música", value="Simplemente únete a un canal de voz y escribe `/play <nombre de la canción o enlace>`.", inline=False)
+    embed.add_field(name="💬 ¿Necesitas ayuda?", value="Si tienes alguna duda o encuentras un error, puedes unirte a mi [servidor de soporte oficial](https://discord.gg/fwNeZsGkSj).", inline=False)
     embed.set_footer(text="¡Espero que disfrutes de mi compañía!")
 
-    # Intentar enviar el mensaje
     if inviter:
         try:
             await inviter.send(embed=embed)
             print(f"Mensaje de bienvenida enviado por MD a {inviter.name} por añadirme a {guild.name}.")
-            return # Salimos para no enviar el mensaje dos veces
+            return
         except discord.Forbidden:
             print(f"No pude enviar el MD a {inviter.name}. Probablemente tiene los MDs desactivados.")
 
-    # Fallback: Enviar al canal del sistema si no se pudo por MD o no se encontró al 'inviter'
     if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
         try:
             content = f"¡Hola {inviter.mention}!" if inviter else ""
@@ -156,20 +120,39 @@ async def on_guild_join(guild: discord.Guild):
         except discord.Forbidden:
             pass
 
-
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
-    # Errores que queremos ignorar o manejar de forma silenciosa
-    if isinstance(error, commands.CommandNotFound):
+    # Ignorar errores específicos
+    if isinstance(error, (commands.CommandNotFound, commands.errors.NotOwner)):
         return
     if isinstance(error, commands.errors.HybridCommandError) and isinstance(error.original, (discord.errors.InteractionResponded, discord.errors.NotFound)):
         print(f"Ignorando error de interacción ya respondida o no encontrada.")
         return
 
-    # Errores comunes que se le notifican al usuario
+    # --- MANEJADOR DE COOLDOWN MEJORADO ---
     if isinstance(error, commands.CommandOnCooldown):
-        await ctx.send(f"⏳ Espera {round(error.retry_after, 1)} segundos.", ephemeral=True)
-    elif isinstance(error, commands.MissingPermissions):
+        # Convertir segundos a horas, minutos y segundos
+        seconds = int(error.retry_after)
+        days, remainder = divmod(seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        
+        # Construir el mensaje de tiempo
+        time_str = ""
+        if days > 0:
+            time_str += f"{days}d "
+        if hours > 0:
+            time_str += f"{hours}h "
+        if minutes > 0:
+            time_str += f"{minutes}m "
+        if seconds > 0 and days == 0 and hours == 0: # Solo mostrar segundos si es menos de un minuto
+            time_str += f"{seconds}s"
+            
+        await ctx.send(f"⏳ Vuelve a intentarlo en **{time_str.strip()}**.", ephemeral=True)
+        return # Importante: salimos para no procesar otros errores
+
+    # Errores comunes que se le notifican al usuario
+    if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ No tienes los permisos necesarios para usar este comando.", ephemeral=True)
     elif isinstance(error, commands.BotMissingPermissions):
         permisos = ", ".join(p.replace('_', ' ').capitalize() for p in error.missing_permissions)
@@ -188,9 +171,14 @@ async def on_command_error(ctx: commands.Context, error):
             traceback.print_exception(type(error), error, error.__traceback__, file=f)
             f.write("\n")
         try:
-            await ctx.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
-        except discord.errors.InteractionResponded:
-            await ctx.followup.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
+            # Evitar enviar el mensaje de error si el comando tiene su propio manejador de errores local
+            if not hasattr(ctx.command, 'on_error'):
+                await ctx.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
+        except (discord.errors.InteractionResponded, AttributeError):
+            try:
+                await ctx.followup.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
+            except Exception:
+                pass
 
 def main():
     if not DISCORD_TOKEN:
