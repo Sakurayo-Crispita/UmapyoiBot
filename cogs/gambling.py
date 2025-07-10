@@ -94,13 +94,9 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
             return False
             
         economy_cog = self.bot.get_cog("Economía")
-        if not economy_cog:
-             await ctx.send("El sistema de economía es necesario para las apuestas.", ephemeral=True)
+        if not economy_cog or not await economy_cog.is_economy_active(ctx):
+             await ctx.send("El sistema de economía debe estar activo para poder apostar.", ephemeral=True)
              return False
-
-        # Reutilizamos la comprobación del cog de economía. Si la economía está apagada, no se puede apostar.
-        if not await economy_cog.is_economy_active(ctx):
-            return False
 
         active_channels = await self.get_active_channels(ctx.guild.id)
         if not active_channels:
@@ -181,7 +177,7 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
         if not await self.can_gamble(ctx): return
 
         economy_cog = self.get_economy_cog()
-        if not economy_cog: return # Ya se ha comprobado en can_gamble, pero por seguridad
+        if not economy_cog: return
 
         balance, _ = await economy_cog.get_balance(ctx.guild.id, ctx.author.id)
         if apuesta <= 0: return await ctx.send("La apuesta debe ser mayor que cero.", ephemeral=True)

@@ -121,12 +121,16 @@ class EconomyCog(commands.Cog, name="Economía"):
             return False
 
         active_channels = await self.get_active_channels(ctx.guild.id)
+        
+        # Si no hay canales designados, la economía está efectivamente desactivada para todos.
         if not active_channels:
             if ctx.author.guild_permissions.administrator:
                 await ctx.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True, delete_after=10)
             return False
 
+        # Si hay canales designados, el comando DEBE usarse en uno de ellos.
         if ctx.channel.id not in active_channels:
+            # Solo molesta a los no-admins con el mensaje de error.
             if not ctx.author.guild_permissions.manage_guild:
                 await ctx.send("Los comandos de economía solo están permitidos en los canales designados.", ephemeral=True, delete_after=10)
             return False
