@@ -4,20 +4,20 @@ import asyncio
 import datetime
 from typing import Optional, Literal
 from utils import database_manager as db
-# 1. Importamos las constantes que necesitamos
 from utils.constants import (
     DEFAULT_WELCOME_MESSAGE, DEFAULT_WELCOME_BANNER, 
     DEFAULT_GOODBYE_MESSAGE, DEFAULT_GOODBYE_BANNER,
     TEMP_CHANNEL_PREFIX
 )
 
-# --- MODALES (No necesitan cambios) ---
+# --- MODALES DE CONFIGURACIÓN ---
+
 class WelcomeConfigModal(discord.ui.Modal, title='Configuración de Bienvenida'):
     def __init__(self, cog, default_message, default_banner):
         super().__init__()
         self.cog = cog
-        self.add_item(discord.ui.TextInput(label="Mensaje de Bienvenida", style=discord.TextStyle.long, placeholder="{user.mention}, {server.name}", default=default_message, required=True))
-        self.add_item(discord.ui.TextInput(label="URL del Banner", placeholder="https://i.imgur.com/...", default=default_banner, required=False))
+        self.add_item(discord.ui.TextInput(label="Mensaje de Bienvenida", style=discord.TextStyle.long, placeholder="{user.mention}, {server.name}", default=default_message, required=True, max_length=1000))
+        self.add_item(discord.ui.TextInput(label="URL del Banner (Opcional)", placeholder="https://i.imgur.com/...", default=default_banner, required=False))
     async def on_submit(self, interaction: discord.Interaction):
         await self.cog.save_setting(interaction.guild.id, 'welcome_message', self.children[0].value)
         await self.cog.save_setting(interaction.guild.id, 'welcome_banner_url', self.children[1].value or self.cog.DEFAULT_WELCOME_BANNER)
@@ -27,39 +27,119 @@ class GoodbyeConfigModal(discord.ui.Modal, title='Configuración de Despedida'):
     def __init__(self, cog, default_message, default_banner):
         super().__init__()
         self.cog = cog
-        self.add_item(discord.ui.TextInput(label="Mensaje de Despedida", style=discord.TextStyle.long, placeholder="{user.name}, {server.name}", default=default_message, required=True))
-        self.add_item(discord.ui.TextInput(label="URL del Banner", placeholder="https://i.imgur.com/...", default=default_banner, required=False))
+        self.add_item(discord.ui.TextInput(label="Mensaje de Despedida", style=discord.TextStyle.long, placeholder="{user.name}, {server.name}", default=default_message, required=True, max_length=1000))
+        self.add_item(discord.ui.TextInput(label="URL del Banner (Opcional)", placeholder="https://i.imgur.com/...", default=default_banner, required=False))
     async def on_submit(self, interaction: discord.Interaction):
         await self.cog.save_setting(interaction.guild.id, 'goodbye_message', self.children[0].value)
         await self.cog.save_setting(interaction.guild.id, 'goodbye_banner_url', self.children[1].value or self.cog.DEFAULT_GOODBYE_BANNER)
         await interaction.response.send_message("✅ Configuración de despedida guardada.", ephemeral=True)
 
+class SendMessageModal(discord.ui.Modal, title="Enviar Mensaje Personalizado"):
+    def __init__(self, bot: commands.Bot):
+        super().__init__()
+        self.bot = bot
+        self.add_item(discord.ui.TextInput(label="ID del Canal de Destino", placeholder="Pega aquí el ID del canal donde se enviará", required=True))
+        self.add_item(discord.ui.TextInput(label="Título del Mensaje (Opcional)", required=False, max_length=256))
+        self.add_item(discord.ui.TextInput(label="Contenido del Mensaje", style=discord.TextStyle.long, placeholder="Escribe tu mensaje aquí. Puedes usar formato de Markdown.", required=True, max_length=4000))
+        self.add_item(discord.ui.TextInput(label="URL de la Imagen (Opcional)", placeholder="https://i.imgur.com/...", required=False))
+        self.add_item(discord.ui.TextInput(label="Color del Borde (Hex, Opcional)", placeholder="Ej: #F0EAD6", required=False, max_length=7))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            channel_id = int(self.children[0].value)
+            title = self.children[1].value
+            content = self.children[2].value
+            image_url = self.children[3].value
+            color_str = self.children[4].value
+        except ValueError:
+            return await interaction.response.send_message("❌ El ID del canal no es un número válido.", ephemeral=True)
+
+        channel = self.bot.get_channel(channel_id)
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return await interaction.response.send_message("❌ No se encontró un canal de texto con ese ID o no tengo acceso a él.", ephemeral=True)
+
+        color = self.bot.CREAM_COLOR
+        if color_str and color_str.startswith("#") and len(color_str) == 7:
+            try:
+                color = discord.Color(int(color_str[1:], 16))
+            except ValueError:
+                pass 
+
+        embed = discord.Embed(title=title, description=content, color=color)
+        if image_url:
+            embed.set_image(url=image_url)
+
+        try:
+            await channel.send(embed=embed)
+            await interaction.response.send_message(f"✅ Mensaje enviado correctamente a {channel.mention}.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message(f"❌ No tengo permisos para enviar mensajes en {channel.mention}.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Ocurrió un error al enviar el mensaje: {e}", ephemeral=True)
+
 class ReactionRoleModal(discord.ui.Modal, title="Crear Rol por Reacción"):
     def __init__(self, cog):
         super().__init__()
         self.cog = cog
-        self.add_item(discord.ui.TextInput(label="ID del Mensaje", placeholder="Copia aquí el ID del mensaje", required=True))
-        self.add_item(discord.ui.TextInput(label="Emoji", placeholder="Pega el emoji a usar (ej. ✅)", required=True))
-        self.add_item(discord.ui.TextInput(label="ID del Rol", placeholder="Copia aquí el ID del rol a asignar", required=True))
+        self.add_item(discord.ui.TextInput(label="ID del Mensaje", placeholder="Copia el ID del mensaje al que se reaccionará", required=True))
+        self.add_item(discord.ui.TextInput(label="Emoji", placeholder="Pega el emoji a usar (ej. ✅ o un emoji personalizado)", required=True, max_length=100))
+        self.add_item(discord.ui.TextInput(label="ID del Rol", placeholder="Copia el ID del rol que se asignará", required=True))
+    
     async def on_submit(self, interaction: discord.Interaction):
         try:
             message_id, role_id = int(self.children[0].value), int(self.children[2].value)
             emoji = self.children[1].value
         except ValueError:
-            return await interaction.response.send_message("❌ ID de Mensaje o Rol no válidos.", ephemeral=True)
+            return await interaction.response.send_message("❌ El ID del Mensaje o del Rol debe ser un número.", ephemeral=True)
+        
+        if not interaction.guild or not interaction.channel:
+            return await interaction.response.send_message("❌ Este comando no se puede usar aquí.", ephemeral=True)
+
         try:
+            message = await interaction.channel.fetch_message(message_id)
+        except discord.NotFound:
+            return await interaction.response.send_message("❌ No se encontró un mensaje con ese ID en este canal.", ephemeral=True)
+        except discord.Forbidden:
+            return await interaction.response.send_message("❌ No tengo permisos para leer el historial de este canal.", ephemeral=True)
+            
+        role = interaction.guild.get_role(role_id)
+        if not role:
+            return await interaction.response.send_message("❌ No se encontró un rol con ese ID en este servidor.", ephemeral=True)
+
+        try:
+            await message.add_reaction(emoji)
             await self.cog.add_reaction_role(interaction.guild.id, message_id, emoji, role_id)
-            if isinstance(interaction.channel, (discord.TextChannel, discord.ForumChannel, discord.Thread)):
-                message = await interaction.channel.fetch_message(message_id)
-                await message.add_reaction(emoji)
-            await interaction.response.send_message("✅ Rol por reacción creado.", ephemeral=True)
+            await interaction.response.send_message(f"✅ Rol por reacción creado. He reaccionado con {emoji} al mensaje.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"❌ Error al crear el rol por reacción: {e}", ephemeral=True)
+
+class SetAutoroleModal(discord.ui.Modal, title="Configurar Autorol"):
+    def __init__(self, cog, current_role_id):
+        super().__init__()
+        self.cog = cog
+        self.add_item(discord.ui.TextInput(label="ID del Rol a Asignar", placeholder="Pega aquí el ID del rol", default=str(current_role_id) if current_role_id else "", required=True))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            role_id = int(self.children[0].value)
+        except ValueError:
+            return await interaction.response.send_message("❌ El ID del rol debe ser un número.", ephemeral=True)
+
+        if not interaction.guild: return
+        role = interaction.guild.get_role(role_id)
+        if not role:
+            return await interaction.response.send_message("❌ No se encontró un rol con ese ID.", ephemeral=True)
+        
+        if interaction.guild.me.top_role <= role:
+            return await interaction.response.send_message("❌ No puedo asignar ese rol porque está en una posición igual o superior a la mía.", ephemeral=True)
+
+        await self.cog.save_setting(interaction.guild.id, 'autorole_id', role.id)
+        await interaction.response.send_message(f"✅ Rol automático configurado: {role.mention}.", ephemeral=True)
+
 
 # --- COG PRINCIPAL ---
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
-    # 2. Las constantes de clase ahora usan los valores importados
     DEFAULT_WELCOME_MESSAGE = DEFAULT_WELCOME_MESSAGE
     DEFAULT_WELCOME_BANNER = DEFAULT_WELCOME_BANNER
     DEFAULT_GOODBYE_MESSAGE = DEFAULT_GOODBYE_MESSAGE
@@ -77,12 +157,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         return settings
 
     async def save_setting(self, guild_id: int, key: str, value):
-        allowed_keys = [
-            'welcome_channel_id', 'goodbye_channel_id', 'log_channel_id', 
-            'autorole_id', 'welcome_message', 'welcome_banner_url', 
-            'goodbye_message', 'goodbye_banner_url', 'automod_anti_invite', 
-            'automod_banned_words', 'temp_channel_creator_id', 'leveling_enabled'
-        ]
+        allowed_keys = ['welcome_channel_id', 'goodbye_channel_id', 'log_channel_id', 'autorole_id', 'welcome_message', 'welcome_banner_url', 'goodbye_message', 'goodbye_banner_url', 'automod_anti_invite', 'automod_banned_words', 'temp_channel_creator_id', 'leveling_enabled']
         if key not in allowed_keys:
             print(f"ALERTA DE SEGURIDAD: Intento de guardar clave no permitida: {key}")
             return
@@ -103,6 +178,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
+    # --- LISTENERS ---
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
         if message.author.bot or not message.guild: return
@@ -141,15 +217,15 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     async def on_member_join(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
         if not settings: return
-        if channel_id := settings["welcome_channel_id"]:
+        if channel_id := settings.get("welcome_channel_id"):
             if channel := self.bot.get_channel(channel_id):
-                msg = (settings["welcome_message"] or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
-                banner = settings["welcome_banner_url"] or self.DEFAULT_WELCOME_BANNER
+                msg = (settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                banner = settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER
                 embed = discord.Embed(description=msg, color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                 if banner: embed.set_image(url=banner)
                 try: await channel.send(embed=embed)
                 except discord.Forbidden: pass
-        if role_id := settings["autorole_id"]:
+        if role_id := settings.get("autorole_id"):
             if role := member.guild.get_role(role_id):
                 try: await member.add_roles(role, reason="Autorol al unirse")
                 except discord.Forbidden: pass
@@ -157,10 +233,10 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
-        if settings and (channel_id := settings["goodbye_channel_id"]):
+        if settings and (channel_id := settings.get("goodbye_channel_id")):
             if channel := self.bot.get_channel(channel_id):
-                msg = (settings["goodbye_message"] or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
-                banner = settings["goodbye_banner_url"] or self.DEFAULT_GOODBYE_BANNER
+                msg = (settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                banner = settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER
                 embed = discord.Embed(description=msg, color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                 if banner: embed.set_image(url=banner)
                 try: await channel.send(embed=embed)
@@ -180,6 +256,8 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         if result and (guild := self.bot.get_guild(payload.guild_id)) and (member := guild.get_member(payload.user_id)) and (role := guild.get_role(result['role_id'])):
             try: await member.remove_roles(role)
             except: pass
+
+    # --- COMANDOS ---
 
     @commands.hybrid_command(name='setwelcomechannel', description="Establece el canal para mensajes de bienvenida.")
     @commands.has_permissions(manage_guild=True)
@@ -202,30 +280,36 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.hybrid_command(name='setautorole', description="Establece un rol para asignar a nuevos miembros.")
     @commands.has_permissions(manage_guild=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def set_autorole(self, ctx: commands.Context, rol: discord.Role):
-        await self.save_setting(ctx.guild.id, 'autorole_id', rol.id)
-        await ctx.send(f"✅ Rol automático: {rol.mention}.", ephemeral=True)
+    async def set_autorole(self, ctx: commands.Context):
+        settings = await self.get_settings(ctx.guild.id)
+        current_role_id = settings.get('autorole_id') if settings else None
+        await ctx.interaction.response.send_modal(SetAutoroleModal(self, current_role_id))
 
     @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje y banner de bienvenida.")
     @commands.has_permissions(manage_guild=True)
     async def config_welcome(self, ctx: commands.Context):
         settings = await self.get_settings(ctx.guild.id)
-        msg = (settings['welcome_message'] if settings and settings['welcome_message'] else self.DEFAULT_WELCOME_MESSAGE)
-        banner = (settings['welcome_banner_url'] if settings and settings['welcome_banner_url'] else self.DEFAULT_WELCOME_BANNER)
+        msg = (settings.get('welcome_message') or self.DEFAULT_WELCOME_MESSAGE)
+        banner = (settings.get('welcome_banner_url') or self.DEFAULT_WELCOME_BANNER)
         await ctx.interaction.response.send_modal(WelcomeConfigModal(self, msg, banner))
 
     @commands.hybrid_command(name='configgoodbye', description="Personaliza el mensaje y banner de despedida.")
     @commands.has_permissions(manage_guild=True)
     async def config_goodbye(self, ctx: commands.Context):
         settings = await self.get_settings(ctx.guild.id)
-        msg = (settings['goodbye_message'] if settings and settings['goodbye_message'] else self.DEFAULT_GOODBYE_MESSAGE)
-        banner = (settings['goodbye_banner_url'] if settings and settings['goodbye_banner_url'] else self.DEFAULT_GOODBYE_BANNER)
+        msg = (settings.get('goodbye_message') or self.DEFAULT_GOODBYE_MESSAGE)
+        banner = (settings.get('goodbye_banner_url') or self.DEFAULT_GOODBYE_BANNER)
         await ctx.interaction.response.send_modal(GoodbyeConfigModal(self, msg, banner))
 
-    @commands.hybrid_command(name='createreactionrole', description="Crea un nuevo rol por reacción.")
+    @commands.hybrid_command(name='createreactionrole', description="Crea un nuevo rol por reacción usando un formulario.")
     @commands.has_permissions(manage_roles=True)
     async def create_reaction_role(self, ctx: commands.Context):
         await ctx.interaction.response.send_modal(ReactionRoleModal(self))
+
+    @commands.hybrid_command(name='enviarmensaje', description="Envía un mensaje personalizado con formato a un canal.")
+    @commands.has_permissions(manage_guild=True)
+    async def enviar_mensaje(self, ctx: commands.Context):
+        await ctx.interaction.response.send_modal(SendMessageModal(self.bot))
 
     @commands.hybrid_command(name='setcreatorchannel', description="Establece el canal para crear salas temporales.")
     @commands.has_permissions(manage_guild=True)

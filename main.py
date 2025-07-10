@@ -89,7 +89,7 @@ async def on_message(message: discord.Message):
             description=f"Mi prefijo de texto aquí es `!`, pero te recomiendo usar mis comandos de barra diagonal (`/`).\nEscribe `/help` para ver todo lo que puedo hacer.",
             color=bot.CREAM_COLOR
         )
-        embed.set_image(url="https://i.imgur.com/ZoWPPmV.png")
+        embed.set_thumbnail(url=bot.user.display_avatar.url)
         view = discord.ui.View()
         invite_link = discord.utils.oauth_url(bot.user.id, permissions=discord.Permissions(permissions=8))
         view.add_item(discord.ui.Button(label="¡Invítame!", emoji="🥳", url=invite_link))
