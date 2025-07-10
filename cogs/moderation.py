@@ -49,15 +49,46 @@ class ModerationCog(commands.Cog, name="Moderación"):
         with sqlite3.connect(self.db_file) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT moderator_id, action, reason, duration, timestamp FROM mod_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
+            cursor.execute("SELECT log_id, moderator_id, action, reason, duration, timestamp FROM mod_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
                            (guild_id, user_id))
             return cursor.fetchall()
+
+    def _add_warning_sync(self, guild_id: int, user_id: int, moderator_id: int, reason: str):
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES (?, ?, ?, ?)",
+                           (guild_id, user_id, moderator_id, reason))
+            conn.commit()
+
+    def _get_warnings_sync(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
+        with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT warning_id, moderator_id, reason, timestamp FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
+                           (guild_id, user_id))
+            return cursor.fetchall()
+
+    def _clear_warnings_sync(self, guild_id: int, user_id: int):
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+            conn.commit()
 
     async def add_mod_log(self, guild_id: int, user_id: int, moderator_id: int, action: str, reason: str, duration: Optional[str] = None):
         await asyncio.to_thread(self._add_mod_log_sync, guild_id, user_id, moderator_id, action, reason, duration)
 
     async def get_mod_logs(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
         return await asyncio.to_thread(self._get_mod_logs_sync, guild_id, user_id)
+        
+    async def add_warning(self, guild_id: int, user_id: int, moderator_id: int, reason: str):
+        await asyncio.to_thread(self._add_warning_sync, guild_id, user_id, moderator_id, reason)
+
+    async def get_warnings(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
+        return await asyncio.to_thread(self._get_warnings_sync, guild_id, user_id)
+
+    async def clear_warnings(self, guild_id: int, user_id: int):
+        await asyncio.to_thread(self._clear_warnings_sync, guild_id, user_id)
+
 
     # --- COMANDOS DE MODERACIÓN ---
 
@@ -156,6 +187,26 @@ class ModerationCog(commands.Cog, name="Moderación"):
         embed.description = description
         await ctx.send(embed=embed, ephemeral=True)
 
+    @commands.hybrid_command(name="lock", description="Bloquea el canal actual para que nadie (excepto mods) pueda hablar.")
+    @commands.has_permissions(manage_channels=True)
+    @commands.bot_has_permissions(manage_roles=True)
+    async def lock(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        channel = canal or ctx.channel
+        overwrite = channel.overwrites_for(ctx.guild.default_role)
+        overwrite.send_messages = False
+        await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal bloqueado por {ctx.author.name}")
+        await ctx.send(f"🔒 El canal {channel.mention} ha sido bloqueado.", ephemeral=True)
+
+    @commands.hybrid_command(name="unlock", description="Desbloquea el canal actual.")
+    @commands.has_permissions(manage_channels=True)
+    @commands.bot_has_permissions(manage_roles=True)
+    async def unlock(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        channel = canal or ctx.channel
+        overwrite = channel.overwrites_for(ctx.guild.default_role)
+        overwrite.send_messages = None
+        await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal desbloqueado por {ctx.author.name}")
+        await ctx.send(f"🔓 El canal {channel.mention} ha sido desbloqueado.", ephemeral=True)
+
     @commands.hybrid_command(name="modlogs", description="Muestra el historial de moderación de un usuario.")
     @commands.has_permissions(moderate_members=True)
     async def modlogs(self, ctx: commands.Context, miembro: discord.Member):
@@ -176,6 +227,43 @@ class ModerationCog(commands.Cog, name="Moderación"):
                                   f"**Fecha:** {timestamp}",
                             inline=False)
         await ctx.send(embed=embed, ephemeral=True)
+        
+    @commands.hybrid_command(name="warn", description="Advierte a un usuario.")
+    @commands.has_permissions(moderate_members=True)
+    async def warn(self, ctx: commands.Context, miembro: discord.Member, *, razon: str):
+        await self.add_warning(ctx.guild.id, miembro.id, ctx.author.id, razon)
+        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Warn", razon)
+        try:
+            await miembro.send(f"Has recibido una advertencia en **{ctx.guild.name}** por: {razon}")
+        except discord.Forbidden:
+            pass
+        await ctx.send(f"⚠️ **{miembro.display_name}** ha sido advertido por: **{razon}**", ephemeral=True)
+
+    @commands.hybrid_command(name="warnings", description="Muestra las advertencias de un usuario.")
+    @commands.has_permissions(moderate_members=True)
+    async def warnings(self, ctx: commands.Context, miembro: discord.Member):
+        await ctx.defer(ephemeral=True)
+        warnings_list = await self.get_warnings(ctx.guild.id, miembro.id)
+        if not warnings_list:
+            return await ctx.send(f"**{miembro.display_name}** no tiene ninguna advertencia.", ephemeral=True)
+
+        embed = discord.Embed(title=f"Advertencias de {miembro.display_name}", color=discord.Color.orange())
+        for warn in warnings_list:
+            moderator = ctx.guild.get_member(warn['moderator_id']) or f"ID: {warn['moderator_id']}"
+            timestamp = discord.utils.format_dt(datetime.datetime.fromisoformat(warn['timestamp']), 'f')
+            embed.add_field(name=f"Advertencia #{warn['warning_id']} el {timestamp}", 
+                            value=f"**Razón:** {warn['reason']}\n**Moderador:** {moderator}",
+                            inline=False)
+        await ctx.send(embed=embed, ephemeral=True)
+
+    @commands.hybrid_command(name="clearwarnings", description="Borra todas las advertencias de un usuario.")
+    @commands.has_permissions(manage_guild=True)
+    async def clearwarnings(self, ctx: commands.Context, miembro: discord.Member):
+        await self.clear_warnings(ctx.guild.id, miembro.id)
+        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "ClearWarnings", "Se borraron todas las advertencias previas.")
+        await ctx.send(f"✅ Todas las advertencias de **{miembro.display_name}** han sido borradas.", ephemeral=True)
+
+    # --- COMANDOS DE AUTOMODERACIÓN ---
 
     @commands.hybrid_group(name="automod", description="Configura las opciones de auto-moderación.")
     @commands.has_permissions(manage_guild=True)
@@ -187,8 +275,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(manage_guild=True)
     async def anti_invites(self, ctx: commands.Context, estado: Literal['on', 'off']):
         config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno: no se pudo acceder a la configuración.", ephemeral=True)
-        
+        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
         await config_cog.save_setting(ctx.guild.id, 'automod_anti_invite', 1 if estado == 'on' else 0)
         await ctx.send(f"✅ Filtro anti-invitaciones **{estado}**.", ephemeral=True)
 
@@ -196,19 +283,17 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(manage_guild=True)
     async def badwords(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None: 
-            await ctx.send("Comando inválido. Usa `/automod badwords add/remove/list`.", ephemeral=True)
+            await ctx.send("Comando inválido.", ephemeral=True)
 
     @badwords.command(name="add", description="Añade una palabra a la lista de prohibidas.")
     @commands.has_permissions(manage_guild=True)
     async def badwords_add(self, ctx: commands.Context, palabra: str):
         config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno: no se pudo acceder a la configuración.", ephemeral=True)
-
+        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
         settings = await config_cog.get_settings(ctx.guild.id)
         current_words_str = settings['automod_banned_words'] if settings and settings['automod_banned_words'] else ""
         current_words = set(current_words_str.lower().split(','))
         current_words.add(palabra.lower())
-        
         await config_cog.save_setting(ctx.guild.id, 'automod_banned_words', ",".join(filter(None, current_words)))
         await ctx.send(f"✅ Palabra `{palabra}` añadida.", ephemeral=True)
 
@@ -216,12 +301,10 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(manage_guild=True)
     async def badwords_remove(self, ctx: commands.Context, palabra: str):
         config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno: no se pudo acceder a la configuración.", ephemeral=True)
-        
+        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
         settings = await config_cog.get_settings(ctx.guild.id)
         word_list_str = settings['automod_banned_words'] if settings and settings['automod_banned_words'] else ""
         word_list = word_list_str.lower().split(',')
-        
         if palabra.lower() in word_list:
             word_list.remove(palabra.lower())
             await config_cog.save_setting(ctx.guild.id, 'automod_banned_words', ",".join(filter(None, word_list)))
@@ -233,8 +316,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(manage_guild=True)
     async def badwords_list(self, ctx: commands.Context):
         config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno: no se pudo acceder a la configuración.", ephemeral=True)
-        
+        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
         settings = await config_cog.get_settings(ctx.guild.id)
         words = settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "La lista está vacía."
         await ctx.send(f"**Lista de palabras prohibidas:**\n`{words}`", ephemeral=True)
