@@ -59,7 +59,6 @@ class EconomyCog(commands.Cog, name="Economía"):
             active_channels = [r['channel_id'] for r in active_channels_rows]
             channels = "\n".join([f"<#{cid}>" for cid in active_channels]) if active_channels else "Ninguno"
             
-            # Usamos .get() para acceder de forma segura a los valores
             currency_name = settings.get('currency_name', 'créditos')
             currency_emoji = settings.get('currency_emoji', '🪙')
             start_balance = settings.get('start_balance', 100)
@@ -145,7 +144,8 @@ class EconomyCog(commands.Cog, name="Economía"):
         if amount <= 0: return await self._send_response(ctx, "Debes depositar una cantidad positiva.")
         if wallet < amount: return await self._send_response(ctx, f"No tienes suficiente dinero. Cartera: **{wallet}**.")
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-amount, bank_change=amount)
-        await self._send_response(ctx, f"🏦 Has depositado **{amount}**. Tu banco ahora tiene **{bank + amount}**.")
+        new_bank_balance = bank + amount
+        await self._send_response(ctx, f"🏦 Has depositado **{amount}**. Tu banco ahora tiene **{new_bank_balance}**.")
 
     @commands.hybrid_command(name='withdraw', description="Retira dinero de tu banco a tu cartera.")
     async def withdraw(self, ctx: commands.Context, cantidad: str):
@@ -192,14 +192,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         embed = discord.Embed(title=f"{currency_emoji} Recompensa Diaria", description=f"¡Felicidades! Has reclamado **{amount} {currency_name}**.", color=discord.Color.gold())
         await self._send_response(ctx, embed=embed)
         
-    @daily.error
-    async def daily_error(self, ctx: commands.Context, error: commands.CommandError):
-        if isinstance(error, commands.CommandOnCooldown):
-            m, s = divmod(error.retry_after, 60); h, m = divmod(m, 60)
-            await ctx.send(f"Vuelve en **{int(h)}h {int(m)}m**.", ephemeral=True)
-        else:
-            await ctx.send("Ocurrió un error al reclamar tu recompensa diaria.", ephemeral=True)
-            print(f"Error en /daily: {error}")
+    # --- MANEJADOR DE ERROR LOCAL ELIMINADO ---
+    # Ya no necesitamos daily_error porque el manejador global en main.py lo hará.
+    # Esto soluciona el problema del doble mensaje.
 
     @commands.hybrid_command(name='work', description="Trabaja para ganar un dinero extra.")
     async def work(self, ctx: commands.Context):
@@ -218,9 +213,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         work_cooldown = settings.get('work_cooldown', 3600)
         bucket.per = work_cooldown
 
-        if retry_after := bucket.update_rate_limit():
-            m, s = divmod(retry_after, 60)
-            return await self._send_response(ctx, f"Descansa y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
+        # Verificamos el cooldown. Si el comando está en cooldown, el manejador global se encargará.
+        if bucket.update_rate_limit():
+            return
 
         work_min = settings.get('work_min', 50)
         work_max = settings.get('work_max', 250)
@@ -249,10 +244,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         rob_cooldown = settings.get('rob_cooldown', 21600)
         bucket.per = rob_cooldown
 
-        if retry_after := bucket.update_rate_limit():
-            h, rem = divmod(retry_after, 3600)
-            m, _ = divmod(rem, 60)
-            return await self._send_response(ctx, f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m**.", ephemeral=True)
+        # Verificamos el cooldown. Si el comando está en cooldown, el manejador global se encargará.
+        if bucket.update_rate_limit():
+            return
 
         if miembro.id == ctx.author.id: return await self._send_response(ctx, "No te puedes robar a ti mismo.", ephemeral=True)
         if miembro.bot: return await self._send_response(ctx, "No puedes robarle a los bots.", ephemeral=True)
@@ -282,7 +276,8 @@ class EconomyCog(commands.Cog, name="Economía"):
         if cantidad <= 0: return await self._send_response(ctx, "La cantidad debe ser positiva.")
         sender_wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         if sender_wallet < cantidad: return await self._send_response(ctx, f"No tienes suficientes {settings.get('currency_name', 'créditos')}. Tienes: **{sender_wallet}**.")
-        await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-cantidad); await db.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
+        await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-cantidad)
+        await db.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         embed = discord.Embed(title="💸 Transferencia Realizada", description=f"{ctx.author.mention} ha transferido **{cantidad}** a {miembro.mention}.", color=self.bot.CREAM_COLOR)
         await self._send_response(ctx, embed=embed, ephemeral=False)
         await self.log_transaction(ctx.guild, ctx.author, f"Transfirió **{cantidad}** a {miembro.mention}.")
