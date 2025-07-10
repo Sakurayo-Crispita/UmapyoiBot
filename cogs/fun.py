@@ -53,22 +53,16 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         if "error" in anime_data:
             return await ctx.send(f"❌ Hubo un error con la API (Código: {anime_data['error']}). Inténtalo de nuevo más tarde.", ephemeral=True)
 
-        # --- LÓGICA DE TRADUCCIÓN ---
+        # --- LÓGICA DE TRADUCCIÓN (SIN IA) ---
 
         # 1. Buscar el título en español
         title_es = next((t['title'] for t in anime_data.get('titles', []) if t['type'] == 'Spanish'), None)
         display_title = title_es or anime_data.get('title', 'N/A')
 
-        # 2. Traducir la sinopsis usando la IA
-        synopsis_en = anime_data.get('synopsis', 'No hay sinopsis disponible.')
-        if synopsis_en and len(synopsis_en) > 20: # Solo traducir si hay algo sustancial
-            prompt = f"Traduce el siguiente resumen de un anime al español de forma natural y atractiva:\n\n---\n{synopsis_en}\n---"
-            synopsis_es = await ask_gemini(self.bot.GEMINI_API_KEY, prompt)
-        else:
-            synopsis_es = "No hay sinopsis disponible."
-
-        if len(synopsis_es) > 1024:
-            synopsis_es = synopsis_es[:1021] + "..."
+        # 2. Usar la sinopsis original en inglés para mayor fiabilidad
+        synopsis = anime_data.get('synopsis', 'No hay sinopsis disponible.')
+        if len(synopsis) > 1024:
+            synopsis = synopsis[:1021] + "..."
         
         # 3. Traducir estado y géneros
         status_en = anime_data.get('status', 'N/A')
@@ -77,11 +71,11 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         genres_en = [genre['name'] for genre in anime_data.get('genres', [])]
         genres_es = [GENRE_TRANSLATIONS.get(g, g) for g in genres_en]
 
-        # --- CREACIÓN DEL EMBED EN ESPAÑOL ---
+        # --- CREACIÓN DEL EMBED ---
         embed = discord.Embed(
             title=display_title,
             url=anime_data.get('url', ''),
-            description=synopsis_es,
+            description=synopsis,
             color=discord.Color.blue()
         )
 
@@ -149,6 +143,82 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         else:
             resultado = f"¡Perdiste! Yo elegí **{eleccion_bot}**."
         await ctx.send(f"Tú elegiste **{eleccion_usuario}**. {resultado}")
+
+    # --- NUEVOS COMANDOS DE DIVERSIÓN ---
+
+    @commands.hybrid_command(name="8ball", description="Pregúntale a la bola 8 mágica sobre tu futuro.")
+    async def eight_ball(self, ctx: commands.Context, *, pregunta: str):
+        respuestas = [
+            "En mi opinión, sí.", "Es cierto.", "Es decididamente así.", "Probablemente.",
+            "Buen pronóstico.", "Todo apunta a que sí.", "Sin duda.", "Sí.", "Puedes contar con ello.",
+            "Respuesta vaga, vuelve a intentarlo.", "Pregunta en otro momento.", "Será mejor que no te lo diga ahora.",
+            "No puedo predecirlo ahora.", "Concéntrate y vuelve a preguntar.", "No cuentes con ello.",
+            "Mi respuesta es no.", "Mis fuentes me dicen que no.", "Las perspectivas no son buenas.", "Muy dudoso."
+        ]
+        respuesta = random.choice(respuestas)
+        embed = discord.Embed(title="🎱 La Bola 8 Mágica", color=discord.Color.dark_blue())
+        embed.add_field(name="Tu Pregunta", value=pregunta, inline=False)
+        embed.add_field(name="Mi Respuesta", value=respuesta, inline=False)
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="coinflip", description="Lanza una moneda al aire.")
+    async def coinflip(self, ctx: commands.Context):
+        resultado = random.choice(["Cara", "Cruz"])
+        emoji = "🪙"
+        await ctx.send(f"{emoji} ¡Ha salido **{resultado}**!")
+
+    @commands.hybrid_command(name="rolldice", description="Lanza uno o más dados.")
+    async def rolldice(self, ctx: commands.Context, cantidad: int = 1, caras: int = 6):
+        if cantidad > 100:
+            return await ctx.send("No puedo lanzar más de 100 dados a la vez.", ephemeral=True)
+        if caras > 1000:
+            return await ctx.send("El dado no puede tener más de 1000 caras.", ephemeral=True)
+        
+        rolls = [random.randint(1, caras) for _ in range(cantidad)]
+        total = sum(rolls)
+        
+        embed = discord.Embed(title="🎲 Lanzamiento de Dados", color=discord.Color.red())
+        embed.add_field(name="Resultados", value=f"`{', '.join(map(str, rolls))}`", inline=False)
+        if cantidad > 1:
+            embed.add_field(name="Total", value=f"**{total}**", inline=False)
+            
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="ship", description="Mide la compatibilidad entre dos personas.")
+    async def ship(self, ctx: commands.Context, persona1: discord.Member, persona2: Optional[discord.Member] = None):
+        target2 = persona2 or ctx.author
+        
+        # Para que el resultado sea siempre el mismo para la misma pareja
+        seed = hash(f"{min(persona1.id, target2.id)}-{max(persona1.id, target2.id)}")
+        random.seed(seed)
+        
+        percentage = random.randint(0, 100)
+        
+        if percentage < 20:
+            comment = "Hmm... quizás solo como amigos."
+        elif percentage < 40:
+            comment = "Hay una pequeña chispa, ¿quizás?"
+        elif percentage < 60:
+            comment = "¡Una compatibilidad decente!"
+        elif percentage < 80:
+            comment = "¡Wow, aquí hay potencial!"
+        else:
+            comment = "¡Están hechos el uno para el otro! ❤️"
+            
+        # Barra de progreso
+        filled_blocks = int(percentage / 10)
+        empty_blocks = 10 - filled_blocks
+        progress_bar = '🟥' * filled_blocks + '⬜' * empty_blocks
+
+        embed = discord.Embed(
+            title=f"💖 Test de Compatibilidad 💖",
+            description=f"Analizando la conexión entre **{persona1.display_name}** y **{target2.display_name}**...",
+            color=discord.Color.light_grey()
+        )
+        embed.add_field(name="Resultado", value=f"## `{percentage}%`\n`{progress_bar}`\n\n**{comment}**")
+        
+        await ctx.send(embed=embed)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(FunCog(bot))
