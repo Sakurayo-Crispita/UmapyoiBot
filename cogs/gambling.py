@@ -2,10 +2,12 @@ import discord
 from discord.ext import commands
 import random
 from typing import Optional
-import sqlite3
-import asyncio
+
+# Importamos el gestor de base de datos
+from utils import database_manager as db
 
 class BlackJackView(discord.ui.View):
+    # ... (El código de la vista de Blackjack no necesita cambios)
     def __init__(self, cog: 'GamblingCog', ctx: commands.Context, bet: int):
         super().__init__(timeout=120.0)
         self.cog = cog
@@ -60,34 +62,15 @@ class BlackJackView(discord.ui.View):
         embed.set_footer(text=f"Apuesta: {self.bet}")
         return embed
 
+
 class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
     """Juegos para apostar tus créditos y probar tu suerte."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.db_file = bot.db_file
         self.cards = ['🇦', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🇯', '🇶', '🇰']
         self.card_values = {'🇦': 11, '2️⃣': 2, '3️⃣': 3, '4️⃣': 4, '5️⃣': 5, '6️⃣': 6, '7️⃣': 7, '8️⃣': 8, '9️⃣': 9, '🔟': 10, '🇯': 10, '🇶': 10, '🇰': 10}
 
-    # --- FUNCIONES DE BASE DE DATOS Y LÓGICA ---
-
-    def _get_active_channels_sync(self, guild_id: int) -> list[int]:
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (guild_id,))
-            return [r['channel_id'] for r in cursor.fetchall()]
-
-    async def get_active_channels(self, guild_id: int) -> list[int]:
-        return await asyncio.to_thread(self._get_active_channels_sync, guild_id)
-
-    def _db_execute_commit(self, query: str, params: tuple):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            conn.commit()
-
-    async def db_execute(self, query: str, params: tuple = ()):
-        await asyncio.to_thread(self._db_execute_commit, query, params)
+    # --- Las funciones de base de datos se han eliminado de aquí ---
 
     async def can_gamble(self, ctx: commands.Context) -> bool:
         if not ctx.guild:
@@ -98,7 +81,10 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
              await ctx.send("El sistema de economía debe estar activo para poder apostar.", ephemeral=True)
              return False
 
-        active_channels = await self.get_active_channels(ctx.guild.id)
+        # Usamos el gestor de DB
+        active_channels_rows = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))
+        active_channels = [r['channel_id'] for r in active_channels_rows]
+
         if not active_channels:
             if ctx.author.guild_permissions.administrator:
                 await ctx.send("No se ha designado ningún canal para las apuestas. Usa `/gambling addchannel`.", ephemeral=True)
@@ -110,9 +96,6 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
             return False
             
         return True
-
-    def get_economy_cog(self) -> Optional[commands.Cog]:
-        return self.bot.get_cog("Economía")
 
     def deal_card(self):
         return random.choice(self.cards)
@@ -131,18 +114,15 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
             view.dealer_hand.append(self.deal_card())
         dealer_score = self.calculate_score(view.dealer_hand)
 
-        economy_cog = self.get_economy_cog()
-        if not economy_cog: return
-
         if player_score > 21:
             result_message = f"Te pasaste de 21. ¡Perdiste **{view.bet}**!"
-            await economy_cog.update_balance(interaction.guild.id, interaction.user.id, wallet_change=-view.bet)
+            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=-view.bet)
         elif dealer_score > 21 or player_score > dealer_score:
             result_message = f"¡Ganaste! Recibes **{view.bet * 2}**."
-            await economy_cog.update_balance(interaction.guild.id, interaction.user.id, wallet_change=view.bet)
+            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=view.bet)
         elif player_score < dealer_score:
             result_message = f"El bot gana. ¡Perdiste **{view.bet}**!"
-            await economy_cog.update_balance(interaction.guild.id, interaction.user.id, wallet_change=-view.bet)
+            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=-view.bet)
         else:
             result_message = "¡Es un empate! Recuperas tu apuesta."
 
@@ -150,36 +130,31 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
         final_embed.description = result_message
         await interaction.edit_original_response(embed=final_embed, view=view)
 
-    # --- COMANDOS ---
-
     @commands.hybrid_group(name="gambling", description="Configura los canales para los juegos de apuestas.")
     @commands.has_permissions(administrator=True)
     async def gambling(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
-            active_channels = await self.get_active_channels(ctx.guild.id)
-            channels_list = "\n".join([f"<#{cid}>" for cid in active_channels]) if active_channels else "Ninguno"
+            active_channels_rows = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))
+            channels_list = "\n".join([f"<#{r['channel_id']}>" for r in active_channels_rows]) if active_channels_rows else "Ninguno"
             embed = discord.Embed(title="🎲 Configuración de Apuestas", color=self.bot.CREAM_COLOR)
             embed.add_field(name="Canales de Apuestas Activos", value=channels_list)
             await ctx.send(embed=embed, ephemeral=True)
 
     @gambling.command(name="addchannel", description="Permite los juegos de apuestas en un canal.")
     async def add_channel(self, ctx: commands.Context, canal: discord.TextChannel):
-        await self.db_execute("INSERT OR IGNORE INTO gambling_active_channels (guild_id, channel_id) VALUES (?, ?)", (ctx.guild.id, canal.id))
+        await db.execute("INSERT OR IGNORE INTO gambling_active_channels (guild_id, channel_id) VALUES (?, ?)", (ctx.guild.id, canal.id))
         await ctx.send(f"✅ Los juegos de apuestas ahora están permitidos en {canal.mention}.", ephemeral=True)
 
     @gambling.command(name="removechannel", description="Prohíbe los juegos de apuestas en un canal.")
     async def remove_channel(self, ctx: commands.Context, canal: discord.TextChannel):
-        await self.db_execute("DELETE FROM gambling_active_channels WHERE guild_id = ? AND channel_id = ?", (ctx.guild.id, canal.id))
+        await db.execute("DELETE FROM gambling_active_channels WHERE guild_id = ? AND channel_id = ?", (ctx.guild.id, canal.id))
         await ctx.send(f"❌ Los juegos de apuestas ya no están permitidos en {canal.mention}.", ephemeral=True)
 
     @commands.hybrid_command(name='blackjack', description="Juega una partida de Blackjack apostando.")
     async def blackjack(self, ctx: commands.Context, apuesta: int):
         if not await self.can_gamble(ctx): return
 
-        economy_cog = self.get_economy_cog()
-        if not economy_cog: return
-
-        balance, _ = await economy_cog.get_balance(ctx.guild.id, ctx.author.id)
+        balance, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         if apuesta <= 0: return await ctx.send("La apuesta debe ser mayor que cero.", ephemeral=True)
         if balance < apuesta: return await ctx.send(f"No tienes suficiente para esa apuesta. Tu cartera: **{balance}**", ephemeral=True)
 
@@ -191,11 +166,8 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
     async def slots(self, ctx: commands.Context, apuesta: int):
         if not await self.can_gamble(ctx): return
         
-        economy_cog = self.get_economy_cog()
-        if not economy_cog: return
-
         await ctx.defer()
-        balance, _ = await economy_cog.get_balance(ctx.guild.id, ctx.author.id)
+        balance, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         if apuesta <= 0: return await ctx.send("La apuesta debe ser mayor que cero.", ephemeral=True)
         if balance < apuesta: return await ctx.send(f"No tienes suficiente. Tu cartera: **{balance}**", ephemeral=True)
 
@@ -214,7 +186,7 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
             result_text += "\n\n¡Mala suerte! Perdiste tu apuesta."
         
         net_change = winnings - apuesta
-        new_balance, _ = await economy_cog.update_balance(ctx.guild.id, ctx.author.id, wallet_change=net_change)
+        new_balance, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=net_change)
 
         embed = discord.Embed(title="🎰 Tragamonedas 🎰", description=result_text, color=self.bot.CREAM_COLOR)
         embed.set_footer(text=f"Apostaste {apuesta}. Tu nuevo balance: {new_balance}")

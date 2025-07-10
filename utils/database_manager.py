@@ -1,5 +1,3 @@
-# /utils/database_manager.py
-
 import sqlite3
 import asyncio
 from typing import Optional, Any

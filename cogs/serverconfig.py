@@ -1,11 +1,17 @@
 import discord
 from discord.ext import commands
-import sqlite3
 import asyncio
 import datetime
 from typing import Optional, Literal
+from utils import database_manager as db
+# 1. Importamos las constantes que necesitamos
+from utils.constants import (
+    DEFAULT_WELCOME_MESSAGE, DEFAULT_WELCOME_BANNER, 
+    DEFAULT_GOODBYE_MESSAGE, DEFAULT_GOODBYE_BANNER,
+    TEMP_CHANNEL_PREFIX
+)
 
-# --- MODALES ---
+# --- MODALES (No necesitan cambios) ---
 class WelcomeConfigModal(discord.ui.Modal, title='Configuración de Bienvenida'):
     def __init__(self, cog, default_message, default_banner):
         super().__init__()
@@ -53,56 +59,42 @@ class ReactionRoleModal(discord.ui.Modal, title="Crear Rol por Reacción"):
 # --- COG PRINCIPAL ---
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
-    DEFAULT_WELCOME_MESSAGE = "¡Bienvenido a {server.name}, {user.mention}! 🎉"
-    DEFAULT_WELCOME_BANNER = "https://i.imgur.com/WnEqRW5.png"
-    DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima! 😢"
-    DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/WwexK3G.png"
-    TEMP_CHANNEL_PREFIX = "Sala de "
+    # 2. Las constantes de clase ahora usan los valores importados
+    DEFAULT_WELCOME_MESSAGE = DEFAULT_WELCOME_MESSAGE
+    DEFAULT_WELCOME_BANNER = DEFAULT_WELCOME_BANNER
+    DEFAULT_GOODBYE_MESSAGE = DEFAULT_GOODBYE_MESSAGE
+    DEFAULT_GOODBYE_BANNER = DEFAULT_GOODBYE_BANNER
+    TEMP_CHANNEL_PREFIX = TEMP_CHANNEL_PREFIX
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.db_file = bot.db_file
 
-    # --- FUNCIONES SÍNCRONAS ---
-    def _get_settings_sync(self, guild_id: int) -> Optional[sqlite3.Row]:
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
-            return cursor.fetchone()
-
-    def _save_setting_sync(self, guild_id: int, key: str, value):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (guild_id,))
-            cursor.execute(f"UPDATE server_settings SET {key} = ? WHERE guild_id = ?", (value, guild_id))
-            conn.commit()
-    
-    def _add_reaction_role_sync(self, guild_id, message_id, emoji, role_id):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("REPLACE INTO reaction_roles (guild_id, message_id, emoji, role_id) VALUES (?, ?, ?, ?)", (guild_id, message_id, emoji, role_id))
-            conn.commit()
-
-    def _get_reaction_role_sync(self, guild_id, message_id, emoji) -> Optional[sqlite3.Row]:
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (guild_id, message_id, emoji))
-            return cursor.fetchone()
-
-    # --- WRAPPERS ASÍNCRONOS ---
-    async def get_settings(self, guild_id: int) -> Optional[sqlite3.Row]:
-        return await asyncio.to_thread(self._get_settings_sync, guild_id)
+    async def get_settings(self, guild_id: int):
+        settings = await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
+        if not settings:
+            await db.execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (guild_id,))
+            return await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
+        return settings
 
     async def save_setting(self, guild_id: int, key: str, value):
-        await asyncio.to_thread(self._save_setting_sync, guild_id, key, value)
+        allowed_keys = [
+            'welcome_channel_id', 'goodbye_channel_id', 'log_channel_id', 
+            'autorole_id', 'welcome_message', 'welcome_banner_url', 
+            'goodbye_message', 'goodbye_banner_url', 'automod_anti_invite', 
+            'automod_banned_words', 'temp_channel_creator_id', 'leveling_enabled'
+        ]
+        if key not in allowed_keys:
+            print(f"ALERTA DE SEGURIDAD: Intento de guardar clave no permitida: {key}")
+            return
+        await self.get_settings(guild_id)
+        query = f"UPDATE server_settings SET {key} = ? WHERE guild_id = ?"
+        await db.execute(query, (value, guild_id))
 
     async def add_reaction_role(self, guild_id, message_id, emoji, role_id):
-        await asyncio.to_thread(self._add_reaction_role_sync, guild_id, message_id, emoji, role_id)
+        await db.execute("REPLACE INTO reaction_roles (guild_id, message_id, emoji, role_id) VALUES (?, ?, ?, ?)", (guild_id, message_id, emoji, role_id))
             
-    async def get_reaction_role(self, guild_id, message_id, emoji) -> Optional[sqlite3.Row]:
-        return await asyncio.to_thread(self._get_reaction_role_sync, guild_id, message_id, emoji)
+    async def get_reaction_role(self, guild_id, message_id, emoji):
+        return await db.fetchone("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (guild_id, message_id, emoji))
 
     async def log_event(self, guild_id, embed):
         settings = await self.get_settings(guild_id)
@@ -111,7 +103,6 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
-    # --- LISTENERS ---
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
         if message.author.bot or not message.guild: return
@@ -141,7 +132,9 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 await member.move_to(temp_channel)
             except Exception as e: print(f"Error creando canal temporal: {e}")
         if before.channel and before.channel.name.startswith(self.TEMP_CHANNEL_PREFIX) and not before.channel.members:
-            try: await asyncio.sleep(1); await before.channel.delete(reason="Canal temporal vacío.")
+            try: 
+                await asyncio.sleep(1)
+                await before.channel.delete(reason="Canal temporal vacío.")
             except Exception as e: print(f"Error borrando canal temporal: {e}")
 
     @commands.Cog.listener()
@@ -188,7 +181,6 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             try: await member.remove_roles(role)
             except: pass
 
-    # --- COMANDOS ---
     @commands.hybrid_command(name='setwelcomechannel', description="Establece el canal para mensajes de bienvenida.")
     @commands.has_permissions(manage_guild=True)
     async def set_welcome_channel(self, ctx: commands.Context, canal: discord.TextChannel):

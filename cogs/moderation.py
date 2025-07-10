@@ -2,11 +2,11 @@ import discord
 from discord.ext import commands
 import datetime
 import re
-import asyncio
-import sqlite3
 from typing import Optional, Literal
 
-# --- Función para parsear la duración del timeout ---
+# Importamos el gestor de base de datos
+from utils import database_manager as db
+
 def parse_duration(duration_str: str) -> Optional[datetime.timedelta]:
     regex = re.compile(r'(\d+)([smhd])')
     matches = regex.findall(duration_str.lower())
@@ -35,62 +35,8 @@ class ModerationCog(commands.Cog, name="Moderación"):
     """Comandos para mantener el orden y la seguridad en el servidor."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.db_file = bot.db_file
 
-    # --- FUNCIONES DE BASE DE DATOS ---
-    def _add_mod_log_sync(self, guild_id: int, user_id: int, moderator_id: int, action: str, reason: str, duration: Optional[str] = None):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO mod_logs (guild_id, user_id, moderator_id, action, reason, duration) VALUES (?, ?, ?, ?, ?, ?)",
-                           (guild_id, user_id, moderator_id, action, reason, duration))
-            conn.commit()
-
-    def _get_mod_logs_sync(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT log_id, moderator_id, action, reason, duration, timestamp FROM mod_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
-                           (guild_id, user_id))
-            return cursor.fetchall()
-
-    def _add_warning_sync(self, guild_id: int, user_id: int, moderator_id: int, reason: str):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES (?, ?, ?, ?)",
-                           (guild_id, user_id, moderator_id, reason))
-            conn.commit()
-
-    def _get_warnings_sync(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
-        with sqlite3.connect(self.db_file) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT warning_id, moderator_id, reason, timestamp FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC",
-                           (guild_id, user_id))
-            return cursor.fetchall()
-
-    def _clear_warnings_sync(self, guild_id: int, user_id: int):
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-            conn.commit()
-
-    async def add_mod_log(self, guild_id: int, user_id: int, moderator_id: int, action: str, reason: str, duration: Optional[str] = None):
-        await asyncio.to_thread(self._add_mod_log_sync, guild_id, user_id, moderator_id, action, reason, duration)
-
-    async def get_mod_logs(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
-        return await asyncio.to_thread(self._get_mod_logs_sync, guild_id, user_id)
-        
-    async def add_warning(self, guild_id: int, user_id: int, moderator_id: int, reason: str):
-        await asyncio.to_thread(self._add_warning_sync, guild_id, user_id, moderator_id, reason)
-
-    async def get_warnings(self, guild_id: int, user_id: int) -> list[sqlite3.Row]:
-        return await asyncio.to_thread(self._get_warnings_sync, guild_id, user_id)
-
-    async def clear_warnings(self, guild_id: int, user_id: int):
-        await asyncio.to_thread(self._clear_warnings_sync, guild_id, user_id)
-
-
-    # --- COMANDOS DE MODERACIÓN ---
+    # --- Las funciones de base de datos se han eliminado de aquí ---
 
     @commands.hybrid_command(name="clear", description="Borra una cantidad específica de mensajes en el canal.")
     @commands.has_permissions(manage_messages=True)
@@ -110,7 +56,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
             return await ctx.send("❌ No puedes expulsar a alguien con un rol igual o superior al tuyo.", ephemeral=True)
 
         await miembro.kick(reason=f"{razon} (Moderador: {ctx.author.name})")
-        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Kick", razon)
+        await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Kick", razon)
         await ctx.send(f"✅ **{miembro.display_name}** ha sido expulsado del servidor por: **{razon}**", ephemeral=True)
 
     @commands.hybrid_command(name="ban", description="Banea a un miembro del servidor.")
@@ -123,7 +69,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
             return await ctx.send("❌ No puedes banear a alguien con un rol igual o superior al tuyo.", ephemeral=True)
 
         await miembro.ban(reason=f"{razon} (Moderador: {ctx.author.name})")
-        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Ban", razon)
+        await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Ban", razon)
         await ctx.send(f"✅ **{miembro.display_name}** ha sido baneado permanentemente por: **{razon}**", ephemeral=True)
 
     @commands.hybrid_command(name="unban", description="Desbanea a un usuario del servidor.")
@@ -137,7 +83,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
 
         try:
             await ctx.guild.unban(user, reason=f"{razon} (Moderador: {ctx.author.name})")
-            await self.add_mod_log(ctx.guild.id, user.id, ctx.author.id, "Unban", razon)
+            await db.add_mod_log(ctx.guild.id, user.id, ctx.author.id, "Unban", razon)
             await ctx.send(f"✅ **{user.name}** ha sido desbaneado.", ephemeral=True)
         except discord.NotFound:
             await ctx.send("❌ Este usuario no se encuentra en la lista de baneados.", ephemeral=True)
@@ -156,7 +102,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
             return await ctx.send("❌ Formato de duración inválido. Usa `d` para días, `h` para horas, `m` para minutos, `s` para segundos.", ephemeral=True)
 
         await miembro.timeout(delta, reason=f"{razon} (Moderador: {ctx.author.name})")
-        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Timeout", razon, duracion)
+        await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Timeout", razon, duracion)
         await ctx.send(f"✅ **{miembro.display_name}** ha sido silenciado por **{duracion}** por la razón: **{razon}**", ephemeral=True)
 
     @commands.hybrid_command(name="unmute", description="Quita el silencio a un miembro.")
@@ -167,7 +113,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
             return await ctx.send("Este miembro no está silenciado.", ephemeral=True)
         
         await miembro.timeout(None, reason=f"{razon} (Moderador: {ctx.author.name})")
-        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Unmute", razon)
+        await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Unmute", razon)
         await ctx.send(f"✅ Se ha quitado el silencio a **{miembro.display_name}**.", ephemeral=True)
 
     @commands.hybrid_command(name="mutelist", description="Muestra la lista de usuarios silenciados actualmente.")
@@ -211,7 +157,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(moderate_members=True)
     async def modlogs(self, ctx: commands.Context, miembro: discord.Member):
         await ctx.defer(ephemeral=True)
-        logs = await self.get_mod_logs(ctx.guild.id, miembro.id)
+        logs = await db.fetchall("SELECT * FROM mod_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC", (ctx.guild.id, miembro.id))
         
         if not logs:
             return await ctx.send(f"**{miembro.display_name}** no tiene historial de moderación.", ephemeral=True)
@@ -231,8 +177,8 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.hybrid_command(name="warn", description="Advierte a un usuario.")
     @commands.has_permissions(moderate_members=True)
     async def warn(self, ctx: commands.Context, miembro: discord.Member, *, razon: str):
-        await self.add_warning(ctx.guild.id, miembro.id, ctx.author.id, razon)
-        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Warn", razon)
+        await db.execute("INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES (?, ?, ?, ?)", (ctx.guild.id, miembro.id, ctx.author.id, razon))
+        await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Warn", razon)
         try:
             await miembro.send(f"Has recibido una advertencia en **{ctx.guild.name}** por: {razon}")
         except discord.Forbidden:
@@ -243,7 +189,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(moderate_members=True)
     async def warnings(self, ctx: commands.Context, miembro: discord.Member):
         await ctx.defer(ephemeral=True)
-        warnings_list = await self.get_warnings(ctx.guild.id, miembro.id)
+        warnings_list = await db.fetchall("SELECT * FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC", (ctx.guild.id, miembro.id))
         if not warnings_list:
             return await ctx.send(f"**{miembro.display_name}** no tiene ninguna advertencia.", ephemeral=True)
 
@@ -259,8 +205,8 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.hybrid_command(name="clearwarnings", description="Borra todas las advertencias de un usuario.")
     @commands.has_permissions(manage_guild=True)
     async def clearwarnings(self, ctx: commands.Context, miembro: discord.Member):
-        await self.clear_warnings(ctx.guild.id, miembro.id)
-        await self.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "ClearWarnings", "Se borraron todas las advertencias previas.")
+        await db.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (ctx.guild.id, miembro.id))
+        await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "ClearWarnings", "Se borraron todas las advertencias previas.")
         await ctx.send(f"✅ Todas las advertencias de **{miembro.display_name}** han sido borradas.", ephemeral=True)
 
     # --- COMANDOS DE AUTOMODERACIÓN ---
@@ -274,9 +220,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @automod.command(name="anti_invites", description="Activa o desactiva el borrado de invitaciones de Discord.")
     @commands.has_permissions(manage_guild=True)
     async def anti_invites(self, ctx: commands.Context, estado: Literal['on', 'off']):
-        config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
-        await config_cog.save_setting(ctx.guild.id, 'automod_anti_invite', 1 if estado == 'on' else 0)
+        await db.execute("UPDATE server_settings SET automod_anti_invite = ? WHERE guild_id = ?", (1 if estado == 'on' else 0, ctx.guild.id))
         await ctx.send(f"✅ Filtro anti-invitaciones **{estado}**.", ephemeral=True)
 
     @automod.group(name="badwords", description="Gestiona la lista de palabras prohibidas.")
@@ -288,26 +232,22 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @badwords.command(name="add", description="Añade una palabra a la lista de prohibidas.")
     @commands.has_permissions(manage_guild=True)
     async def badwords_add(self, ctx: commands.Context, palabra: str):
-        config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
-        settings = await config_cog.get_settings(ctx.guild.id)
+        settings = await db.fetchone("SELECT automod_banned_words FROM server_settings WHERE guild_id = ?", (ctx.guild.id,))
         current_words_str = settings['automod_banned_words'] if settings and settings['automod_banned_words'] else ""
         current_words = set(current_words_str.lower().split(','))
         current_words.add(palabra.lower())
-        await config_cog.save_setting(ctx.guild.id, 'automod_banned_words', ",".join(filter(None, current_words)))
+        await db.execute("UPDATE server_settings SET automod_banned_words = ? WHERE guild_id = ?", (",".join(filter(None, current_words)), ctx.guild.id))
         await ctx.send(f"✅ Palabra `{palabra}` añadida.", ephemeral=True)
 
     @badwords.command(name="remove", description="Quita una palabra de la lista de prohibidas.")
     @commands.has_permissions(manage_guild=True)
     async def badwords_remove(self, ctx: commands.Context, palabra: str):
-        config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
-        settings = await config_cog.get_settings(ctx.guild.id)
+        settings = await db.fetchone("SELECT automod_banned_words FROM server_settings WHERE guild_id = ?", (ctx.guild.id,))
         word_list_str = settings['automod_banned_words'] if settings and settings['automod_banned_words'] else ""
         word_list = word_list_str.lower().split(',')
         if palabra.lower() in word_list:
             word_list.remove(palabra.lower())
-            await config_cog.save_setting(ctx.guild.id, 'automod_banned_words', ",".join(filter(None, word_list)))
+            await db.execute("UPDATE server_settings SET automod_banned_words = ? WHERE guild_id = ?", (",".join(filter(None, word_list)), ctx.guild.id))
             await ctx.send(f"✅ Palabra `{palabra}` eliminada.", ephemeral=True)
         else: 
             await ctx.send(f"⚠️ La palabra `{palabra}` no estaba en la lista.", ephemeral=True)
@@ -315,11 +255,10 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @badwords.command(name="list", description="Muestra la lista de palabras prohibidas.")
     @commands.has_permissions(manage_guild=True)
     async def badwords_list(self, ctx: commands.Context):
-        config_cog = self.bot.get_cog("Configuración del Servidor")
-        if not config_cog: return await ctx.send("Error interno.", ephemeral=True)
-        settings = await config_cog.get_settings(ctx.guild.id)
+        settings = await db.fetchone("SELECT automod_banned_words FROM server_settings WHERE guild_id = ?", (ctx.guild.id,))
         words = settings['automod_banned_words'] if settings and settings['automod_banned_words'] else "La lista está vacía."
         await ctx.send(f"**Lista de palabras prohibidas:**\n`{words}`", ephemeral=True)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(ModerationCog(bot))
