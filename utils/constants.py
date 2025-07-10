@@ -1,11 +1,14 @@
-# --- Colores ---
 CREAM_COLOR = 0xF0EAD6 # Usamos el valor hexadecimal directamente
 
 # --- Mensajes y Banners de ServerConfig ---
 DEFAULT_WELCOME_MESSAGE = "¡Bienvenido a {server.name}, {user.mention}! 🎉"
-DEFAULT_WELCOME_BANNER = "https://i.imgur.com/WnEqRW5.png"
+# URL del banner de bienvenida por defecto actualizada
+DEFAULT_WELCOME_BANNER = "https://i.imgur.com/it8F4Ml.png" 
+
 DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima! 😢"
-DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/WwexK3G.png"
+# URL del banner de despedida por defecto actualizada para mantener consistencia
+DEFAULT_GOODBYE_BANNER = "https://i.imgur.com/it8F4Ml.png" 
+
 TEMP_CHANNEL_PREFIX = "Sala de "
 
 # --- URLs de Plantillas ---
