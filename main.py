@@ -75,15 +75,37 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="¡Umapyoi ready! | /help"))
 
 @bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot or not message.guild:
-        return
-    if bot.user.mentioned_in(message) and not message.mention_everyone and not message.reference:
-        await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
-    await bot.process_commands(message)
-
-@bot.event
 async def on_guild_join(guild: discord.Guild):
+    """
+    Se ejecuta cuando el bot es añadido a un nuevo servidor.
+    Envía un mensaje de bienvenida público y uno privado a quien lo invitó.
+    """
+    target_channel = guild.system_channel
+    if not (target_channel and target_channel.permissions_for(guild.me).send_messages):
+        # Si el canal de sistema no existe o no se puede escribir, busca otro canal
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                target_channel = channel
+                break
+
+    if target_channel:
+        public_embed = discord.Embed(
+            title="¡Umapyoi ha llegado para correr!",
+            description="¡Hola a todos! Estoy lista para traer la mejor música, juegos y utilidades a su comunidad. ¡Es un placer estar aquí! 🥕",
+            color=bot.CREAM_COLOR
+        )
+        public_embed.add_field(name="🏁 Primeros Pasos", value="Usa `/help` para ver mi lista de comandos.\nPara escuchar música, únete a un canal de voz y usa `/play`.", inline=False)
+        public_embed.add_field(name="💡 Mi Propósito", value="He sido creada para ser una compañera todo-en-uno, fácil de usar y siempre lista para la diversión y la carrera.", inline=False)
+        public_embed.add_field(name="🔧 Soporte y Comunidad", value="Si tienes alguna duda o sugerencia, únete a nuestro [servidor de soporte](https://discord.gg/fwNeZsGkSj).", inline=False)
+        
+        public_embed.set_image(url="https://i.imgur.com/LQxAWOz.png") # Puedes cambiar esta imagen
+        public_embed.set_footer(text="¡A disfrutar de la carrera!")
+        
+        try:
+            await target_channel.send(embed=public_embed)
+        except discord.Forbidden:
+            print(f"No pude enviar el mensaje de bienvenida público en {guild.name}")
+
     inviter = None
     try:
         if guild.me.guild_permissions.view_audit_log:

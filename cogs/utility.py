@@ -118,22 +118,36 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             if current.lower() in cmd_name.lower()
         ][:25]
 
-    @commands.command(name='announce', hidden=True)
+    @commands.hybrid_command(name='announce', description="Envía un anuncio a todos los servidores donde está el bot.")
     @commands.is_owner()
     async def announce(self, ctx: commands.Context, *, mensaje: str):
-        await ctx.typing()
+        await ctx.defer(ephemeral=True) # Hacemos la respuesta efímera para no molestar en el canal
         embed = discord.Embed(title="📢 Anuncio del Bot", description=mensaje, color=self.bot.CREAM_COLOR, timestamp=datetime.datetime.now())
         embed.set_footer(text=f"Enviado por el desarrollador de Umapyoi")
         successful, failed = 0, 0
         for guild in self.bot.guilds:
-            target_channel = guild.system_channel if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages else next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+            # Lógica mejorada para encontrar un canal donde enviar el mensaje
+            target_channel = None
+            if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+                target_channel = guild.system_channel
+            else:
+                # Busca el primer canal de texto donde pueda hablar
+                for channel in guild.text_channels:
+                    if channel.permissions_for(guild.me).send_messages:
+                        target_channel = channel
+                        break
             if target_channel:
                 try: 
                     await target_channel.send(embed=embed)
                     successful += 1
-                except: 
+                except discord.Forbidden:
+                    print(f"Fallo al enviar en {guild.name} ({guild.id}): Sin permisos en {target_channel.name}")
+                    failed += 1
+                except Exception as e:
+                    print(f"Fallo al enviar en {guild.name} ({guild.id}): {e}")
                     failed += 1
             else: 
+                print(f"Fallo al enviar en {guild.name} ({guild.id}): No se encontró un canal válido.")
                 failed += 1
         await ctx.send(f"✅ Anuncio enviado a **{successful} servidores**.\n❌ Falló en **{failed} servidores**.")
 
