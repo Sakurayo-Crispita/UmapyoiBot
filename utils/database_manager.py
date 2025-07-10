@@ -1,13 +1,50 @@
-# utils/database_manager.py
 import sqlite3
 import asyncio
 from typing import Optional, Any
 
 DB_FILE = "bot_data.db"
 
+def run_migrations(conn):
+    """
+    Añade columnas faltantes a las tablas existentes para evitar errores
+    después de una actualización.
+    """
+    cursor = conn.cursor()
+    
+    # --- Migración para la tabla economy_settings ---
+    try:
+        cursor.execute("PRAGMA table_info(economy_settings)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        # Columnas que deberían existir y su tipo de dato + valor por defecto
+        expected_columns = {
+            "daily_min": "INTEGER DEFAULT 100",
+            "daily_max": "INTEGER DEFAULT 500",
+            "work_min": "INTEGER DEFAULT 50",
+            "work_max": "INTEGER DEFAULT 250",
+            "work_cooldown": "INTEGER DEFAULT 3600",
+            "rob_cooldown": "INTEGER DEFAULT 21600"
+        }
+        
+        for col_name, col_definition in expected_columns.items():
+            if col_name not in columns:
+                print(f"MIGRACIÓN: Añadiendo columna '{col_name}' a la tabla 'economy_settings'...")
+                cursor.execute(f"ALTER TABLE economy_settings ADD COLUMN {col_name} {col_definition}")
+                print(f"MIGRACIÓN: Columna '{col_name}' añadida con éxito.")
+    except sqlite3.Error as e:
+        print(f"Error durante la migración de 'economy_settings': {e}")
+
+    # Aquí se pueden añadir futuras migraciones para otras tablas
+    
+    conn.commit()
+
+
 def setup_database():
-    """Crea todas las tablas necesarias si no existen."""
+    """Crea todas las tablas necesarias y ejecuta migraciones si es necesario."""
     with sqlite3.connect(DB_FILE) as conn:
+        # Ejecutamos las migraciones ANTES de crear las tablas
+        # para asegurarnos de que las tablas existentes estén actualizadas.
+        run_migrations(conn)
         cursor = conn.cursor()
         # Tablas de EconomyCog
         cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')

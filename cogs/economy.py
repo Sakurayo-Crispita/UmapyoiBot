@@ -16,10 +16,8 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     async def _send_response(self, ctx: commands.Context, content: str = None, embed: discord.Embed = None, ephemeral: bool = False):
         """Función de ayuda para enviar respuestas de forma segura en comandos híbridos."""
-        # Si la interacción fue deferida, siempre usamos followup.
         if ctx.interaction and ctx.interaction.response.is_done():
             await ctx.followup.send(content=content, embed=embed, ephemeral=ephemeral)
-        # Si no, usamos el método de envío normal.
         else:
             await ctx.send(content=content, embed=embed, ephemeral=ephemeral)
 
@@ -44,7 +42,7 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     async def log_transaction(self, guild: discord.Guild, author: discord.Member, message: str):
         settings = await db.get_guild_economy_settings(guild.id)
-        if settings and settings['log_channel_id']:
+        if settings and settings.get('log_channel_id'):
             if channel := guild.get_channel(settings['log_channel_id']):
                 embed = discord.Embed(description=message, color=self.bot.CREAM_COLOR, timestamp=datetime.datetime.now())
                 embed.set_author(name=f"Auditoría Económica | {author.display_name}", icon_url=author.display_avatar.url)
@@ -60,11 +58,17 @@ class EconomyCog(commands.Cog, name="Economía"):
             active_channels_rows = await db.fetchall("SELECT channel_id FROM economy_active_channels WHERE guild_id = ?", (ctx.guild.id,))
             active_channels = [r['channel_id'] for r in active_channels_rows]
             channels = "\n".join([f"<#{cid}>" for cid in active_channels]) if active_channels else "Ninguno"
-            max_bal = f"{settings['max_balance']}" if settings['max_balance'] is not None else "Sin límite"
+            
+            # Usamos .get() para acceder de forma segura a los valores
+            currency_name = settings.get('currency_name', 'créditos')
+            currency_emoji = settings.get('currency_emoji', '🪙')
+            start_balance = settings.get('start_balance', 100)
+            max_bal = f"{settings.get('max_balance')}" if settings.get('max_balance') is not None else "Sin límite"
+
             embed = discord.Embed(title="⚙️ Estado de la Economía", color=self.bot.CREAM_COLOR, description="Usa los subcomandos para configurar el sistema.")
             embed.add_field(name="Canales Activos", value=channels, inline=False)
-            embed.add_field(name="Moneda", value=f"{settings['currency_name']} {settings['currency_emoji']}", inline=True)
-            embed.add_field(name="Saldo Inicial", value=f"{settings['start_balance']}", inline=True)
+            embed.add_field(name="Moneda", value=f"{currency_name} {currency_emoji}", inline=True)
+            embed.add_field(name="Saldo Inicial", value=f"{start_balance}", inline=True)
             embed.add_field(name="Saldo Máximo", value=max_bal, inline=True)
             await self._send_response(ctx, embed=embed)
 
@@ -164,7 +168,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         target = miembro or ctx.author
         settings = await db.get_guild_economy_settings(ctx.guild.id)
         wallet, bank = await db.get_balance(ctx.guild.id, target.id)
-        embed = discord.Embed(title=f"{settings['currency_emoji']} Balance de {target.display_name}", color=self.bot.CREAM_COLOR)
+        embed = discord.Embed(title=f"{settings.get('currency_emoji', '🪙')} Balance de {target.display_name}", color=self.bot.CREAM_COLOR)
         embed.add_field(name="Cartera", value=f"`{wallet}`", inline=True).add_field(name="Banco", value=f"`{bank}`", inline=True).add_field(name="Total", value=f"`{wallet + bank}`", inline=True)
         await self._send_response(ctx, embed=embed)
 
@@ -173,10 +177,19 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def daily(self, ctx: commands.Context):
         await ctx.defer()
         if not await self.is_economy_active(ctx): return
+        
         settings = await db.get_guild_economy_settings(ctx.guild.id)
-        amount = random.randint(settings['daily_min'], settings['daily_max'])
+        if not settings:
+            return await self._send_response(ctx, "Error: No se pudieron cargar las configuraciones de economía.", ephemeral=True)
+            
+        daily_min = settings.get('daily_min', 100)
+        daily_max = settings.get('daily_max', 500)
+        currency_name = settings.get('currency_name', 'créditos')
+        currency_emoji = settings.get('currency_emoji', '🪙')
+
+        amount = random.randint(daily_min, daily_max)
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount)
-        embed = discord.Embed(title=f"{settings['currency_emoji']} Recompensa Diaria", description=f"¡Felicidades! Has reclamado **{amount} {settings['currency_name']}**.", color=discord.Color.gold())
+        embed = discord.Embed(title=f"{currency_emoji} Recompensa Diaria", description=f"¡Felicidades! Has reclamado **{amount} {currency_name}**.", color=discord.Color.gold())
         await self._send_response(ctx, embed=embed)
         
     @daily.error
@@ -184,50 +197,75 @@ class EconomyCog(commands.Cog, name="Economía"):
         if isinstance(error, commands.CommandOnCooldown):
             m, s = divmod(error.retry_after, 60); h, m = divmod(m, 60)
             await ctx.send(f"Vuelve en **{int(h)}h {int(m)}m**.", ephemeral=True)
+        else:
+            await ctx.send("Ocurrió un error al reclamar tu recompensa diaria.", ephemeral=True)
+            print(f"Error en /daily: {error}")
 
     @commands.hybrid_command(name='work', description="Trabaja para ganar un dinero extra.")
     async def work(self, ctx: commands.Context):
         await ctx.defer()
-        
+
+        if not await self.is_economy_active(ctx):
+            return
+
         settings = await db.get_guild_economy_settings(ctx.guild.id)
+        if not settings:
+            return await self._send_response(ctx, "Error: No se pudieron cargar las configuraciones de economía.", ephemeral=True)
+
         source = ctx.interaction or ctx.message
         bucket = self._work_cd.get_bucket(source)
-        if bucket:
-            bucket.per = settings['work_cooldown']
-            if retry_after := bucket.update_rate_limit():
-                m, s = divmod(retry_after, 60)
-                return await self._send_response(ctx, f"Descansa y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
+        
+        work_cooldown = settings.get('work_cooldown', 3600)
+        bucket.per = work_cooldown
 
-        if not await self.is_economy_active(ctx): return
-        amount = random.randint(settings['work_min'], settings['work_max'])
+        if retry_after := bucket.update_rate_limit():
+            m, s = divmod(retry_after, 60)
+            return await self._send_response(ctx, f"Descansa y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
+
+        work_min = settings.get('work_min', 50)
+        work_max = settings.get('work_max', 250)
+        amount = random.randint(work_min, work_max)
+        
+        currency_name = settings.get('currency_name', 'créditos')
+
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount)
-        embed = discord.Embed(title="💼 ¡A trabajar!", description=f"Ganaste **{amount} {settings['currency_name']}**.", color=discord.Color.green())
+        embed = discord.Embed(title="💼 ¡A trabajar!", description=f"Ganaste **{amount} {currency_name}**.", color=discord.Color.green())
         await self._send_response(ctx, embed=embed)
 
     @commands.hybrid_command(name='rob', description="Intenta robarle a otro usuario de su cartera.")
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
         await ctx.defer()
 
+        if not await self.is_economy_active(ctx):
+            return
+
         settings = await db.get_guild_economy_settings(ctx.guild.id)
+        if not settings:
+            return await self._send_response(ctx, "Error: No se pudieron cargar las configuraciones de economía.", ephemeral=True)
+
         source = ctx.interaction or ctx.message
         bucket = self._rob_cd.get_bucket(source)
-        if bucket:
-            bucket.per = settings['rob_cooldown']
-            if retry_after := bucket.update_rate_limit():
-                h, rem = divmod(retry_after, 3600)
-                m, _ = divmod(rem, 60)
-                return await self._send_response(ctx, f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m**.", ephemeral=True)
+        
+        rob_cooldown = settings.get('rob_cooldown', 21600)
+        bucket.per = rob_cooldown
 
-        if not await self.is_economy_active(ctx): return
+        if retry_after := bucket.update_rate_limit():
+            h, rem = divmod(retry_after, 3600)
+            m, _ = divmod(rem, 60)
+            return await self._send_response(ctx, f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m**.", ephemeral=True)
+
         if miembro.id == ctx.author.id: return await self._send_response(ctx, "No te puedes robar a ti mismo.", ephemeral=True)
         if miembro.bot: return await self._send_response(ctx, "No puedes robarle a los bots.", ephemeral=True)
+        
         robber_wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         victim_wallet, _ = await db.get_balance(ctx.guild.id, miembro.id)
+        
         if victim_wallet < 200: return await self._send_response(ctx, f"{miembro.display_name} no tiene suficiente en su cartera.", ephemeral=True)
         
         if random.random() < 0.5:
             amount = int(victim_wallet * random.uniform(0.1, 0.25))
-            await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount); await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-amount)
+            await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount)
+            await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-amount)
             embed = discord.Embed(title="🎭 ¡Robo Exitoso!", description=f"Robaste **{amount}** de la cartera a {miembro.mention}.", color=discord.Color.dark_green())
         else:
             amount = max(50, int(robber_wallet * random.uniform(0.05, 0.15)))
@@ -243,7 +281,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         if ctx.author.id == miembro.id: return await self._send_response(ctx, "No puedes darte dinero a ti mismo.")
         if cantidad <= 0: return await self._send_response(ctx, "La cantidad debe ser positiva.")
         sender_wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
-        if sender_wallet < cantidad: return await self._send_response(ctx, f"No tienes suficientes {settings['currency_name']}. Tienes: **{sender_wallet}**.")
+        if sender_wallet < cantidad: return await self._send_response(ctx, f"No tienes suficientes {settings.get('currency_name', 'créditos')}. Tienes: **{sender_wallet}**.")
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-cantidad); await db.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         embed = discord.Embed(title="💸 Transferencia Realizada", description=f"{ctx.author.mention} ha transferido **{cantidad}** a {miembro.mention}.", color=self.bot.CREAM_COLOR)
         await self._send_response(ctx, embed=embed, ephemeral=False)
@@ -255,8 +293,8 @@ class EconomyCog(commands.Cog, name="Economía"):
         if not await self.is_economy_active(ctx): return
         settings = await db.get_guild_economy_settings(ctx.guild.id)
         top_users = await db.fetchall("SELECT user_id, wallet, bank, (wallet + bank) as total FROM balances WHERE guild_id = ? ORDER BY total DESC LIMIT 10", (ctx.guild.id,))
-        if not top_users: return await self._send_response(ctx, f"Nadie tiene {settings['currency_name']} todavía.")
-        embed = discord.Embed(title=f"🏆 Ranking de {settings['currency_name']} 🏆", color=discord.Color.gold())
+        if not top_users: return await self._send_response(ctx, f"Nadie tiene {settings.get('currency_name', 'créditos')} todavía.")
+        embed = discord.Embed(title=f"🏆 Ranking de {settings.get('currency_name', 'créditos')} 🏆", color=discord.Color.gold())
         description = ""
         for i, row in enumerate(top_users):
             try: 
