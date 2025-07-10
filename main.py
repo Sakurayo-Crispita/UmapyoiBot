@@ -1,11 +1,14 @@
+# main.py
 import discord
 from discord.ext import commands
 import os
-from dotenv import load_dotenv
 import traceback
 import datetime
+
+# Importamos nuestros módulos de utilidades
 from utils import database_manager
 from utils import constants
+from dotenv import load_dotenv
 
 # --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
 load_dotenv()
@@ -22,14 +25,12 @@ class UmapyoiBot(commands.Bot):
         self.GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
         
-        # Ahora usamos las constantes importadas desde utils/constants.py
         self.CREAM_COLOR = discord.Color(constants.CREAM_COLOR)
         self.FFMPEG_OPTIONS = constants.FFMPEG_OPTIONS
         self.YDL_OPTIONS = constants.YDL_OPTIONS
 
     async def setup_hook(self):
         print("Verificando y creando tablas de la base de datos si no existen...")
-        # Llama a la función de configuración desde el gestor
         database_manager.setup_database()
         print('-----------------------------------------')
         
@@ -56,6 +57,8 @@ intents.message_content = True
 intents.guilds = True
 intents.voice_states = True
 intents.members = True
+# Necesitamos el permiso para ver el registro de auditoría
+intents.moderation = True 
 
 bot = UmapyoiBot(command_prefix='!', intents=intents, case_insensitive=True, help_command=None)
 
@@ -72,6 +75,65 @@ async def on_message(message: discord.Message):
     if bot.user.mentioned_in(message) and not message.mention_everyone and not message.reference:
         await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
     await bot.process_commands(message)
+
+# --- ¡NUEVO EVENTO AÑADIDO! ---
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    """
+    Se ejecuta cuando el bot es añadido a un nuevo servidor.
+    Envía un mensaje de bienvenida a quien lo invitó.
+    """
+    # 1. Encontrar a la persona que invitó al bot
+    inviter = None
+    # Para esto, necesitamos el permiso "Ver registro de auditoría"
+    if guild.me.guild_permissions.view_audit_log:
+        async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=5):
+            if entry.target.id == bot.user.id:
+                inviter = entry.user
+                break
+    
+    # 2. Preparar el mensaje de bienvenida
+    embed = discord.Embed(
+        title=f"¡Gracias por invitar a Umapyoi a {guild.name}!",
+        description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. ✨",
+        color=bot.CREAM_COLOR
+    )
+    embed.set_thumbnail(url=bot.user.display_avatar.url)
+    embed.add_field(
+        name="🚀 ¿Cómo empezar?",
+        value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.",
+        inline=False
+    )
+    embed.add_field(
+        name="🎵 Para escuchar música",
+        value="Simplemente únete a un canal de voz y escribe `/play <nombre de la canción o enlace>`.",
+        inline=False
+    )
+    embed.add_field(
+        name="💬 ¿Necesitas ayuda?",
+        value="Si tienes alguna duda o encuentras un error, puedes unirte a mi [servidor de soporte oficial](https://discord.gg/fwNeZsGkSj).",
+        inline=False
+    )
+    embed.set_footer(text="¡Espero que disfrutes de mi compañía!")
+
+    # 3. Intentar enviar el mensaje por MD a quien lo invitó
+    if inviter:
+        try:
+            await inviter.send(embed=embed)
+            print(f"Mensaje de bienvenida enviado por MD a {inviter.name} por añadirme a {guild.name}.")
+        except discord.Forbidden:
+            print(f"No pude enviar el MD a {inviter.name}. Probablemente tiene los MDs desactivados.")
+            # Si no se puede enviar por MD, se intenta en el canal del sistema
+            if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+                await guild.system_channel.send(content=f"¡Hola {inviter.mention}!", embed=embed)
+    # 4. Si no se encontró a quien invitó, se envía al canal del sistema
+    else:
+        if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+            try:
+                await guild.system_channel.send(embed=embed)
+            except discord.Forbidden:
+                pass
+
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
@@ -93,11 +155,8 @@ async def on_command_error(ctx: commands.Context, error):
     
     # Para cualquier otro error, lo registramos y notificamos al usuario
     else:
-        # Imprimir el error en la consola como siempre
         print(f"Error no manejado en '{ctx.command.name if ctx.command else 'Comando desconocido'}':")
         traceback.print_exception(type(error), error, error.__traceback__)
-
-        # Guardar el traceback completo en el archivo de log
         with open('bot_errors.log', 'a', encoding='utf-8') as f:
             f.write(f"--- {datetime.datetime.now()} ---\n")
             f.write(f"Comando: {ctx.command.name if ctx.command else 'N/A'}\n")
@@ -106,8 +165,6 @@ async def on_command_error(ctx: commands.Context, error):
             f.write(f"Usuario: {ctx.author} ({ctx.author.id})\n")
             traceback.print_exception(type(error), error, error.__traceback__, file=f)
             f.write("\n")
-
-        # Mensaje genérico para el usuario
         try:
             await ctx.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
         except discord.errors.InteractionResponded:

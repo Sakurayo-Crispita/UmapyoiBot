@@ -23,13 +23,18 @@ class EconomyCog(commands.Cog, name="Economía"):
         
         if not active_channels:
             if ctx.author.guild_permissions.administrator:
-                 # Usamos followup.send porque el comando ya fue "deferido"
-                 await ctx.followup.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True)
+                 try:
+                    await ctx.followup.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True)
+                 except discord.errors.HTTPException:
+                    await ctx.send("La economía no está activada en ningún canal. Un admin debe usar `/economy addchannel`.", ephemeral=True)
             return False
 
         if ctx.channel.id not in active_channels:
             if not ctx.author.guild_permissions.manage_guild:
-                await ctx.followup.send("Los comandos de economía solo están permitidos en los canales designados.", ephemeral=True)
+                try:
+                    await ctx.followup.send("Los comandos de economía solo están permitidos en los canales designados.", ephemeral=True)
+                except discord.errors.HTTPException:
+                    await ctx.send("Los comandos de economía solo están permitidos en los canales designados.", ephemeral=True)
             return False
             
         return True
@@ -46,8 +51,6 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.hybrid_group(name="economy", description="Comandos para configurar la economía del servidor.")
     @commands.has_permissions(administrator=True)
     async def economy(self, ctx: commands.Context):
-        # Este es un grupo de comandos, el defer se maneja en los subcomandos si es necesario
-        # o aquí si el comando base tiene una respuesta pesada.
         if ctx.invoked_subcommand is None:
             await ctx.defer(ephemeral=True)
             settings = await db.get_guild_economy_settings(ctx.guild.id)
@@ -103,7 +106,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         if not await self.is_economy_active(ctx): return await ctx.followup.send("La economía no está activa en este canal.", ephemeral=True)
         if cantidad <= 0: return await ctx.followup.send("La cantidad debe ser positiva.", ephemeral=True)
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
-        await ctx.followup.send(f"✅ Se han añadido **{cantidad}** a la cartera de {miembro.mention}.", ephemeral=True)
+        await ctx.followup.send(f"✅ Se han añadido **{cantidad}** a la cartera de {miembro.mention}.")
         await self.log_transaction(ctx.guild, ctx.author, f"Añadió **{cantidad}** a la cartera de {miembro.mention} (`{miembro.id}`).")
 
     @commands.hybrid_command(name="remove-money", description="Quita dinero de la cartera de un usuario.")
@@ -113,7 +116,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         if not await self.is_economy_active(ctx): return await ctx.followup.send("La economía no está activa en este canal.", ephemeral=True)
         if cantidad <= 0: return await ctx.followup.send("La cantidad debe ser positiva.", ephemeral=True)
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
-        await ctx.followup.send(f"✅ Se han quitado **{cantidad}** de la cartera de {miembro.mention}.", ephemeral=True)
+        await ctx.followup.send(f"✅ Se han quitado **{cantidad}** de la cartera de {miembro.mention}.")
         await self.log_transaction(ctx.guild, ctx.author, f"Quitó **{cantidad}** de la cartera de {miembro.mention} (`{miembro.id}`).")
 
     @commands.hybrid_command(name="reset-economy", description="Reinicia la economía del servidor (ACCIÓN PELIGROSA).")
@@ -137,7 +140,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         if amount <= 0: return await ctx.followup.send("Debes depositar una cantidad positiva.", ephemeral=True)
         if wallet < amount: return await ctx.followup.send(f"No tienes suficiente dinero. Cartera: **{wallet}**.", ephemeral=True)
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-amount, bank_change=amount)
-        await ctx.followup.send(f"🏦 Has depositado **{amount}**. Tu banco ahora tiene **{bank + amount}**.", ephemeral=True)
+        await ctx.followup.send(f"🏦 Has depositado **{amount}**. Tu banco ahora tiene **{bank + amount}**.")
 
     @commands.hybrid_command(name='withdraw', description="Retira dinero de tu banco a tu cartera.")
     async def withdraw(self, ctx: commands.Context, cantidad: str):
@@ -151,7 +154,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         if amount <= 0: return await ctx.followup.send("Debes retirar una cantidad positiva.", ephemeral=True)
         if bank < amount: return await ctx.followup.send(f"No tienes suficiente en el banco. Banco: **{bank}**.", ephemeral=True)
         new_wallet, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount, bank_change=-amount)
-        await ctx.followup.send(f"💸 Has retirado **{amount}**. Tu cartera ahora tiene **{new_wallet}**.", ephemeral=True)
+        await ctx.followup.send(f"💸 Has retirado **{amount}**. Tu cartera ahora tiene **{new_wallet}**.")
 
     @commands.hybrid_command(name='balance', aliases=['bal'], description="Muestra tu balance de cartera y banco.")
     async def balance(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
@@ -185,11 +188,17 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def work(self, ctx: commands.Context):
         await ctx.defer()
         if not await self.is_economy_active(ctx): return await ctx.followup.send("La economía no está activa en este canal.", ephemeral=True)
+        
         settings = await db.get_guild_economy_settings(ctx.guild.id)
-        bucket = self._work_cd.get_bucket(ctx.message); bucket.per = settings['work_cooldown']
-        if retry_after := bucket.update_rate_limit():
-            m, s = divmod(retry_after, 60)
-            return await ctx.followup.send(f"Descansa y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
+        # CORRECCIÓN: Usar ctx.interaction o ctx.message para el cooldown
+        source = ctx.interaction or ctx.message
+        bucket = self._work_cd.get_bucket(source)
+        if bucket:
+            bucket.per = settings['work_cooldown']
+            if retry_after := bucket.update_rate_limit():
+                m, s = divmod(retry_after, 60)
+                return await ctx.followup.send(f"Descansa y vuelve en **{int(m)}m {int(s)}s**.", ephemeral=True)
+
         amount = random.randint(settings['work_min'], settings['work_max'])
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount)
         embed = discord.Embed(title="💼 ¡A trabajar!", description=f"Ganaste **{amount} {settings['currency_name']}**.", color=discord.Color.green())
@@ -199,16 +208,24 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
         await ctx.defer()
         if not await self.is_economy_active(ctx): return await ctx.followup.send("La economía no está activa en este canal.", ephemeral=True)
+
         settings = await db.get_guild_economy_settings(ctx.guild.id)
-        bucket = self._rob_cd.get_bucket(ctx.message); bucket.per = settings['rob_cooldown']
-        if retry_after := bucket.update_rate_limit():
-            h, rem = divmod(retry_after, 3600); m, _ = divmod(rem, 60)
-            return await ctx.followup.send(f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m**.", ephemeral=True)
+        # CORRECCIÓN: Usar ctx.interaction o ctx.message para el cooldown
+        source = ctx.interaction or ctx.message
+        bucket = self._rob_cd.get_bucket(source)
+        if bucket:
+            bucket.per = settings['rob_cooldown']
+            if retry_after := bucket.update_rate_limit():
+                h, rem = divmod(retry_after, 3600)
+                m, _ = divmod(rem, 60)
+                return await ctx.followup.send(f"Acabas de intentar un robo. Espera **{int(h)}h {int(m)}m**.", ephemeral=True)
+
         if miembro.id == ctx.author.id: return await ctx.followup.send("No te puedes robar a ti mismo.", ephemeral=True)
         if miembro.bot: return await ctx.followup.send("No puedes robarle a los bots.", ephemeral=True)
         robber_wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         victim_wallet, _ = await db.get_balance(ctx.guild.id, miembro.id)
         if victim_wallet < 200: return await ctx.followup.send(f"{miembro.display_name} no tiene suficiente en su cartera.", ephemeral=True)
+        
         if random.random() < 0.5:
             amount = int(victim_wallet * random.uniform(0.1, 0.25))
             await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount); await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-amount)
@@ -248,7 +265,7 @@ class EconomyCog(commands.Cog, name="Economía"):
                 name = user.display_name
             except: 
                 name = f"Usuario Desconocido ({row['user_id']})"
-            rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
+            rank = ["�", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"
             description += f"{rank} **{name}**: {row['total']} (Cartera: {row['wallet']} / Banco: {row['bank']})\n"
         embed.description = description
         await ctx.followup.send(embed=embed)
