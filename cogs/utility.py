@@ -6,18 +6,34 @@ import io
 
 class HelpSelect(discord.ui.Select):
     """El menú desplegable para el panel de ayuda interactivo."""
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, cog_map: dict):
         self.bot = bot
+        self.cog_map = cog_map
+        
+        # Diccionario de emojis para cada categoría
+        emoji_map = {
+            "Música": "🎵",
+            "Niveles": "📈",
+            "Economía": "💰",
+            "Juegos de Apuestas": "🎲",
+            "Juegos e IA": "🎮",
+            "Interacción": "👋",
+            "NSFW": "🔞",
+            "Configuración del Servidor": "⚙️",
+            "Texto a Voz": "🔊",
+            "Utilidad": "🛠️"
+        }
+        
         options = [discord.SelectOption(label="Inicio", description="Vuelve al panel principal de ayuda.", emoji="🏠")]
-        if bot.cogs:
-            # Ordenamos los cogs alfabéticamente por su nombre visible
-            sorted_cogs = sorted(bot.cogs.items(), key=lambda c: c[0])
-            for cog_name, cog in sorted_cogs:
-                # Nos aseguramos de que el cog tenga comandos visibles para mostrar
-                if any(not cmd.hidden for cmd in cog.get_commands()):
-                    description = getattr(cog, "description", "Sin descripción.")
-                    # Usamos el nombre del Cog como la etiqueta
-                    options.append(discord.SelectOption(label=cog_name, description=description[:100]))
+        
+        # Usamos el cog_map para mantener un orden consistente
+        for cog_name in self.cog_map.values():
+            cog = self.bot.get_cog(cog_name)
+            if cog and any(not cmd.hidden for cmd in cog.get_commands()):
+                description = getattr(cog, "description", "Sin descripción.")
+                emoji = emoji_map.get(cog_name, "➡️") # Usamos una flecha como emoji por defecto
+                options.append(discord.SelectOption(label=cog_name, description=description[:100], emoji=emoji))
+
         super().__init__(placeholder="Selecciona una categoría para ver los comandos...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
@@ -34,10 +50,8 @@ class HelpSelect(discord.ui.Select):
             if cog:
                 embed.title = f"Comandos de: {selected_cog_name}"
                 description = ""
-                # Filtramos y ordenamos los comandos
                 command_list = sorted([cmd for cmd in cog.get_commands() if not cmd.hidden], key=lambda c: c.name)
                 for cmd in command_list:
-                    # Aseguramos que solo mostramos comandos que el usuario puede ver
                     if cmd.name != 'help':
                         description += f"**`/{cmd.name}`** - {cmd.description}\n"
                 embed.description = description or "Esta categoría no tiene comandos para mostrar."
@@ -45,24 +59,24 @@ class HelpSelect(discord.ui.Select):
 
 class HelpView(discord.ui.View):
     """La vista que contiene el menú desplegable de ayuda."""
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, cog_map: dict):
         super().__init__(timeout=180)
-        self.add_item(HelpSelect(bot))
+        self.add_item(HelpSelect(bot, cog_map))
 
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         # --- MAPA DE COGS CORREGIDO ---
-        # Aquí añadimos las nuevas categorías
+        # Este mapa ahora define el orden y los nombres para el autocompletado y el menú
         self.cog_map = {
             "música": "Música",
             "niveles": "Niveles",
             "economía": "Economía",
             "apuestas": "Juegos de Apuestas",
             "juegos": "Juegos e IA",
-            "interaccion": "Interacción", # <-- AÑADIDO
-            "nsfw": "NSFW",             # <-- AÑADIDO
+            "interaccion": "Interacción",
+            "nsfw": "NSFW",
             "configuracion": "Configuración del Servidor",
             "tts": "Texto a Voz",
             "utilidad": "Utilidad"
@@ -75,9 +89,9 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
             embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
-            await ctx.send(embed=embed, view=HelpView(self.bot))
+            # Pasamos el cog_map a la vista para que el menú se genere correctamente
+            await ctx.send(embed=embed, view=HelpView(self.bot, self.cog_map))
         else:
-            # Buscamos el nombre real del cog en nuestro mapa
             cog_name_real = self.cog_map.get(categoría.lower())
             if cog_name_real:
                 cog = self.bot.get_cog(cog_name_real)
@@ -96,7 +110,6 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
     @help.autocomplete('categoría')
     async def help_autocomplete(self, interaction: discord.Interaction, current: str) -> list[discord.app_commands.Choice[str]]:
-        # El autocompletado ahora usa nuestro mapa corregido
         return [
             discord.app_commands.Choice(name=cog_name, value=cmd_name)
             for cmd_name, cog_name in self.cog_map.items()
