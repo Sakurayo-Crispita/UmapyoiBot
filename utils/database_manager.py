@@ -1,3 +1,4 @@
+# utils/database_manager.py
 import sqlite3
 import asyncio
 from typing import Optional, Any
@@ -81,18 +82,31 @@ async def get_balance(guild_id: int, user_id: int) -> tuple[int, int]:
         return start_balance, 0
 
 async def update_balance(guild_id: int, user_id: int, wallet_change: int = 0, bank_change: int = 0) -> tuple[int, int]:
-    wallet, bank = await get_balance(guild_id, user_id)
+    """
+    Actualiza el balance de un usuario de forma atómica para prevenir condiciones de carrera.
+    """
+    # Primero, nos aseguramos de que el usuario exista en la tabla de balances.
+    await get_balance(guild_id, user_id)
+
+    # Obtenemos las configuraciones para el max_balance
     settings = await get_guild_economy_settings(guild_id)
-    max_balance = settings['max_balance'] if settings and settings['max_balance'] is not None else -1
+    max_balance = settings['max_balance'] if settings and settings['max_balance'] is not None else None
+
+    # Hacemos la actualización atómica
+    query = """
+        UPDATE balances
+        SET wallet = wallet + ?, bank = bank + ?
+        WHERE guild_id = ? AND user_id = ?
+    """
+    await execute(query, (wallet_change, bank_change, guild_id, user_id))
+
+    # Si hay un límite de cartera, lo aplicamos después de la actualización.
+    if max_balance is not None:
+        await execute("UPDATE balances SET wallet = ? WHERE guild_id = ? AND user_id = ? AND wallet > ?",
+                      (max_balance, guild_id, user_id, max_balance))
     
-    new_wallet = wallet + wallet_change
-    if max_balance != -1:
-        new_wallet = min(new_wallet, max_balance)
-    
-    new_bank = bank + bank_change
-    
-    await execute("REPLACE INTO balances (guild_id, user_id, wallet, bank) VALUES (?, ?, ?, ?)", (guild_id, user_id, new_wallet, new_bank))
-    return new_wallet, new_bank
+    # Devolvemos el balance actualizado
+    return await get_balance(guild_id, user_id)
 
 # Leveling
 async def get_user_level(guild_id: int, user_id: int) -> tuple[int, int]:
@@ -109,5 +123,3 @@ async def update_user_xp(guild_id: int, user_id: int, level: int, xp: int):
 # Moderation
 async def add_mod_log(guild_id: int, user_id: int, mod_id: int, action: str, reason: str, duration: Optional[str] = None):
     await execute("INSERT INTO mod_logs (guild_id, user_id, moderator_id, action, reason, duration) VALUES (?, ?, ?, ?, ?, ?)", (guild_id, user_id, mod_id, action, reason, duration))
-
-# Y así sucesivamente, podrías añadir todas las demás funciones de base de datos aquí...

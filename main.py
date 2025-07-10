@@ -4,6 +4,7 @@ from discord.ext import commands
 import os
 import traceback
 import datetime
+import glob # Necesario para la limpieza de archivos
 
 # Importamos nuestros módulos de utilidades
 from utils import database_manager
@@ -14,6 +15,25 @@ from dotenv import load_dotenv
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DB_FILE = "bot_data.db" 
+
+# --- FUNCIÓN DE LIMPIEZA PARA TTS ---
+def cleanup_tts_files():
+    """Borra los archivos .mp3 de TTS residuales al iniciar."""
+    files = glob.glob("tts_*.mp3")
+    if not files:
+        return
+    
+    deleted_count = 0
+    for f in files:
+        try:
+            os.remove(f)
+            deleted_count += 1
+        except OSError as e:
+            print(f"Error al borrar el archivo TTS residual {f}: {e}")
+            
+    if deleted_count > 0:
+        print(f"Limpieza: Se borraron {deleted_count} archivos .mp3 de TTS residuales.")
+
 
 # --- CLASE DE BOT PERSONALIZADA ---
 class UmapyoiBot(commands.Bot):
@@ -30,6 +50,9 @@ class UmapyoiBot(commands.Bot):
         self.YDL_OPTIONS = constants.YDL_OPTIONS
 
     async def setup_hook(self):
+        # Limpiamos archivos antes de empezar
+        cleanup_tts_files()
+
         print("Verificando y creando tablas de la base de datos si no existen...")
         database_manager.setup_database()
         print('-----------------------------------------')
@@ -57,7 +80,6 @@ intents.message_content = True
 intents.guilds = True
 intents.voice_states = True
 intents.members = True
-# Necesitamos el permiso para ver el registro de auditoría
 intents.moderation = True 
 
 bot = UmapyoiBot(command_prefix='!', intents=intents, case_insensitive=True, help_command=None)
@@ -76,23 +98,24 @@ async def on_message(message: discord.Message):
         await message.channel.send(f'¡Hola, {message.author.mention}! Usa `/help` para ver todos mis comandos. ✨')
     await bot.process_commands(message)
 
-# --- ¡NUEVO EVENTO AÑADIDO! ---
 @bot.event
 async def on_guild_join(guild: discord.Guild):
     """
     Se ejecuta cuando el bot es añadido a un nuevo servidor.
     Envía un mensaje de bienvenida a quien lo invitó.
     """
-    # 1. Encontrar a la persona que invitó al bot
     inviter = None
-    # Para esto, necesitamos el permiso "Ver registro de auditoría"
-    if guild.me.guild_permissions.view_audit_log:
-        async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=5):
-            if entry.target.id == bot.user.id:
-                inviter = entry.user
-                break
+    # Añadimos un try/except por si el bot no tiene el permiso
+    try:
+        if guild.me.guild_permissions.view_audit_log:
+            async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=5):
+                if entry.target.id == bot.user.id:
+                    inviter = entry.user
+                    break
+    except discord.Forbidden:
+        print(f"No tengo permiso para ver el registro de auditoría en {guild.name}.")
     
-    # 2. Preparar el mensaje de bienvenida
+    # Preparar el mensaje de bienvenida
     embed = discord.Embed(
         title=f"¡Gracias por invitar a Umapyoi a {guild.name}!",
         description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. ✨",
@@ -116,23 +139,22 @@ async def on_guild_join(guild: discord.Guild):
     )
     embed.set_footer(text="¡Espero que disfrutes de mi compañía!")
 
-    # 3. Intentar enviar el mensaje por MD a quien lo invitó
+    # Intentar enviar el mensaje
     if inviter:
         try:
             await inviter.send(embed=embed)
             print(f"Mensaje de bienvenida enviado por MD a {inviter.name} por añadirme a {guild.name}.")
+            return # Salimos para no enviar el mensaje dos veces
         except discord.Forbidden:
             print(f"No pude enviar el MD a {inviter.name}. Probablemente tiene los MDs desactivados.")
-            # Si no se puede enviar por MD, se intenta en el canal del sistema
-            if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
-                await guild.system_channel.send(content=f"¡Hola {inviter.mention}!", embed=embed)
-    # 4. Si no se encontró a quien invitó, se envía al canal del sistema
-    else:
-        if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
-            try:
-                await guild.system_channel.send(embed=embed)
-            except discord.Forbidden:
-                pass
+
+    # Fallback: Enviar al canal del sistema si no se pudo por MD o no se encontró al 'inviter'
+    if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+        try:
+            content = f"¡Hola {inviter.mention}!" if inviter else ""
+            await guild.system_channel.send(content=content, embed=embed)
+        except discord.Forbidden:
+            pass
 
 
 @bot.event
