@@ -72,14 +72,43 @@ bot = UmapyoiBot(command_prefix='!', intents=intents, case_insensitive=True, hel
 @bot.event
 async def on_ready():
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
-    await bot.change_presence(activity=discord.Game(name="¡Umapyoi ready! | /help"))
+    await bot.change_presence(activity=discord.Game(name="Música y Juegos | /help"))
 
+# --- EVENTO ON_MESSAGE CORREGIDO ---
+@bot.event
+async def on_message(message: discord.Message):
+    # Ignorar mensajes de bots o mensajes privados
+    if message.author.bot or not message.guild:
+        return
+        
+    # Comprueba si solo se mencionó al bot en el mensaje
+    # Esto evita que responda si se menciona al bot junto con un comando
+    if message.content == f'<@{bot.user.id}>' or message.content == f'<@!{bot.user.id}>':
+        embed = discord.Embed(
+            title=f"¡Holi, {message.author.display_name}!",
+            description=f"Mi prefijo de texto aquí es `!`, pero te recomiendo usar mis comandos de barra diagonal (`/`).\nEscribe `/help` para ver todo lo que puedo hacer.",
+            color=bot.CREAM_COLOR
+        )
+        embed.set_thumbnail(url=bot.user.display_avatar.url)
+        view = discord.ui.View()
+        invite_link = discord.utils.oauth_url(bot.user.id, permissions=discord.Permissions(permissions=8))
+        view.add_item(discord.ui.Button(label="¡Invítame!", emoji="🥳", url=invite_link))
+        view.add_item(discord.ui.Button(label="Soporte", emoji="🆘", url="https://discord.gg/fwNeZsGkSj"))
+        
+        await message.channel.send(embed=embed, view=view)
+        return # Importante: Salimos para no procesar el mensaje como un comando
+
+    # Si el mensaje no es solo una mención, procesamos los comandos normalmente
+    await bot.process_commands(message)
+
+# --- EVENTO ON_GUILD_JOIN CON MENSAJE ORIGINAL ---
 @bot.event
 async def on_guild_join(guild: discord.Guild):
     """
     Se ejecuta cuando el bot es añadido a un nuevo servidor.
     Envía un mensaje de bienvenida público y uno privado a quien lo invitó.
     """
+    # 1. Enviar el mensaje público en el canal del sistema
     target_channel = guild.system_channel
     if not (target_channel and target_channel.permissions_for(guild.me).send_messages):
         # Si el canal de sistema no existe o no se puede escribir, busca otro canal
@@ -98,7 +127,7 @@ async def on_guild_join(guild: discord.Guild):
         public_embed.add_field(name="💡 Mi Propósito", value="He sido creada para ser una compañera todo-en-uno, fácil de usar y siempre lista para la diversión y la carrera.", inline=False)
         public_embed.add_field(name="🔧 Soporte y Comunidad", value="Si tienes alguna duda o sugerencia, únete a nuestro [servidor de soporte](https://discord.gg/fwNeZsGkSj).", inline=False)
         
-        public_embed.set_image(url="https://i.imgur.com/LQxAWOz.png") # Puedes cambiar esta imagen
+        public_embed.set_image(url="https://i.imgur.com/WwexK3G.png") # Puedes cambiar esta imagen
         public_embed.set_footer(text="¡A disfrutar de la carrera!")
         
         try:
@@ -106,6 +135,7 @@ async def on_guild_join(guild: discord.Guild):
         except discord.Forbidden:
             print(f"No pude enviar el mensaje de bienvenida público en {guild.name}")
 
+    # 2. Encontrar a la persona que invitó al bot para el mensaje privado
     inviter = None
     try:
         if guild.me.guild_permissions.view_audit_log:
@@ -116,84 +146,64 @@ async def on_guild_join(guild: discord.Guild):
     except discord.Forbidden:
         print(f"No tengo permiso para ver el registro de auditoría en {guild.name}.")
     
-    embed = discord.Embed(
-        title=f"¡Gracias por invitar a Umapyoi a {guild.name}!",
-        description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. ✨",
-        color=bot.CREAM_COLOR
-    )
-    embed.set_thumbnail(url=bot.user.display_avatar.url)
-    embed.add_field(name="🚀 ¿Cómo empezar?", value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.", inline=False)
-    embed.add_field(name="🎵 Para escuchar música", value="Simplemente únete a un canal de voz y escribe `/play <nombre de la canción o enlace>`.", inline=False)
-    embed.add_field(name="💬 ¿Necesitas ayuda?", value="Si tienes alguna duda o encuentras un error, puedes unirte a mi [servidor de soporte oficial](https://discord.gg/fwNeZsGkSj).", inline=False)
-    embed.set_footer(text="¡Espero que disfrutes de mi compañía!")
-
+    # 3. Preparar y enviar el mensaje privado (este no cambia)
     if inviter:
+        private_embed = discord.Embed(
+            title=f"¡Gracias por invitarme a {guild.name}!",
+            description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. ✨",
+            color=bot.CREAM_COLOR
+        )
+        private_embed.set_thumbnail(url=bot.user.display_avatar.url)
+        private_embed.add_field(name="🚀 ¿Cómo empezar?", value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.", inline=False)
+        private_embed.add_field(name="🎵 Para escuchar música", value="Simplemente únete a un canal de voz y escribe `/play <nombre de la canción o enlace>`.", inline=False)
+        private_embed.set_footer(text="¡Espero que disfrutes de mi compañía!")
         try:
-            await inviter.send(embed=embed)
-            print(f"Mensaje de bienvenida enviado por MD a {inviter.name} por añadirme a {guild.name}.")
-            return
+            await inviter.send(embed=private_embed)
+            print(f"Mensaje de bienvenida privado enviado a {inviter.name}.")
         except discord.Forbidden:
-            print(f"No pude enviar el MD a {inviter.name}. Probablemente tiene los MDs desactivados.")
+            print(f"No pude enviar el MD de bienvenida a {inviter.name}.")
 
-    if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
-        try:
-            content = f"¡Hola {inviter.mention}!" if inviter else ""
-            await guild.system_channel.send(content=content, embed=embed)
-        except discord.Forbidden:
-            pass
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
-    # Ignorar errores específicos
     if isinstance(error, (commands.CommandNotFound, commands.errors.NotOwner)):
         return
     if isinstance(error, commands.errors.HybridCommandError) and isinstance(error.original, (discord.errors.InteractionResponded, discord.errors.NotFound)):
         print(f"Ignorando error de interacción ya respondida o no encontrada.")
         return
 
-    # --- MANEJADOR DE COOLDOWN MEJORADO ---
     if isinstance(error, commands.CommandOnCooldown):
-        # Convertir segundos a horas, minutos y segundos
         seconds = int(error.retry_after)
         days, remainder = divmod(seconds, 86400)
         hours, remainder = divmod(remainder, 3600)
         minutes, seconds = divmod(remainder, 60)
         
-        # Construir el mensaje de tiempo
         time_str = ""
-        if days > 0:
-            time_str += f"{days}d "
-        if hours > 0:
-            time_str += f"{hours}h "
-        if minutes > 0:
-            time_str += f"{minutes}m "
-        if seconds > 0 and days == 0 and hours == 0: # Solo mostrar segundos si es menos de un minuto
-            time_str += f"{seconds}s"
+        if days > 0: time_str += f"{days}d "
+        if hours > 0: time_str += f"{hours}h "
+        if minutes > 0: time_str += f"{minutes}m "
+        if seconds > 0 and days == 0 and hours == 0: time_str += f"{seconds}s"
             
         await ctx.send(f"⏳ Vuelve a intentarlo en **{time_str.strip()}**.", ephemeral=True)
-        return # Importante: salimos para no procesar otros errores
+        return
 
-    # Errores comunes que se le notifican al usuario
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ No tienes los permisos necesarios para usar este comando.", ephemeral=True)
     elif isinstance(error, commands.BotMissingPermissions):
         permisos = ", ".join(p.replace('_', ' ').capitalize() for p in error.missing_permissions)
         await ctx.send(f"⚠️ No puedo ejecutar esa acción porque me faltan los siguientes permisos: **{permisos}**", ephemeral=True)
     
-    # Para cualquier otro error, lo registramos y notificamos al usuario
     else:
         print(f"Error no manejado en '{ctx.command.name if ctx.command else 'Comando desconocido'}':")
         traceback.print_exception(type(error), error, error.__traceback__)
         with open('bot_errors.log', 'a', encoding='utf-8') as f:
             f.write(f"--- {datetime.datetime.now()} ---\n")
             f.write(f"Comando: {ctx.command.name if ctx.command else 'N/A'}\n")
-            if ctx.guild:
-                f.write(f"Servidor: {ctx.guild.name} ({ctx.guild.id})\n")
+            if ctx.guild: f.write(f"Servidor: {ctx.guild.name} ({ctx.guild.id})\n")
             f.write(f"Usuario: {ctx.author} ({ctx.author.id})\n")
             traceback.print_exception(type(error), error, error.__traceback__, file=f)
             f.write("\n")
         try:
-            # Evitar enviar el mensaje de error si el comando tiene su propio manejador de errores local
             if not hasattr(ctx.command, 'on_error'):
                 await ctx.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
         except (discord.errors.InteractionResponded, AttributeError):
