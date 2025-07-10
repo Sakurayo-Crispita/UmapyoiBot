@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from typing import Literal
 
-class FunCog(commands.Cog, name="Juegos e IA"):
+class FunCog(commands.Cog, name="Diversión e interacción"):
     """Comandos interactivos y divertidos para pasar el rato."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
