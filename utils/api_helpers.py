@@ -2,8 +2,47 @@ import discord
 from discord.ext import commands
 import aiohttp
 import random
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Tuple
 import asyncio
+
+# --- CONFIGURACIÓN DE APIS ---
+# Definimos las APIs y sus características para que el helper sepa cómo usarlas.
+# Formato: (url_base, ruta_de_la_url, campo_del_resultado)
+API_CONFIG = {
+    "nekos.best": ("https://nekos.best/api/v2/", "{category}", "url"),
+    "nekos.life": ("https://nekos.life/api/v2/img/", "{category}", "url"),
+    "waifu.pics": ("https://api.waifu.pics/", "{gif_type}/{category}", "url")
+}
+
+# --- MAPA DE CATEGORÍAS A APIS ---
+# Para cada categoría, definimos una lista de APIs a intentar en orden de prioridad.
+# También mapeamos el nombre de nuestra categoría al nombre que usa la API.
+CATEGORY_MAP = {
+    # NSFW
+    "anal": [("nekos.life", "anal")],
+    "paizuri": [("nekos.best", "paizuri")],
+    "fuck": [("nekos.best", "fuck"), ("nekos.life", "classic")],
+    "cum": [("nekos.best", "cum")],
+    "handjob": [("nekos.best", "handjob")],
+    "boobs": [("nekos.best", "boobs"), ("nekos.life", "boobs")],
+    "pussy": [("nekos.best", "pussy"), ("nekos.life", "pussy")],
+    "neko_nsfw": [("nekos.best", "neko"), ("nekos.life", "nsfw_neko_gif")],
+    "waifu_nsfw": [("nekos.best", "waifu")],
+    "blowjob": [("nekos.best", "blowjob"), ("nekos.life", "blowjob")],
+    # SFW
+    "kiss": [("waifu.pics", "kiss")],
+    "cuddle": [("waifu.pics", "cuddle")],
+    "hug": [("waifu.pics", "hug")],
+    "pat": [("waifu.pics", "pat")],
+    "slap": [("waifu.pics", "slap")],
+    "tickle": [("nekos.life", "tickle")],
+    "poke": [("waifu.pics", "poke")],
+    "baka": [("nekos.life", "baka")],
+    "highfive": [("waifu.pics", "highfive")],
+    "bonk": [("waifu.pics", "bonk")],
+    "blush": [("waifu.pics", "blush")],
+}
+
 
 # --- GIF HELPER MEJORADO ---
 async def get_interactive_gif(
@@ -15,8 +54,7 @@ async def get_interactive_gif(
     self_action_phrases: list[str] = []
 ):
     """
-    Una función centralizada para obtener GIFs interactivos de APIs estables.
-    Prioriza Nekos.best para NSFW y Waifu.pics para SFW.
+    Una función centralizada y robusta que intenta obtener GIFs de múltiples APIs.
     """
     await ctx.defer(ephemeral=False)
 
@@ -35,60 +73,63 @@ async def get_interactive_gif(
     else:
         action_text = action_text.format(author=ctx.author.mention)
 
-    # Determinar la URL de la API
-    # Nekos.best es la API principal para NSFW, Waifu.pics para SFW
-    if gif_type == "nsfw":
-        api_url = f"https://nekos.best/api/v2/{category}"
-    else: # sfw
-        api_url = f"https://api.waifu.pics/sfw/{category}"
+    # Lógica Multi-API
+    # Si la categoría no está en nuestro mapa, no podemos hacer nada.
+    internal_category = f"{category}_nsfw" if gif_type == "nsfw" and category in ["neko", "waifu"] else category
+    
+    if internal_category not in CATEGORY_MAP:
+        await ctx.send(f"La categoría '{internal_category}' no está configurada internamente.", ephemeral=True)
+        return
 
-    timeout = aiohttp.ClientTimeout(total=10)
+    # Intentamos obtener el GIF de las APIs definidas en el mapa
+    gif_url = None
+    used_api_name = ""
+    apis_to_try = CATEGORY_MAP[internal_category]
+
+    timeout = aiohttp.ClientTimeout(total=8) # 8 segundos de timeout
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        try:
-            async with session.get(api_url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    # Nekos.best anida los resultados en una lista "results"
-                    if 'results' in data:
-                        gif_url = data['results'][0]['url']
-                    # Waifu.pics tiene la URL directamente
-                    else:
-                        gif_url = data.get('url')
+        for api_name, api_category in apis_to_try:
+            base_url, path_template, result_field = API_CONFIG[api_name]
+            api_url = f"{base_url}{path_template.format(category=api_category, gif_type=gif_type)}"
+            
+            try:
+                async with session.get(api_url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # Extraer la URL según la estructura de la API
+                        if api_name == "nekos.best":
+                            url = data.get('results', [{}])[0].get(result_field)
+                        else: # nekos.life, waifu.pics
+                            url = data.get(result_field)
+                        
+                        if url:
+                            gif_url = url
+                            used_api_name = api_name
+                            break # ¡Éxito! Salimos del bucle.
+            except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+                print(f"API '{api_name}' falló para la categoría '{category}': {e}")
+                continue # Intentamos con la siguiente API
 
-                    if gif_url:
-                        embed = discord.Embed(description=action_text, color=ctx.author.color)
-                        embed.set_image(url=gif_url)
-                        embed.set_footer(text=f"Solicitado por {ctx.author.display_name} | API: {'nekos.best' if gif_type == 'nsfw' else 'waifu.pics'}")
-                        await ctx.send(embed=embed)
-                    else:
-                        await ctx.send("La API no devolvió un GIF válido. Inténtalo de nuevo.", ephemeral=True)
-                
-                elif response.status == 404:
-                     await ctx.send(f"❌ La categoría '{category}' no fue encontrada en la API.", ephemeral=True)
-                else:
-                    await ctx.send(f"Error al contactar la API (Estado: {response.status}).", ephemeral=True)
-
-        except asyncio.TimeoutError:
-            await ctx.send("La API tardó demasiado en responder. Inténtalo más tarde.", ephemeral=True)
-        except Exception as e:
-            print(f"Error en la función de GIF ({category}): {e}")
-            await ctx.send("Ocurrió un error inesperado al obtener el GIF.", ephemeral=True)
+    # Enviar el resultado
+    if gif_url:
+        embed = discord.Embed(description=action_text, color=ctx.author.color)
+        embed.set_image(url=gif_url)
+        embed.set_footer(text=f"Solicitado por {ctx.author.display_name} | API: {used_api_name}")
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"No se pudo obtener un GIF para '{category}' después de intentar con todas las APIs disponibles.", ephemeral=True)
 
 
 # --- GEMINI (IA) HELPER CON TIMEOUT ---
 async def ask_gemini(api_key: str, question: str) -> str:
-    """
-    Envía una pregunta a la API de Google Gemini y devuelve la respuesta.
-    """
+    # (Este código no cambia)
     if not api_key:
         return "❌ La función de IA no está configurada por el dueño del bot."
-
     api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
     payload = {"contents": [{"parts": [{"text": question}]}]}
     headers = {"Content-Type": "application/json"}
-    timeout = aiohttp.ClientTimeout(total=20) # 20 segundos para la IA
-
+    timeout = aiohttp.ClientTimeout(total=20)
     try:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(api_url, json=payload, headers=headers) as response:
@@ -97,26 +138,20 @@ async def ask_gemini(api_key: str, question: str) -> str:
                     if 'candidates' in data and data['candidates']:
                         return data['candidates'][0]['content']['parts'][0]['text']
                     else:
-                        return "La IA no pudo generar una respuesta esta vez. Intenta reformular tu pregunta."
+                        return "La IA no pudo generar una respuesta esta vez."
                 else:
-                    error_details = await response.text()
-                    print(f"Error de la API de Gemini: {response.status} - {error_details}")
-                    return f"Error al contactar la API de Gemini. Código: {response.status}"
+                    return f"Error al contactar la API de Gemini: {response.status}"
     except asyncio.TimeoutError:
-        return "La IA tardó demasiado en responder. Inténtalo más tarde."
+        return "La IA tardó demasiado en responder."
     except Exception as e:
-        print(f"Error en ask_gemini: {e}")
-        return f"Ocurrió un error inesperado al procesar tu pregunta: {e}"
+        return f"Ocurrió un error inesperado: {e}"
 
 
 # --- JIKAN (ANIME) HELPER CON TIMEOUT ---
 async def search_anime(query: str) -> Optional[dict]:
-    """
-    Busca un anime en la API de Jikan (MyAnimeList).
-    """
+    # (Este código no cambia)
     api_url = f"https://api.jikan.moe/v4/anime?q={query.replace(' ', '%20')}&limit=1"
-    timeout = aiohttp.ClientTimeout(total=10) # 10 segundos
-    
+    timeout = aiohttp.ClientTimeout(total=10)
     try:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(api_url) as response:
@@ -128,5 +163,4 @@ async def search_anime(query: str) -> Optional[dict]:
     except asyncio.TimeoutError:
         return {"error": "Timeout"}
     except Exception as e:
-        print(f"Error en search_anime: {e}")
         return {"error": str(e)}
