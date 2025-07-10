@@ -89,7 +89,7 @@ async def on_message(message: discord.Message):
             description=f"Mi prefijo de texto aquí es `!`, pero te recomiendo usar mis comandos de barra diagonal (`/`).\nEscribe `/help` para ver todo lo que puedo hacer.",
             color=bot.CREAM_COLOR
         )
-        embed.set_thumbnail(url=bot.user.display_avatar.url)
+        embed.set_image(url="https://i.imgur.com/ZoWPPmV.png")
         view = discord.ui.View()
         invite_link = discord.utils.oauth_url(bot.user.id, permissions=discord.Permissions(permissions=8))
         view.add_item(discord.ui.Button(label="¡Invítame!", emoji="🥳", url=invite_link))
@@ -127,7 +127,7 @@ async def on_guild_join(guild: discord.Guild):
         public_embed.add_field(name="💡 Mi Propósito", value="He sido creada para ser una compañera todo-en-uno, fácil de usar y siempre lista para la diversión y la carrera.", inline=False)
         public_embed.add_field(name="🔧 Soporte y Comunidad", value="Si tienes alguna duda o sugerencia, únete a nuestro [servidor de soporte](https://discord.gg/fwNeZsGkSj).", inline=False)
         
-        public_embed.set_image(url="https://i.imgur.com/WwexK3G.png") # Puedes cambiar esta imagen
+        public_embed.set_image(url="https://i.imgur.com/LQxAWOz.png")
         public_embed.set_footer(text="¡A disfrutar de la carrera!")
         
         try:
