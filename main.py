@@ -4,6 +4,7 @@ import os
 import traceback
 import datetime
 import glob 
+import aiohttp # <-- 1. AÑADIDO: Importamos la librería aiohttp
 
 # Importamos nuestros módulos de utilidades
 from utils import database_manager
@@ -37,8 +38,10 @@ class UmapyoiBot(commands.Bot):
         self.CREAM_COLOR = discord.Color(constants.CREAM_COLOR)
         self.FFMPEG_OPTIONS = constants.FFMPEG_OPTIONS
         self.YDL_OPTIONS = constants.YDL_OPTIONS
+        self.http_session = None # <-- 2. AÑADIDO: Inicializamos la sesión como nula
 
     async def setup_hook(self):
+        self.http_session = aiohttp.ClientSession() # <-- 3. AÑADIDO: Creamos la sesión cuando el bot se inicia
         cleanup_tts_files()
         print("Verificando y creando tablas de la base de datos si no existen...")
         database_manager.setup_database()
@@ -59,6 +62,8 @@ class UmapyoiBot(commands.Bot):
 
     async def close(self):
         await super().close()
+        if self.http_session: # <-- 4. AÑADIDO: Nos aseguramos de cerrar la sesión cuando el bot se apaga
+            await self.http_session.close()
 
 intents = discord.Intents.default()
 intents.message_content = True

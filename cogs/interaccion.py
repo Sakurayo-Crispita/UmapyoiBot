@@ -28,7 +28,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{author} le da un beso en la mejilla a {target}.",
             "¡El amor está en el aire! {author} besa a {target}."
         ]
-        await get_interactive_gif(ctx, "kiss", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "kiss", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="cuddle", description="Acurrúcate con otro usuario.")
     async def cuddle(self, ctx: commands.Context, miembro: discord.Member):
@@ -42,7 +43,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{author} y {target} se acurrucan juntos para ver una película.",
             "¡Aww! {author} y {target} son la definición de tierno."
         ]
-        await get_interactive_gif(ctx, "cuddle", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "cuddle", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="hug", description="Dale un abrazo a otro usuario.")
     async def hug(self, ctx: commands.Context, miembro: discord.Member):
@@ -56,7 +58,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "¡Necesitabas un abrazo! {author} está aquí para {target}.",
             "Los problemas se van con un abrazo de {author} a {target}."
         ]
-        await get_interactive_gif(ctx, "hug", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "hug", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="pat", description="Dale una palmadita en la cabeza a alguien.")
     async def pat(self, ctx: commands.Context, miembro: discord.Member):
@@ -69,7 +72,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "Pat, pat, pat... {author} consuela a {target}.",
             "{target} ronronea (o casi) por las palmaditas de {author}."
         ]
-        await get_interactive_gif(ctx, "pat", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "pat", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="slap", description="Dale una bofetada a alguien.")
     async def slap(self, ctx: commands.Context, miembro: discord.Member):
@@ -83,7 +87,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "Una bofetada correctiva de {author} para {target}.",
             "En toda la cara. {author} abofeteó a {target}."
         ]
-        await get_interactive_gif(ctx, "slap", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "slap", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="tickle", description="Hazle cosquillas a alguien.")
     async def tickle(self, ctx: commands.Context, miembro: discord.Member):
@@ -94,7 +99,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "¡Cosquillas, cosquillas! {author} ataca a {target}.",
             "{target} se retuerce de la risa. ¡Culpa de {author}!"
         ]
-        await get_interactive_gif(ctx, "tickle", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "tickle", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="poke", description="Pica a alguien para llamar su atención.")
     async def poke(self, ctx: commands.Context, miembro: discord.Member):
@@ -105,7 +111,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "Hey, {target}, {author} te está molestando.",
             "Poke, poke, poke... {author} no dejará en paz a {target}."
         ]
-        await get_interactive_gif(ctx, "poke", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "poke", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="baka", description="Llama 'baka' a alguien.")
     async def baka(self, ctx: commands.Context, miembro: discord.Member):
@@ -120,7 +127,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "A veces, la única palabra que {author} tiene para {target} es... BAKA.",
             "Tsundere mode on: {author} mira a {target} y susurra '...baka'."
         ]
-        await get_interactive_gif(ctx, "baka", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "baka", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="highfive", description="Choca esos cinco con alguien.")
     async def highfive(self, ctx: commands.Context, miembro: discord.Member):
@@ -129,7 +137,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{author} le da un high five a {target}. ¡Buen trabajo!",
             "¡Arriba esas manos! {author} choca con {target}."
         ]
-        await get_interactive_gif(ctx, "highfive", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "highfive", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="bonk", description="Envía a alguien a la cárcel de los hornys.")
     async def bonk(self, ctx: commands.Context, miembro: discord.Member):
@@ -139,7 +148,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{target} ha sido bonkeado por {author}. ¡A la esquina!",
             "Se escuchó un 'bonk' a lo lejos. {author} encontró a {target}."
         ]
-        await get_interactive_gif(ctx, "bonk", "sfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "bonk", "sfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="blush", description="Sonrójate por alguien o por algo.")
     async def blush(self, ctx: commands.Context, por: Optional[discord.Member] = None):
@@ -153,7 +163,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{author} se puso rojo como un tomate.",
             "Algo hizo que {author} se sonrojara."
         ]
-        await get_interactive_gif(ctx, "blush", "sfw", target=por, action_templates=action_phrases, self_action_phrases=self_action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "blush", "sfw", target=por, action_templates=action_phrases, self_action_phrases=self_action_phrases)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(InteractionCog(bot))

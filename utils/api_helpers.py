@@ -5,7 +5,9 @@ import random
 from typing import Literal, Optional
 import asyncio
 
+# --- FUNCIÓN MODIFICADA ---
 async def get_interactive_gif(
+    session: aiohttp.ClientSession, # <-- 1. AÑADIDO: Acepta la sesión compartida como parámetro
     ctx: commands.Context,
     category: str,
     gif_type: Literal["sfw", "nsfw"],
@@ -14,8 +16,7 @@ async def get_interactive_gif(
     self_action_phrases: list[str] = []
 ):
     """
-    Función simplificada y robusta que usa una sola API estable (waifu.pics)
-    para garantizar el funcionamiento de los comandos.
+    Función que ahora usa la sesión de aiohttp compartida del bot.
     """
     await ctx.defer(ephemeral=False)
 
@@ -39,31 +40,31 @@ async def get_interactive_gif(
 
     timeout = aiohttp.ClientTimeout(total=10)
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(api_url) as response:
-                # Si la categoría no existe, waifu.pics devuelve 404
-                if response.status == 404:
-                    await ctx.send(f"❌ La categoría '{category}' no fue encontrada en la API. Se usará un reemplazo.", ephemeral=True)
-                    # Intentamos con una categoría de respaldo que siempre existe
-                    api_url = f"https://api.waifu.pics/{gif_type}/waifu"
-                    async with session.get(api_url) as fallback_response:
-                        if fallback_response.status != 200:
-                            await ctx.send("Error incluso con la API de respaldo. Por favor, reporta esto.", ephemeral=True)
-                            return
-                        response = fallback_response # Usamos la respuesta de respaldo
-                
-                if response.status == 200:
-                    data = await response.json()
-                    gif_url = data.get('url')
+        # <-- 2. MODIFICADO: Ya no crea una nueva sesión, usa la que se le pasa
+        async with session.get(api_url, timeout=timeout) as response:
+            # Si la categoría no existe, waifu.pics devuelve 404
+            if response.status == 404:
+                await ctx.send(f"❌ La categoría '{category}' no fue encontrada en la API. Se usará un reemplazo.", ephemeral=True)
+                # Intentamos con una categoría de respaldo que siempre existe
+                api_url = f"https://api.waifu.pics/{gif_type}/waifu"
+                async with session.get(api_url, timeout=timeout) as fallback_response:
+                    if fallback_response.status != 200:
+                        await ctx.send("Error incluso con la API de respaldo. Por favor, reporta esto.", ephemeral=True)
+                        return
+                    response = fallback_response # Usamos la respuesta de respaldo
+            
+            if response.status == 200:
+                data = await response.json()
+                gif_url = data.get('url')
 
-                    if gif_url:
-                        embed = discord.Embed(description=action_text, color=ctx.author.color)
-                        embed.set_image(url=gif_url)
-                        await ctx.send(embed=embed)
-                    else:
-                        await ctx.send("La API no devolvió una URL válida.", ephemeral=True)
+                if gif_url:
+                    embed = discord.Embed(description=action_text, color=ctx.author.color)
+                    embed.set_image(url=gif_url)
+                    await ctx.send(embed=embed)
                 else:
-                    await ctx.send(f"La API devolvió un error inesperado (Estado: {response.status}).", ephemeral=True)
+                    await ctx.send("La API no devolvió una URL válida.", ephemeral=True)
+            else:
+                await ctx.send(f"La API devolvió un error inesperado (Estado: {response.status}).", ephemeral=True)
 
     except asyncio.TimeoutError:
         await ctx.send("La API tardó demasiado en responder. Inténtalo de nuevo más tarde.", ephemeral=True)

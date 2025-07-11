@@ -17,29 +17,34 @@ class NSFWCog(commands.Cog, name="NSFW"):
     @commands.hybrid_command(name="neko_nsfw", description="Muestra una imagen NSFW de una neko.")
     @commands.is_nsfw()
     async def neko_nsfw(self, ctx: commands.Context):
-        await get_interactive_gif(ctx, "neko", "nsfw", self_action_phrases=["Neko NSFW"])
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "neko", "nsfw", self_action_phrases=["Neko NSFW"])
 
     @commands.hybrid_command(name="waifu_nsfw", description="Muestra una imagen NSFW de una waifu.")
     @commands.is_nsfw()
     async def waifu_nsfw(self, ctx: commands.Context):
-        await get_interactive_gif(ctx, "waifu", "nsfw", self_action_phrases=["Waifu NSFW"])
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "waifu", "nsfw", self_action_phrases=["Waifu NSFW"])
 
     @commands.hybrid_command(name="blowjob_nsfw", description="Muestra una imagen NSFW de un blowjob.")
     @commands.is_nsfw()
     async def blowjob_nsfw(self, ctx: commands.Context):
-        await get_interactive_gif(ctx, "blowjob", "nsfw", self_action_phrases=["Blowjob NSFW"])
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "blowjob", "nsfw", self_action_phrases=["Blowjob NSFW"])
 
     # --- Comandos con categoría de REEMPLAZO ---
     # Las siguientes categorías no existen en waifu.pics, así que usamos 'waifu' como reemplazo para que el comando no falle.
     @commands.hybrid_command(name="boobs_nsfw", description="Muestra una imagen NSFW de pechos.")
     @commands.is_nsfw()
     async def boobs_nsfw(self, ctx: commands.Context):
-        await get_interactive_gif(ctx, "waifu", "nsfw", self_action_phrases=["Boobs NSFW"]) # Reemplazo
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "waifu", "nsfw", self_action_phrases=["Boobs NSFW"]) # Reemplazo
 
     @commands.hybrid_command(name="pussy_nsfw", description="Muestra una imagen NSFW de una vagina.")
     @commands.is_nsfw()
     async def pussy_nsfw(self, ctx: commands.Context):
-        await get_interactive_gif(ctx, "waifu", "nsfw", self_action_phrases=["Pussy NSFW"]) # Reemplazo
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "waifu", "nsfw", self_action_phrases=["Pussy NSFW"]) # Reemplazo
 
     # --- Comandos Interactivos NSFW ---
 
@@ -60,7 +65,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "El sudor y la pasión definen este momento entre {author} y {target}.",
         ]
         # waifu.pics tiene la categoría 'trap' que puede servir como un reemplazo visual genérico.
-        await get_interactive_gif(ctx, "trap", "nsfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "trap", "nsfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="cum_nsfw", description="Termina sobre otro usuario.")
     @commands.is_nsfw()
@@ -78,7 +84,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "El éxtasis de {author} se derrama sobre {target}.",
         ]
         # Usamos 'waifu' como reemplazo
-        await get_interactive_gif(ctx, "waifu", "nsfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "waifu", "nsfw", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="handjob_nsfw", description="Hazle una paja a otro usuario.")
     @commands.is_nsfw()
@@ -95,7 +102,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "Un momento de placer manual que {target} no olvidará, gracias a {author}.",
         ]
         # Usamos 'blowjob' como el reemplazo visual más cercano.
-        await get_interactive_gif(ctx, "blowjob", "nsfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "blowjob", "nsfw", target=miembro, action_templates=action_phrases)
         
     @commands.hybrid_command(name="boobjob_nsfw", description="Hazle una paja con los pechos a alguien.")
     @commands.is_nsfw()
@@ -112,7 +120,8 @@ class NSFWCog(commands.Cog, name="NSFW"):
             "Un tipo de paraíso muy especial es el que {author} le ofrece a {target}.",
         ]
         # Usamos 'waifu' como reemplazo.
-        await get_interactive_gif(ctx, "waifu", "nsfw", target=miembro, action_templates=action_phrases)
+        # MODIFICADO: Pasamos la sesión compartida del bot
+        await get_interactive_gif(self.bot.http_session, ctx, "waifu", "nsfw", target=miembro, action_templates=action_phrases)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(NSFWCog(bot))
