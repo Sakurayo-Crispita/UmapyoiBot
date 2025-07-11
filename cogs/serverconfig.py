@@ -53,18 +53,17 @@ async def generate_banner_image(
         try:
             font_path = "utils/arial.ttf" 
             title_font = ImageFont.truetype(font_path, 60)
-            subtitle_font = ImageFont.truetype(font_path, 40)
+            subtitle_font = ImageFont.truetype(font_path, 32)
         except IOError:
             print("Fuente 'utils/arial.ttf' no encontrada, usando la fuente por defecto.")
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
 
         processed_message = message.replace(member.mention, f"@{member.display_name}")
-        max_length = 50 
+        max_length = 60 
         if len(processed_message) > max_length:
             processed_message = processed_message[:max_length] + "..."
 
-        # Coordenadas ajustadas para bajar el texto
         draw.text((500, 320), member.display_name, fill=title_color, font=title_font, anchor="ms")
         draw.text((500, 365), processed_message, fill=subtitle_color, font=subtitle_font, anchor="ms")
 
@@ -83,6 +82,8 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # --- NUEVO: Cache para evitar mensajes duplicados por eventos repetidos o múltiples instancias ---
+        self.recent_events = {} # Formato: {guild_id: {'join': {member_id: timestamp}, 'remove': {member_id: timestamp}}}
 
     async def get_settings(self, guild_id: int):
         settings = await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
@@ -121,6 +122,17 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     # --- LISTENERS ---
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+        # --- NUEVO: Comprobación para evitar mensajes duplicados ---
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.recent_events.setdefault(member.guild.id, {'join': {}, 'remove': {}})
+        
+        if member.id in self.recent_events[member.guild.id]['join']:
+            if (now - self.recent_events[member.guild.id]['join'][member.id]).total_seconds() < 5:
+                return # Ignora el evento duplicado si ocurrió hace menos de 5 segundos
+        
+        self.recent_events[member.guild.id]['join'][member.id] = now
+        # --- FIN DE LA COMPROBACIÓN ---
+
         settings = await self.get_settings(member.guild.id)
         if not settings: return
 
@@ -140,10 +152,18 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url, title_color, subtitle_color)
                 
                 if banner_file:
-                    try: await channel.send(file=banner_file)
-                    except discord.Forbidden: print(f"No tengo permisos para enviar el banner de bienvenida en {channel.name}")
+                    embed = discord.Embed(
+                        description=None, # La descripción ahora está en el texto superior
+                        color=discord.Color.green()
+                    )
+                    embed.set_image(url="attachment://banner.png")
+                    try:
+                        await channel.send(embed=embed, file=banner_file)
+                    except discord.Forbidden:
+                        print(f"No tengo permisos para enviar el banner de bienvenida en {channel.name}")
                 else: 
-                    embed = discord.Embed(description=msg, color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
+                    fallback_msg = (settings.get("welcome_top_text") or "") + "\n" + msg
+                    embed = discord.Embed(description=fallback_msg.strip(), color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                     try: await channel.send(embed=embed)
                     except discord.Forbidden: pass
 
@@ -154,6 +174,17 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
+        # --- NUEVO: Comprobación para evitar mensajes duplicados ---
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.recent_events.setdefault(member.guild.id, {'join': {}, 'remove': {}})
+
+        if member.id in self.recent_events[member.guild.id]['remove']:
+            if (now - self.recent_events[member.guild.id]['remove'][member.id]).total_seconds() < 5:
+                return # Ignora el evento duplicado
+        
+        self.recent_events[member.guild.id]['remove'][member.id] = now
+        # --- FIN DE LA COMPROBACIÓN ---
+
         settings = await self.get_settings(member.guild.id)
         if settings and (channel_id := settings.get("goodbye_channel_id")):
             if channel := self.bot.get_channel(channel_id):
@@ -171,10 +202,18 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url, title_color, subtitle_color)
                 
                 if banner_file:
-                    try: await channel.send(file=banner_file)
-                    except discord.Forbidden: print(f"No tengo permisos para enviar el banner de despedida en {channel.name}")
+                    embed = discord.Embed(
+                        description=None, # La descripción ahora está en el texto superior
+                        color=discord.Color.red()
+                    )
+                    embed.set_image(url="attachment://banner.png")
+                    try:
+                        await channel.send(embed=embed, file=banner_file)
+                    except discord.Forbidden:
+                        print(f"No tengo permisos para enviar el banner de despedida en {channel.name}")
                 else:
-                    embed = discord.Embed(description=msg, color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
+                    fallback_msg = (settings.get("goodbye_top_text") or "") + "\n" + msg
+                    embed = discord.Embed(description=fallback_msg.strip(), color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                     try: await channel.send(embed=embed)
                     except discord.Forbidden: pass
 
@@ -194,17 +233,25 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             except: pass
             
     # --- COMANDOS ---
-    @commands.hybrid_command(name='setwelcomechannel', description="Establece el canal para mensajes de bienvenida.")
+    @commands.hybrid_command(name='setwelcomechannel', description="Establece o desactiva el canal para mensajes de bienvenida.")
     @commands.has_permissions(manage_guild=True)
-    async def set_welcome_channel(self, ctx: commands.Context, canal: discord.TextChannel):
-        await self.save_setting(ctx.guild.id, 'welcome_channel_id', canal.id)
-        await ctx.send(f"✅ Canal de bienvenida: {canal.mention}.", ephemeral=True)
+    async def set_welcome_channel(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        if canal:
+            await self.save_setting(ctx.guild.id, 'welcome_channel_id', canal.id)
+            await ctx.send(f"✅ Canal de bienvenida establecido en {canal.mention}.", ephemeral=True)
+        else:
+            await self.save_setting(ctx.guild.id, 'welcome_channel_id', None)
+            await ctx.send("✅ El canal de bienvenida ha sido desactivado.", ephemeral=True)
 
-    @commands.hybrid_command(name='setgoodbyechannel', description="Establece el canal para mensajes de despedida.")
+    @commands.hybrid_command(name='setgoodbyechannel', description="Establece o desactiva el canal para mensajes de despedida.")
     @commands.has_permissions(manage_guild=True)
-    async def set_goodbye_channel(self, ctx: commands.Context, canal: discord.TextChannel):
-        await self.save_setting(ctx.guild.id, 'goodbye_channel_id', canal.id)
-        await ctx.send(f"✅ Canal de despedida: {canal.mention}.", ephemeral=True)
+    async def set_goodbye_channel(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        if canal:
+            await self.save_setting(ctx.guild.id, 'goodbye_channel_id', canal.id)
+            await ctx.send(f"✅ Canal de despedida establecido en {canal.mention}.", ephemeral=True)
+        else:
+            await self.save_setting(ctx.guild.id, 'goodbye_channel_id', None)
+            await ctx.send("✅ El canal de despedida ha sido desactivado.", ephemeral=True)
 
     @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje, banner y colores de la bienvenida.")
     @commands.has_permissions(manage_guild=True)
