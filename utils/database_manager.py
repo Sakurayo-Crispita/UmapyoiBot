@@ -1,6 +1,5 @@
 import sqlite3
 import asyncio
-# Se añaden List y Dict a la importación para solucionar el error.
 from typing import Optional, Any, List, Dict
 
 DB_FILE = "bot_data.db"
@@ -34,15 +33,57 @@ def run_migrations(conn):
     except sqlite3.Error as e:
         print(f"Error durante la migración de 'economy_settings': {e}")
 
+    # --- Migración para la tabla server_settings (para añadir colores) ---
+    try:
+        cursor.execute("PRAGMA table_info(server_settings)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        new_color_columns = {
+            "welcome_title_color": "TEXT DEFAULT '#000000'",
+            "welcome_subtitle_color": "TEXT DEFAULT '#000000'",
+            "goodbye_title_color": "TEXT DEFAULT '#000000'",
+            "goodbye_subtitle_color": "TEXT DEFAULT '#000000'"
+        }
+        
+        for col_name, col_definition in new_color_columns.items():
+            if col_name not in columns:
+                print(f"MIGRACIÓN: Añadiendo columna '{col_name}' a 'server_settings'...")
+                cursor.execute(f"ALTER TABLE server_settings ADD COLUMN {col_name} {col_definition}")
+                print(f"MIGRACIÓN: Columna '{col_name}' añadida.")
+
+    except sqlite3.Error as e:
+        print(f"Error durante la migración de 'server_settings': {e}")
+
     conn.commit()
 
 
 def setup_database():
     """Crea todas las tablas necesarias y ejecuta migraciones si es necesario."""
     with sqlite3.connect(DB_FILE) as conn:
-        run_migrations(conn)
-
         cursor = conn.cursor()
+        
+        # --- Tabla server_settings con las nuevas columnas de color ---
+        cursor.execute('''CREATE TABLE IF NOT EXISTS server_settings (
+            guild_id INTEGER PRIMARY KEY, 
+            welcome_channel_id INTEGER, 
+            goodbye_channel_id INTEGER, 
+            log_channel_id INTEGER, 
+            autorole_id INTEGER, 
+            welcome_message TEXT, 
+            welcome_banner_url TEXT, 
+            goodbye_message TEXT, 
+            goodbye_banner_url TEXT, 
+            automod_anti_invite INTEGER DEFAULT 1, 
+            automod_banned_words TEXT, 
+            temp_channel_creator_id INTEGER, 
+            leveling_enabled INTEGER DEFAULT 1,
+            welcome_title_color TEXT DEFAULT '#000000',
+            welcome_subtitle_color TEXT DEFAULT '#000000',
+            goodbye_title_color TEXT DEFAULT '#000000',
+            goodbye_subtitle_color TEXT DEFAULT '#000000'
+        )''')
+        
+        # El resto de las tablas se quedan igual
         cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
@@ -51,10 +92,13 @@ def setup_database():
         cursor.execute('''CREATE TABLE IF NOT EXISTS role_rewards (guild_id INTEGER, level INTEGER, role_id INTEGER, PRIMARY KEY (guild_id, level))''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS warnings (warning_id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, user_id INTEGER, moderator_id INTEGER, reason TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS mod_logs (log_id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, user_id INTEGER, moderator_id INTEGER, action TEXT, reason TEXT, duration TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS server_settings (guild_id INTEGER PRIMARY KEY, welcome_channel_id INTEGER, goodbye_channel_id INTEGER, log_channel_id INTEGER, autorole_id INTEGER, welcome_message TEXT, welcome_banner_url TEXT, goodbye_message TEXT, goodbye_banner_url TEXT, automod_anti_invite INTEGER DEFAULT 1, automod_banned_words TEXT, temp_channel_creator_id INTEGER, leveling_enabled INTEGER DEFAULT 1)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS reaction_roles (guild_id INTEGER, message_id INTEGER, emoji TEXT, role_id INTEGER, PRIMARY KEY (guild_id, message_id, emoji))''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
+        
+        # Ejecutamos las migraciones para añadir las columnas si la tabla ya existía
+        run_migrations(conn)
+
         conn.commit()
     print("Base de datos verificada, configurada y migrada.")
 

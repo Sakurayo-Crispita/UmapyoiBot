@@ -9,26 +9,36 @@ from utils.constants import (
     DEFAULT_GOODBYE_MESSAGE, DEFAULT_GOODBYE_BANNER,
     TEMP_CHANNEL_PREFIX
 )
-# Nuevas importaciones para la generación de imágenes
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import aiohttp
+import re
 
-# --- FUNCIÓN DE GENERACIÓN DE IMÁGENES (SIN CAMBIOS) ---
-async def generate_banner_image(session: aiohttp.ClientSession, member: discord.Member, message: str, background_url: str):
+# --- FUNCIÓN DE GENERACIÓN DE IMÁGENES (CORREGIDA) ---
+# Ahora acepta los colores como parámetros
+async def generate_banner_image(
+    session: aiohttp.ClientSession, 
+    member: discord.Member, 
+    message: str, 
+    background_url: str,
+    title_color: str = "#000000",      # Color por defecto: negro
+    subtitle_color: str = "#000000"   # Color por defecto: negro
+):
     """
-    Genera una imagen de banner personalizada usando la sesión http compartida.
+    Genera una imagen de banner personalizada usando la sesión http compartida y colores configurables.
     """
     try:
-        async with session.get(background_url) as resp:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        
+        async with session.get(background_url, headers=headers) as resp:
             if resp.status != 200:
-                print(f"No se pudo descargar el fondo: {background_url}")
+                print(f"No se pudo descargar el fondo: {background_url} (Estado: {resp.status})")
                 return None
             background_bytes = await resp.read()
 
-        async with session.get(member.display_avatar.url) as resp:
+        async with session.get(member.display_avatar.url, headers=headers) as resp:
             if resp.status != 200:
-                print(f"No se pudo descargar el avatar de {member.display_name}")
+                print(f"No se pudo descargar el avatar de {member.display_name} (Estado: {resp.status})")
                 return None
             avatar_bytes = await resp.read()
 
@@ -55,8 +65,9 @@ async def generate_banner_image(session: aiohttp.ClientSession, member: discord.
         if len(processed_message) > max_length:
             processed_message = processed_message[:max_length] + "..."
 
-        draw.text((500, 280), member.display_name, fill="white", font=title_font, anchor="ms")
-        draw.text((500, 340), processed_message, fill="#d1d1d1", font=subtitle_font, anchor="ms")
+        # Usamos los colores pasados como parámetros
+        draw.text((500, 280), member.display_name, fill=title_color, font=title_font, anchor="ms")
+        draw.text((500, 340), processed_message, fill=subtitle_color, font=subtitle_font, anchor="ms")
 
         final_buffer = BytesIO()
         bg.save(final_buffer, format="PNG")
@@ -72,12 +83,6 @@ async def generate_banner_image(session: aiohttp.ClientSession, member: discord.
 # --- COG PRINCIPAL ---
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
-    DEFAULT_WELCOME_MESSAGE = DEFAULT_WELCOME_MESSAGE
-    DEFAULT_WELCOME_BANNER = DEFAULT_WELCOME_BANNER
-    DEFAULT_GOODBYE_MESSAGE = DEFAULT_GOODBYE_MESSAGE
-    DEFAULT_GOODBYE_BANNER = DEFAULT_GOODBYE_BANNER
-    TEMP_CHANNEL_PREFIX = TEMP_CHANNEL_PREFIX
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -89,7 +94,13 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         return settings
 
     async def save_setting(self, guild_id: int, key: str, value):
-        allowed_keys = ['welcome_channel_id', 'goodbye_channel_id', 'log_channel_id', 'autorole_id', 'welcome_message', 'welcome_banner_url', 'goodbye_message', 'goodbye_banner_url', 'automod_anti_invite', 'automod_banned_words', 'temp_channel_creator_id', 'leveling_enabled']
+        # Añadimos las nuevas claves de color a la lista permitida
+        allowed_keys = [
+            'welcome_channel_id', 'goodbye_channel_id', 'log_channel_id', 'autorole_id', 
+            'welcome_message', 'welcome_banner_url', 'goodbye_message', 'goodbye_banner_url', 
+            'automod_anti_invite', 'automod_banned_words', 'temp_channel_creator_id', 'leveling_enabled',
+            'welcome_title_color', 'welcome_subtitle_color', 'goodbye_title_color', 'goodbye_subtitle_color'
+        ]
         if key not in allowed_keys:
             return
         await self.get_settings(guild_id)
@@ -109,7 +120,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
-    # --- LISTENERS (SIN CAMBIOS) ---
+    # --- LISTENERS (CORREGIDOS) ---
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
@@ -117,16 +128,18 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
 
         if channel_id := settings.get("welcome_channel_id"):
             if channel := self.bot.get_channel(channel_id):
-                msg = (settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
-                background_url = settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER
+                msg = (settings.get("welcome_message") or DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                background_url = settings.get("welcome_banner_url") or DEFAULT_WELCOME_BANNER
+                # Obtenemos los colores de la base de datos
+                title_color = settings.get("welcome_title_color", "#000000")
+                subtitle_color = settings.get("welcome_subtitle_color", "#000000")
                 
-                banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url)
+                # Pasamos los colores a la función
+                banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url, title_color, subtitle_color)
                 
                 if banner_file:
-                    try:
-                        await channel.send(file=banner_file)
-                    except discord.Forbidden:
-                        print(f"No tengo permisos para enviar el banner de bienvenida en {channel.name}")
+                    try: await channel.send(file=banner_file)
+                    except discord.Forbidden: print(f"No tengo permisos para enviar el banner de bienvenida en {channel.name}")
                 else: 
                     embed = discord.Embed(description=msg, color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                     try: await channel.send(embed=embed)
@@ -142,16 +155,18 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         settings = await self.get_settings(member.guild.id)
         if settings and (channel_id := settings.get("goodbye_channel_id")):
             if channel := self.bot.get_channel(channel_id):
-                msg = (settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
-                background_url = settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER
+                msg = (settings.get("goodbye_message") or DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                background_url = settings.get("goodbye_banner_url") or DEFAULT_GOODBYE_BANNER
+                # Obtenemos los colores de la base de datos
+                title_color = settings.get("goodbye_title_color", "#000000")
+                subtitle_color = settings.get("goodbye_subtitle_color", "#000000")
 
-                banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url)
+                # Pasamos los colores a la función
+                banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url, title_color, subtitle_color)
                 
                 if banner_file:
-                    try:
-                        await channel.send(file=banner_file)
-                    except discord.Forbidden:
-                        print(f"No tengo permisos para enviar el banner de despedida en {channel.name}")
+                    try: await channel.send(file=banner_file)
+                    except discord.Forbidden: print(f"No tengo permisos para enviar el banner de despedida en {channel.name}")
                 else:
                     embed = discord.Embed(description=msg, color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                     try: await channel.send(embed=embed)
@@ -160,20 +175,19 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.member and payload.member.bot: return
-        result = await self.get_reaction_role(payload.guild_id, payload.message_id, str(payload.emoji))
+        result = await db.fetchone("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (payload.guild_id, payload.message_id, str(payload.emoji)))
         if result and (guild := self.bot.get_guild(payload.guild_id)) and (member := guild.get_member(payload.user_id)) and (role := guild.get_role(result['role_id'])):
             try: await member.add_roles(role)
             except: pass
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
-        result = await self.get_reaction_role(payload.guild_id, payload.message_id, str(payload.emoji))
+        result = await db.fetchone("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (payload.guild_id, payload.message_id, str(payload.emoji)))
         if result and (guild := self.bot.get_guild(payload.guild_id)) and (member := guild.get_member(payload.user_id)) and (role := guild.get_role(result['role_id'])):
             try: await member.remove_roles(role)
             except: pass
             
-    # --- COMANDOS ---
-
+    # --- COMANDOS (CORREGIDOS) ---
     @commands.hybrid_command(name='setwelcomechannel', description="Establece el canal para mensajes de bienvenida.")
     @commands.has_permissions(manage_guild=True)
     async def set_welcome_channel(self, ctx: commands.Context, canal: discord.TextChannel):
@@ -186,39 +200,63 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         await self.save_setting(ctx.guild.id, 'goodbye_channel_id', canal.id)
         await ctx.send(f"✅ Canal de despedida: {canal.mention}.", ephemeral=True)
 
-    # --- COMANDOS MODIFICADOS ---
-    @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje y el banner de bienvenida.")
+    @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje, banner y colores de la bienvenida.")
     @commands.has_permissions(manage_guild=True)
-    async def config_welcome(self, ctx: commands.Context, mensaje: str, banner_url: Optional[str] = None):
+    async def config_welcome(
+        self, ctx: commands.Context, 
+        mensaje: str, 
+        banner_url: Optional[str] = None,
+        color_titulo: Optional[str] = None,
+        color_subtitulo: Optional[str] = None
+    ):
         """
-        Configura el mensaje de bienvenida.
-        Usa {user} para mencionar al usuario y {server} para el nombre del servidor.
-        Opcionalmente, añade una URL de imagen para el banner.
+        Configura la bienvenida. Colores en formato #RRGGBB (ej: #FF0000 para rojo).
         """
         await self.save_setting(ctx.guild.id, 'welcome_message', mensaje)
         response_message = "✅ Mensaje de bienvenida guardado."
+        
         if banner_url:
             await self.save_setting(ctx.guild.id, 'welcome_banner_url', banner_url)
             response_message += "\n✅ Banner de bienvenida actualizado."
+        
+        if color_titulo and re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color_titulo):
+            await self.save_setting(ctx.guild.id, 'welcome_title_color', color_titulo)
+            response_message += f"\n✅ Color del título: `{color_titulo}`."
+        
+        if color_subtitulo and re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color_subtitulo):
+            await self.save_setting(ctx.guild.id, 'welcome_subtitle_color', color_subtitulo)
+            response_message += f"\n✅ Color del subtítulo: `{color_subtitulo}`."
+
         await ctx.send(response_message, ephemeral=True)
 
-    @commands.hybrid_command(name='configgoodbye', description="Personaliza el mensaje y el banner de despedida.")
+    @commands.hybrid_command(name='configgoodbye', description="Personaliza el mensaje, banner y colores de la despedida.")
     @commands.has_permissions(manage_guild=True)
-    async def config_goodbye(self, ctx: commands.Context, mensaje: str, banner_url: Optional[str] = None):
+    async def config_goodbye(
+        self, ctx: commands.Context, 
+        mensaje: str, 
+        banner_url: Optional[str] = None,
+        color_titulo: Optional[str] = None,
+        color_subtitulo: Optional[str] = None
+    ):
         """
-        Configura el mensaje de despedida.
-        Usa {user} para el nombre del usuario y {server} para el nombre del servidor.
-        Opcionalmente, añade una URL de imagen para el banner.
+        Configura la despedida. Colores en formato #RRGGBB (ej: #FFFFFF para blanco).
         """
         await self.save_setting(ctx.guild.id, 'goodbye_message', mensaje)
         response_message = "✅ Mensaje de despedida guardado."
+
         if banner_url:
             await self.save_setting(ctx.guild.id, 'goodbye_banner_url', banner_url)
             response_message += "\n✅ Banner de despedida actualizado."
-        await ctx.send(response_message, ephemeral=True)
+
+        if color_titulo and re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color_titulo):
+            await self.save_setting(ctx.guild.id, 'goodbye_title_color', color_titulo)
+            response_message += f"\n✅ Color del título: `{color_titulo}`."
         
-    # --- COMANDOS ELIMINADOS (Funcionalidad movida a los de arriba) ---
-    # setwelcomebanner y setgoodbyebanner ya no son necesarios.
+        if color_subtitulo and re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color_subtitulo):
+            await self.save_setting(ctx.guild.id, 'goodbye_subtitle_color', color_subtitulo)
+            response_message += f"\n✅ Color del subtítulo: `{color_subtitulo}`."
+
+        await ctx.send(response_message, ephemeral=True)
         
     @commands.hybrid_command(name='setlogchannel', description="Establece el canal para el registro de moderación.")
     @commands.has_permissions(manage_guild=True)
