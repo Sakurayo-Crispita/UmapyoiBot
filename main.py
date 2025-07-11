@@ -88,7 +88,7 @@ bot = UmapyoiBot(command_prefix='!', intents=intents, case_insensitive=True, hel
 @bot.event
 async def on_ready():
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
-    await bot.change_presence(activity=discord.Game(name="Música y Juegos | /help"))
+    await bot.change_presence(activity=discord.Game(name="¡Umapyoi ready! | /help"))
 
 # --- EVENTO ON_MESSAGE CORREGIDO ---
 @bot.event
