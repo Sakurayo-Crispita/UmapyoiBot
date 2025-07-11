@@ -166,7 +166,7 @@ async def on_guild_join(guild: discord.Guild):
             # Diccionario de emojis para cada categoría
             emoji_map = {
                 "Música": "🎵", "Niveles": "📈", "Economía": "💰", "Juegos de Apuestas": "🎲",
-                "Juegos e IA": "🎮", "Interacción": "👋", "NSFW": "🔞", "Moderación": "🛡️",
+                "Juegos e IA": "🎮", "Interacción": "👋", "Moderación": "🛡️",
                 "Configuración del Servidor": "⚙️", "Texto a Voz": "🔊", "Utilidad": "�️"
             }
 
