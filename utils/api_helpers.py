@@ -5,9 +5,9 @@ import random
 from typing import Literal, Optional
 import asyncio
 
-# --- FUNCIÓN MODIFICADA ---
+# --- FUNCIÓN ORIGINAL (SIN CAMBIOS) ---
 async def get_interactive_gif(
-    session: aiohttp.ClientSession, # <-- 1. AÑADIDO: Acepta la sesión compartida como parámetro
+    session: aiohttp.ClientSession, 
     ctx: commands.Context,
     category: str,
     gif_type: Literal["sfw", "nsfw"],
@@ -20,7 +20,6 @@ async def get_interactive_gif(
     """
     await ctx.defer(ephemeral=False)
 
-    # Determinar el texto de la acción
     if target and target != ctx.author:
         templates = action_templates
     else:
@@ -29,34 +28,24 @@ async def get_interactive_gif(
             return
         templates = self_action_phrases
     
-    action_text = random.choice(templates)
-    if target:
-        action_text = action_text.format(author=ctx.author.mention, target=target.mention)
-    else:
-        action_text = action_text.format(author=ctx.author.mention)
+    action_text = random.choice(templates).format(author=ctx.author.mention, target=target.mention if target else "")
 
-    # URL de la API única y estable
     api_url = f"https://api.waifu.pics/{gif_type}/{category}"
-
     timeout = aiohttp.ClientTimeout(total=10)
     try:
-        # <-- 2. MODIFICADO: Ya no crea una nueva sesión, usa la que se le pasa
         async with session.get(api_url, timeout=timeout) as response:
-            # Si la categoría no existe, waifu.pics devuelve 404
             if response.status == 404:
                 await ctx.send(f"❌ La categoría '{category}' no fue encontrada en la API. Se usará un reemplazo.", ephemeral=True)
-                # Intentamos con una categoría de respaldo que siempre existe
                 api_url = f"https://api.waifu.pics/{gif_type}/waifu"
                 async with session.get(api_url, timeout=timeout) as fallback_response:
                     if fallback_response.status != 200:
                         await ctx.send("Error incluso con la API de respaldo. Por favor, reporta esto.", ephemeral=True)
                         return
-                    response = fallback_response # Usamos la respuesta de respaldo
+                    response = fallback_response
             
             if response.status == 200:
                 data = await response.json()
                 gif_url = data.get('url')
-
                 if gif_url:
                     embed = discord.Embed(description=action_text, color=ctx.author.color)
                     embed.set_image(url=gif_url)
@@ -73,7 +62,45 @@ async def get_interactive_gif(
         await ctx.send("Ocurrió un error inesperado al procesar tu solicitud.", ephemeral=True)
 
 
-# --- GEMINI Y JIKAN HELPERS (SIN CAMBIOS, YA SON ESTABLES) ---
+# --- NUEVA FUNCIÓN PARA LA API NEKOS.BEST ---
+async def get_nekos_best_gif(
+    session: aiohttp.ClientSession,
+    ctx: commands.Context,
+    category: str,
+    target: Optional[discord.Member] = None,
+    action_templates: list[str] = []
+):
+    """
+    Obtiene un GIF de la API nekos.best.
+    """
+    await ctx.defer(ephemeral=False)
+    
+    action_text = random.choice(action_templates).format(author=ctx.author.mention, target=target.mention if target else "")
+    api_url = f"https://nekos.best/api/v2/{category}"
+    timeout = aiohttp.ClientTimeout(total=10)
+
+    try:
+        async with session.get(api_url, timeout=timeout) as response:
+            if response.status == 200:
+                data = await response.json()
+                # La estructura de esta API es diferente
+                gif_url = data.get("results", [{}])[0].get("url")
+                if gif_url:
+                    embed = discord.Embed(description=action_text, color=ctx.author.color)
+                    embed.set_image(url=gif_url)
+                    await ctx.send(embed=embed)
+                else:
+                    await ctx.send("La API (nekos.best) no devolvió una URL válida.", ephemeral=True)
+            else:
+                await ctx.send(f"La API (nekos.best) devolvió un error (Estado: {response.status}).", ephemeral=True)
+    except asyncio.TimeoutError:
+        await ctx.send("La API (nekos.best) tardó demasiado en responder.", ephemeral=True)
+    except Exception as e:
+        print(f"Error crítico en get_nekos_best_gif: {e}")
+        await ctx.send("Ocurrió un error inesperado al procesar tu solicitud.", ephemeral=True)
+
+
+# --- GEMINI Y JIKAN HELPERS (SIN CAMBIOS) ---
 async def ask_gemini(api_key: str, question: str) -> str:
     if not api_key:
         return "❌ La función de IA no está configurada por el dueño del bot."
@@ -82,6 +109,7 @@ async def ask_gemini(api_key: str, question: str) -> str:
     headers = {"Content-Type": "application/json"}
     timeout = aiohttp.ClientTimeout(total=20)
     try:
+        # Usamos una sesión local aquí ya que no es parte del bot principal
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(api_url, json=payload, headers=headers) as response:
                 if response.status == 200:
@@ -101,6 +129,7 @@ async def search_anime(query: str) -> Optional[dict]:
     api_url = f"https://api.jikan.moe/v4/anime?q={query.replace(' ', '%20')}&limit=1"
     timeout = aiohttp.ClientTimeout(total=10)
     try:
+        # Usamos una sesión local aquí también
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(api_url) as response:
                 if response.status == 200:
