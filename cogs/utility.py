@@ -3,6 +3,7 @@ from discord.ext import commands
 from typing import Optional
 import datetime
 import io
+from utils import constants
 
 class HelpSelect(discord.ui.Select):
     """El menú desplegable para el panel de ayuda interactivo."""
@@ -88,11 +89,17 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     async def help(self, ctx: commands.Context, categoría: Optional[str] = None):
         if categoría is None:
             embed = discord.Embed(title="📜 Ayuda de Umapyoi", color=self.bot.CREAM_COLOR)
-            embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
+            # MODIFICADO: El enlace a la página web está integrado en el texto
+            embed.description = (
+                "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n"
+                "**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n"
+                f"**🎛️ Categorías de Comandos:**\n*Para ver todos los comandos, visita nuestra [página de comandos]({constants.COMMANDS_PAGE_URL}).*"
+            )
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
-            embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
-            # Pasamos el cog_map a la vista para que el menú se genere correctamente
-            await ctx.send(embed=embed, view=HelpView(self.bot, self.cog_map))
+            
+            view = discord.ui.View(timeout=180)
+            view.add_item(HelpSelect(self.bot, self.cog_map))
+            await ctx.send(embed=embed, view=view)
         else:
             cog_name_real = self.cog_map.get(categoría.lower())
             if cog_name_real:
@@ -106,6 +113,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
                 description = "\n".join([f"**`/{cmd.name}`** - {cmd.description}" for cmd in command_list if cmd.name != 'help'])
                 
                 embed.description = description or "Esta categoría no tiene comandos para mostrar."
+                
                 await ctx.send(embed=embed, ephemeral=True)
             else:
                 await ctx.send(f"La categoría '{categoría}' no existe.", ephemeral=True)

@@ -6,8 +6,8 @@ import datetime
 import glob 
 import aiohttp
 from aiohttp import TCPConnector
-import ssl  # <-- 1. AÑADIDO: Importamos la librería SSL
-import certifi # <-- 2. AÑADIDO: Importamos la librería de certificados
+import ssl
+import certifi
 
 # Importamos nuestros módulos de utilidades
 from utils import database_manager
@@ -44,14 +44,12 @@ class UmapyoiBot(commands.Bot):
         self.http_session = None
 
     async def setup_hook(self):
-        # --- 3. MODIFICADO: Creamos la sesión con un contexto SSL y DNS específico ---
         ssl_context = ssl.create_default_context(cafile=certifi.where())
         connector = TCPConnector(
             resolver=aiohttp.AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"]),
             ssl=ssl_context,
         )
         self.http_session = aiohttp.ClientSession(connector=connector)
-        # -------------------------------------------------------------------------
         
         cleanup_tts_files()
         print("Verificando y creando tablas de la base de datos si no existen...")
@@ -90,63 +88,54 @@ async def on_ready():
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
     await bot.change_presence(activity=discord.Game(name="¡Umapyoi ready! | /help"))
 
-# --- EVENTO ON_MESSAGE CORREGIDO ---
+# --- EVENTO ON_MESSAGE ---
 @bot.event
 async def on_message(message: discord.Message):
-    # Ignorar mensajes de bots o mensajes privados
     if message.author.bot or not message.guild:
         return
         
-    # Comprueba si solo se mencionó al bot en el mensaje
-    # Esto evita que responda si se menciona al bot junto con un comando
     if message.content == f'<@{bot.user.id}>' or message.content == f'<@!{bot.user.id}>':
         embed = discord.Embed(
             title=f"¡Holi, {message.author.display_name}!",
-            description=f"Mi prefijo de texto aquí es `!`, pero te recomiendo usar mis comandos de barra diagonal (`/`).\nEscribe `/help` para ver todo lo que puedo hacer.",
+            description=f"Mi prefijo de texto aquí es `!`, pero te recomiendo usar mis comandos de barra diagonal (`/`).\nUsa `/help` o visita mi página de comandos para ver todo lo que puedo hacer.",
             color=bot.CREAM_COLOR
         )
         embed.set_thumbnail(url=bot.user.display_avatar.url)
         view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Página de Comandos", emoji="🌐", url=constants.COMMANDS_PAGE_URL))
         invite_link = discord.utils.oauth_url(bot.user.id, permissions=discord.Permissions(permissions=8))
         view.add_item(discord.ui.Button(label="¡Invítame!", emoji="🥳", url=invite_link))
         view.add_item(discord.ui.Button(label="Soporte", emoji="🆘", url="https://discord.gg/fwNeZsGkSj"))
         
         await message.channel.send(embed=embed, view=view)
-        return # Importante: Salimos para no procesar el mensaje como un comando
+        return
 
-    # Si el mensaje no es solo una mención, procesamos los comandos normalmente
     await bot.process_commands(message)
 
-# --- EVENTO ON_GUILD_JOIN (MEJORADO) ---
+# --- EVENTO ON_GUILD_JOIN ---
 @bot.event
 async def on_guild_join(guild: discord.Guild):
-    """
-    Se ejecuta cuando el bot es añadido a un nuevo servidor.
-    Envía un mensaje de bienvenida público y una guía completa por privado.
-    """
-    # 1. Enviar el mensaje público en el canal del sistema (sin cambios)
     target_channel = guild.system_channel
     if not (target_channel and target_channel.permissions_for(guild.me).send_messages):
         for channel in guild.text_channels:
             if channel.permissions_for(guild.me).send_messages:
                 target_channel = channel
                 break
-
     if target_channel:
         public_embed = discord.Embed(
             title="¡Umapyoi ha llegado para correr!",
-            description="¡Hola a todos! Estoy lista para traer la mejor música, juegos y utilidades a su comunidad. ¡Es un placer estar aquí! 🥕",
+            description="¡Hola a todos! Estoy lista para traer la mejor música, juegos y utilidades a su comunidad. ¡Es un placer estar aquí! 🥕\n\nPara empezar, usa `/help` o visita mi página de comandos.",
             color=bot.CREAM_COLOR
         )
-        public_embed.add_field(name="🏁 Primeros Pasos", value="Usa `/help` para ver mi lista de comandos.\nPara escuchar música, únete a un canal de voz y usa `/play`.", inline=False)
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Ver Comandos", emoji="🌐", url=constants.COMMANDS_PAGE_URL))
         public_embed.set_image(url="https://i.imgur.com/LQxAWOz.png")
         public_embed.set_footer(text="¡A disfrutar de la carrera!")
         try:
-            await target_channel.send(embed=public_embed)
+            await target_channel.send(embed=public_embed, view=view)
         except discord.Forbidden:
             print(f"No pude enviar el mensaje de bienvenida público en {guild.name}")
 
-    # 2. Encontrar a la persona que invitó al bot
     inviter = None
     try:
         if guild.me.guild_permissions.view_audit_log:
@@ -157,60 +146,20 @@ async def on_guild_join(guild: discord.Guild):
     except discord.Forbidden:
         print(f"No tengo permiso para ver el registro de auditoría en {guild.name}.")
     
-    # 3. Preparar y enviar la guía completa por mensaje privado
     if inviter:
+        private_embed = discord.Embed(
+            title=f"¡Gracias por invitarme a {guild.name}!",
+            description="¡Hola! Para ver la lista completa y detallada de comandos, visita mi página web. ¡Es la mejor forma de empezar a configurar!",
+            color=bot.CREAM_COLOR
+        )
+        private_embed.set_thumbnail(url=bot.user.display_avatar.url)
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Ver Guía de Comandos", emoji="📘", url=constants.COMMANDS_PAGE_URL))
+        view.add_item(discord.ui.Button(label="Servidor de Soporte", emoji="🆘", url="https://discord.gg/fwNeZsGkSj"))
         try:
-            # Mensaje inicial
-            initial_embed = discord.Embed(
-                title=f"¡Gracias por invitarme a {guild.name}!",
-                description="¡Hola! Estoy aquí para llenar tu servidor de música, juegos y diversión. ✨\n\nA continuación, te presento una guía completa de todos mis comandos para que puedas empezar a configurar.",
-                color=bot.CREAM_COLOR
-            )
-            initial_embed.set_thumbnail(url=bot.user.display_avatar.url)
-            await inviter.send(embed=initial_embed)
-
-            # Diccionario de emojis para cada categoría
-            emoji_map = {
-                "Música": "🎵", "Niveles": "📈", "Economía": "💰", "Juegos de Apuestas": "🎲",
-                "Juegos e IA": "🎮", "Interacción": "👋", "NSFW": "🔞", "Moderación": "🛡️",
-                "Configuración del Servidor": "⚙️", "Texto a Voz": "🔊", "Utilidad": "🛠️"
-            }
-
-            # Enviar un embed por cada categoría de comandos
-            for cog_name, cog in bot.cogs.items():
-                commands_list = cog.get_commands()
-                if not commands_list or cog_name in ["Juegos de Apuestas", "Economía"]: # Omitir cogs sin comandos visibles o en mantenimiento
-                    continue
-
-                embed = discord.Embed(
-                    title=f"{emoji_map.get(cog_name, '➡️')} Comandos de {cog_name}",
-                    color=bot.CREAM_COLOR
-                )
-                
-                for command in sorted(commands_list, key=lambda c: c.name):
-                    if command.hidden: continue
-                    
-                    # Construir la descripción detallada
-                    description = command.description or "Sin descripción."
-                    
-                    # Añadir ejemplos de uso para comandos complejos
-                    if command.name == 'setwelcomechannel' or command.name == 'setgoodbyechannel':
-                        description += "\n*Ejemplo: `/setwelcomechannel canal:#general`*\n*Para desactivar, usa el comando sin especificar un canal.*"
-                    elif command.name == 'configwelcome' or command.name == 'configgoodbye':
-                        description += "\n*Ejemplo: `/configwelcome mensaje:¡Hola {user}! banner_url:https://... texto_superior:¡Nuevo miembro!`*"
-                    elif command.name == 'play':
-                        description += "\n*Ejemplo: `/play Never Gonna Give You Up` o con un enlace de YouTube.*"
-                        
-                    embed.add_field(name=f"`/{command.name}`", value=description, inline=False)
-
-                if embed.fields: # Solo enviar si el embed tiene comandos
-                    await inviter.send(embed=embed)
-
+            await inviter.send(embed=private_embed, view=view)
         except discord.Forbidden:
-            print(f"No pude enviar la guía de bienvenida por MD a {inviter.name} (MDs cerrados).")
-        except Exception as e:
-            print(f"Error enviando la guía por MD: {e}")
-
+            print(f"No pude enviar el MD de bienvenida a {inviter.name}.")
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
