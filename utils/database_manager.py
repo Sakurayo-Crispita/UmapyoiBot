@@ -33,19 +33,21 @@ def run_migrations(conn):
     except sqlite3.Error as e:
         print(f"Error durante la migración de 'economy_settings': {e}")
 
-    # --- Migración para la tabla server_settings (para añadir colores) ---
+    # --- Migración para la tabla server_settings (colores y texto superior) ---
     try:
         cursor.execute("PRAGMA table_info(server_settings)")
         columns = [row[1] for row in cursor.fetchall()]
         
-        new_color_columns = {
+        new_columns = {
             "welcome_title_color": "TEXT DEFAULT '#000000'",
             "welcome_subtitle_color": "TEXT DEFAULT '#000000'",
             "goodbye_title_color": "TEXT DEFAULT '#000000'",
-            "goodbye_subtitle_color": "TEXT DEFAULT '#000000'"
+            "goodbye_subtitle_color": "TEXT DEFAULT '#000000'",
+            "welcome_top_text": "TEXT",
+            "goodbye_top_text": "TEXT"
         }
         
-        for col_name, col_definition in new_color_columns.items():
+        for col_name, col_definition in new_columns.items():
             if col_name not in columns:
                 print(f"MIGRACIÓN: Añadiendo columna '{col_name}' a 'server_settings'...")
                 cursor.execute(f"ALTER TABLE server_settings ADD COLUMN {col_name} {col_definition}")
@@ -62,7 +64,7 @@ def setup_database():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         
-        # --- Tabla server_settings con las nuevas columnas de color ---
+        # --- Tabla server_settings con todas las columnas ---
         cursor.execute('''CREATE TABLE IF NOT EXISTS server_settings (
             guild_id INTEGER PRIMARY KEY, 
             welcome_channel_id INTEGER, 
@@ -80,10 +82,12 @@ def setup_database():
             welcome_title_color TEXT DEFAULT '#000000',
             welcome_subtitle_color TEXT DEFAULT '#000000',
             goodbye_title_color TEXT DEFAULT '#000000',
-            goodbye_subtitle_color TEXT DEFAULT '#000000'
+            goodbye_subtitle_color TEXT DEFAULT '#000000',
+            welcome_top_text TEXT,
+            goodbye_top_text TEXT
         )''')
         
-        # El resto de las tablas se quedan igual
+        # --- Resto de las tablas (sin cambios) ---
         cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS economy_settings (guild_id INTEGER PRIMARY KEY, currency_name TEXT DEFAULT 'créditos', currency_emoji TEXT DEFAULT '🪙', start_balance INTEGER DEFAULT 100, max_balance INTEGER, log_channel_id INTEGER, daily_min INTEGER DEFAULT 100, daily_max INTEGER DEFAULT 500, work_min INTEGER DEFAULT 50, work_max INTEGER DEFAULT 250, work_cooldown INTEGER DEFAULT 3600, rob_cooldown INTEGER DEFAULT 21600)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS economy_active_channels (guild_id INTEGER, channel_id INTEGER, PRIMARY KEY (guild_id, channel_id))''')
@@ -96,10 +100,9 @@ def setup_database():
         cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
         
-        # Ejecutamos las migraciones para añadir las columnas si la tabla ya existía
         run_migrations(conn)
-
         conn.commit()
+        
     print("Base de datos verificada, configurada y migrada.")
 
 # --- Funciones genéricas para interactuar con la DB ---
@@ -135,7 +138,7 @@ async def execute(query: str, params: tuple = ()):
             conn.commit()
     return await asyncio.to_thread(_sync_execute)
 
-# --- Funciones específicas por Cog (No necesitan cambios) ---
+# --- Funciones específicas por Cog (sin cambios) ---
 
 async def get_guild_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
     settings = await fetchone("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
