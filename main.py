@@ -4,7 +4,8 @@ import os
 import traceback
 import datetime
 import glob 
-import aiohttp # <-- 1. AÑADIDO: Importamos la librería aiohttp
+import aiohttp
+from aiohttp import TCPConnector # <-- 1. AÑADIDO: Importamos el conector TCP
 
 # Importamos nuestros módulos de utilidades
 from utils import database_manager
@@ -38,10 +39,14 @@ class UmapyoiBot(commands.Bot):
         self.CREAM_COLOR = discord.Color(constants.CREAM_COLOR)
         self.FFMPEG_OPTIONS = constants.FFMPEG_OPTIONS
         self.YDL_OPTIONS = constants.YDL_OPTIONS
-        self.http_session = None # <-- 2. AÑADIDO: Inicializamos la sesión como nula
+        self.http_session = None
 
     async def setup_hook(self):
-        self.http_session = aiohttp.ClientSession() # <-- 3. AÑADIDO: Creamos la sesión cuando el bot se inicia
+        # --- 2. MODIFICADO: Creamos la sesión con un DNS específico ---
+        connector = TCPConnector(resolver=aiohttp.AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"]))
+        self.http_session = aiohttp.ClientSession(connector=connector)
+        # -----------------------------------------------------------
+        
         cleanup_tts_files()
         print("Verificando y creando tablas de la base de datos si no existen...")
         database_manager.setup_database()
@@ -62,7 +67,7 @@ class UmapyoiBot(commands.Bot):
 
     async def close(self):
         await super().close()
-        if self.http_session: # <-- 4. AÑADIDO: Nos aseguramos de cerrar la sesión cuando el bot se apaga
+        if self.http_session:
             await self.http_session.close()
 
 intents = discord.Intents.default()
@@ -98,7 +103,7 @@ async def on_message(message: discord.Message):
         view = discord.ui.View()
         invite_link = discord.utils.oauth_url(bot.user.id, permissions=discord.Permissions(permissions=8))
         view.add_item(discord.ui.Button(label="¡Invítame!", emoji="🥳", url=invite_link))
-        view.add_item(discord.ui.Button(label="Soporte", emoji="🆘", url="https://discord.gg/fwNeZsGkSj"))
+        view.add_item(discord.ui.Button(label="Soporte", emoji="�", url="https://discord.gg/fwNeZsGkSj"))
         
         await message.channel.send(embed=embed, view=view)
         return # Importante: Salimos para no procesar el mensaje como un comando
