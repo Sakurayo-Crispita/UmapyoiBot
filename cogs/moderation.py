@@ -155,8 +155,6 @@ class ModerationCog(commands.Cog, name="Moderación"):
                 except Exception as e:
                     print(f"Error en automod on_message: {e}")
                 return # Detener procesamiento
-        
-        await self.bot.process_commands(message)
 
     # --- FUNCIÓN AUXILIAR PARA LOGS DE COMANDOS ---
     async def _log_command_action(self, ctx: commands.Context, action: str, member: discord.Member | discord.User, reason: str, **kwargs):
