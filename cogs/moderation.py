@@ -9,6 +9,7 @@ from typing import Optional, Literal
 from utils import database_manager as db
 
 def parse_duration(duration_str: str) -> Optional[datetime.timedelta]:
+    """Convierte un string de tiempo (ej: 1d, 2h, 10m) a un objeto timedelta."""
     regex = re.compile(r'(\d+)([smhd])')
     matches = regex.findall(duration_str.lower())
     if not matches:
@@ -37,115 +38,154 @@ class ModerationCog(commands.Cog, name="Moderación"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    # --- FUNCIÓN AUXILIAR PARA LOGS (MEJORADA) ---
-    async def _log_action(self, ctx_or_message, action: str, member: Optional[discord.Member | discord.User] = None, reason: Optional[str] = None, **kwargs):
-        """Función auxiliar mejorada para enviar logs al canal configurado."""
-        
-        guild = ctx_or_message.guild
-        if not guild: return
+    # --- LISTENERS PARA LOGS DE MENSAJES (NUEVO DISEÑO) ---
 
-        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (guild.id,))
-        if not (log_settings and log_settings.get('log_channel_id')):
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        """Se activa cuando un mensaje es editado."""
+        if before.author.bot or not before.guild or before.content == after.content:
             return
 
-        log_channel = self.bot.get_channel(log_settings['log_channel_id'])
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (before.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
         if not log_channel:
             return
 
-        # Determinar el moderador o responsable
-        moderator = "Automod"
-        if isinstance(ctx_or_message, commands.Context):
-            moderator = ctx_or_message.author.mention
-        elif 'moderator' in kwargs:
-             moderator = kwargs['moderator']
-
-
-        embed = discord.Embed(title=f"🚨 Log: {action}", color=discord.Color.red(), timestamp=datetime.datetime.now())
-        embed.add_field(name="Responsable", value=moderator, inline=False)
-
-        if member:
-            embed.add_field(name="Usuario Afectado", value=f"{member.mention} (`{member.id}`)", inline=False)
-        if reason:
-            embed.add_field(name="Razón", value=reason, inline=False)
+        embed = discord.Embed(
+            title="Mensaje Editado",
+            url=after.jump_url, # Enlace para saltar al mensaje
+            color=0x3498DB, # Azul Celeste
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_author(name=f"{after.author.display_name}", icon_url=after.author.display_avatar.url)
+        embed.description = f"📝 **{after.author.mention} editó un mensaje en {after.channel.mention}**"
         
-        # Añadir campos adicionales como duración, canal, etc.
-        if duration := kwargs.get('duration'):
-            embed.add_field(name="Duración", value=duration, inline=False)
-        if channel := kwargs.get('channel'):
-            embed.add_field(name="Canal", value=channel.mention, inline=False)
-        if count := kwargs.get('count'):
-            embed.add_field(name="Cantidad", value=str(count), inline=False)
-        if content := kwargs.get('content'):
-             embed.add_field(name="Contenido", value=f"||{content}||", inline=False)
+        before_content = before.content[:1020] + "..." if len(before.content) > 1024 else before.content
+        after_content = after.content[:1020] + "..." if len(after.content) > 1024 else after.content
 
+        embed.add_field(name="Contenido Original", value=f"```{before_content}```", inline=False)
+        embed.add_field(name="Contenido Nuevo", value=f"```{after_content}```", inline=False)
 
         try:
             await log_channel.send(embed=embed)
         except discord.Forbidden:
-            print(f"No pude enviar el log al canal {log_channel.id} en el servidor {guild.name}")
+            pass
 
-    # --- LISTENERS (AUTOMOD Y LOGS) ---
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        """Se activa cuando un mensaje es eliminado."""
+        if message.author.bot or not message.guild:
+            return
+
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (message.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel:
+            return
+            
+        # Esperar para dar tiempo al Audit Log a que se actualice
+        await asyncio.sleep(1.5)
+
+        actor = None
+        try:
+            async for entry in message.guild.audit_logs(limit=1, action=discord.AuditLogAction.message_delete):
+                if entry.target.id == message.author.id and entry.channel.id == message.channel.id:
+                    actor = entry.user
+                    break
+        except discord.Forbidden:
+            print(f"No tengo permiso de 'Ver Registro de Auditoría' en {message.guild.name}")
+
+        # Ignorar si el autor original borró su propio mensaje o si el actor es desconocido
+        if actor is None or actor.id == message.author.id:
+            return
+
+        embed = discord.Embed(
+            color=0xFF8C00, # Naranja
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_author(name=f"{message.author.display_name}", icon_url=message.author.display_avatar.url)
+        
+        description = (
+            f"📙 **Mensaje de {message.author.mention} eliminado en {message.channel.mention}**\n"
+            f"**Borrado por:** {actor.mention}"
+        )
+        embed.description = description
+        
+        if message.content:
+            embed.add_field(name="Contenido", value=f"```{message.content}```", inline=False)
+
+        try:
+            await log_channel.send(embed=embed)
+        except discord.Forbidden:
+            pass
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        """Listener para automod y para procesar comandos."""
         if message.author.bot or not message.guild:
             return
 
         settings = await db.fetchone("SELECT automod_banned_words, log_channel_id FROM server_settings WHERE guild_id = ?", (message.guild.id,))
         
-        # Procesar automod de palabras prohibidas
         if settings and settings.get('automod_banned_words'):
             banned_words = [word for word in settings['automod_banned_words'].lower().split(',') if word]
-            message_content_lower = message.content.lower()
-            if any(word in message_content_lower for word in banned_words):
+            if any(word in message.content.lower() for word in banned_words):
                 try:
                     await message.delete()
-                    await self._log_action(message, "Palabra Prohibida", member=message.author, reason="Mensaje borrado por automod.", content=message.content)
+                    # Enviar log de automod
+                    if log_channel_id := settings.get('log_channel_id'):
+                        if log_channel := self.bot.get_channel(log_channel_id):
+                            embed = discord.Embed(
+                                color=0x992D22, # Rojo Oscuro
+                                timestamp=datetime.datetime.now(),
+                                description=f"📛 **Mensaje de {message.author.mention} eliminado por Automod en {message.channel.mention}**"
+                            )
+                            embed.set_author(name="Automod", icon_url=self.bot.user.display_avatar.url)
+                            embed.add_field(name="Contenido Bloqueado", value=f"```{message.content}```", inline=False)
+                            await log_channel.send(embed=embed)
+
                     warning_msg = await message.channel.send(f"⚠️ {message.author.mention}, tu mensaje ha sido eliminado por contener una palabra no permitida.")
                     await asyncio.sleep(10)
                     await warning_msg.delete()
-                except discord.Forbidden:
-                    print(f"Automod: No tengo permisos para borrar mensajes en '{message.guild.name}'.")
                 except Exception as e:
                     print(f"Error en automod on_message: {e}")
-                return # Detener procesamiento para no dar XP, etc.
+                return # Detener procesamiento
         
-        # Si el mensaje no fue borrado, procesar comandos
         await self.bot.process_commands(message)
 
-    @commands.Cog.listener()
-    async def on_message_delete(self, message: discord.Message):
-        if message.author.bot or not message.guild:
+    # --- FUNCIÓN AUXILIAR PARA LOGS DE COMANDOS ---
+    async def _log_command_action(self, ctx: commands.Context, action: str, member: discord.Member | discord.User, reason: str, **kwargs):
+        """Función auxiliar para enviar logs de acciones de moderación por comandos."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (ctx.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
             return
 
-        # Evitar doble log si el mensaje fue borrado por nuestro propio automod
-        # (El automod ya registra su propia acción)
-        if message.content:
-            settings = await db.fetchone("SELECT automod_banned_words FROM server_settings WHERE guild_id = ?", (message.guild.id,))
-            if settings and settings.get('automod_banned_words'):
-                banned_words = [word for word in settings['automod_banned_words'].lower().split(',') if word]
-                if any(word in message.content.lower() for word in banned_words):
-                    return
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel:
+            return
 
-        actor = "Desconocido"
-        moderator = None
+        embed = discord.Embed(title=f"🚨 Acción de Moderación: {action}", color=discord.Color.red(), timestamp=datetime.datetime.now())
+        embed.set_author(name=f"{ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        embed.add_field(name="Usuario Afectado", value=f"{member.mention} (`{member.id}`)", inline=False)
+        embed.add_field(name="Razón", value=reason, inline=False)
+        
+        if duration := kwargs.get('duration'):
+            embed.add_field(name="Duración", value=duration)
+        if channel := kwargs.get('channel'):
+            embed.add_field(name="Canal", value=channel.mention, inline=True)
+        if count := kwargs.get('count'):
+            embed.add_field(name="Cantidad", value=str(count), inline=True)
+
         try:
-            # Esperar un poco para que el registro de auditoría se actualice
-            await asyncio.sleep(1) 
-            async for entry in message.guild.audit_logs(limit=1, action=discord.AuditLogAction.message_delete):
-                if entry.target.id == message.author.id and entry.channel.id == message.channel.id:
-                    actor = entry.user
-                    moderator = actor.mention
-                    break
+            await log_channel.send(embed=embed)
         except discord.Forbidden:
-            actor = "Permisos insuficientes"
-        
-        # No registrar si el propio usuario borró su mensaje
-        if actor == message.author:
-            return
+            pass
 
-        await self._log_action(message, "Mensaje Borrado", member=message.author, reason=f"El mensaje fue borrado del canal {message.channel.mention}.", moderator=moderator, content=message.content)
-        
     # --- COMANDOS DE MODERACIÓN ---
 
     @commands.hybrid_command(name="clear", description="Borra una cantidad específica de mensajes en el canal.")
@@ -154,7 +194,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     async def clear(self, ctx: commands.Context, cantidad: commands.Range[int, 1, 100]):
         await ctx.defer(ephemeral=True)
         deleted = await ctx.channel.purge(limit=cantidad)
-        await self._log_action(ctx, "Clear", reason=f"Borrado masivo de mensajes.", channel=ctx.channel, count=len(deleted))
+        await self._log_command_action(ctx, "Clear", ctx.author, "Borrado masivo de mensajes.", channel=ctx.channel, count=len(deleted))
         await ctx.send(f"✅ Se han borrado **{len(deleted)}** mensajes.", ephemeral=True)
 
     @commands.hybrid_command(name="kick", description="Expulsa a un miembro del servidor.")
@@ -170,7 +210,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
 
         await miembro.kick(reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Kick", razon)
-        await self._log_action(ctx, "Kick", miembro, razon)
+        await self._log_command_action(ctx, "Kick", miembro, razon)
         await ctx.send(f"✅ **{miembro.display_name}** ha sido expulsado.", ephemeral=True)
 
     @commands.hybrid_command(name="ban", description="Banea a un miembro del servidor.")
@@ -186,7 +226,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
 
         await miembro.ban(reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Ban", razon)
-        await self._log_action(ctx, "Ban", miembro, razon)
+        await self._log_command_action(ctx, "Ban", miembro, razon)
         await ctx.send(f"✅ **{miembro.display_name}** ha sido baneado.", ephemeral=True)
 
     @commands.hybrid_command(name="unban", description="Desbanea a un usuario del servidor.")
@@ -201,7 +241,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         try:
             await ctx.guild.unban(user, reason=f"{razon} (Moderador: {ctx.author.name})")
             await db.add_mod_log(ctx.guild.id, user.id, ctx.author.id, "Unban", razon)
-            await self._log_action(ctx, "Unban", user, razon)
+            await self._log_command_action(ctx, "Unban", user, razon)
             await ctx.send(f"✅ **{user.name}** ha sido desbaneado.", ephemeral=True)
         except discord.NotFound:
             await ctx.send("❌ Este usuario no está en la lista de baneados.", ephemeral=True)
@@ -223,7 +263,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
 
         await miembro.timeout(delta, reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Timeout", razon, duracion)
-        await self._log_action(ctx, "Timeout", miembro, razon, duration=duracion)
+        await self._log_command_action(ctx, "Timeout", miembro, razon, duration=duracion)
         await ctx.send(f"✅ **{miembro.display_name}** ha sido silenciado por **{duracion}**.", ephemeral=True)
 
     @commands.hybrid_command(name="unmute", description="Quita el silencio a un miembro.")
@@ -235,7 +275,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         
         await miembro.timeout(None, reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Unmute", razon)
-        await self._log_action(ctx, "Unmute", miembro, razon)
+        await self._log_command_action(ctx, "Unmute", miembro, razon)
         await ctx.send(f"✅ Se ha quitado el silencio a **{miembro.display_name}**.", ephemeral=True)
 
     @commands.hybrid_command(name="warn", description="Advierte a un usuario.")
@@ -248,7 +288,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
 
         await db.execute("INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES (?, ?, ?, ?)", (ctx.guild.id, miembro.id, ctx.author.id, razon))
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Warn", razon)
-        await self._log_action(ctx, "Warn", miembro, razon)
+        await self._log_command_action(ctx, "Warn", miembro, razon)
         try:
             await miembro.send(f"Has recibido una advertencia en **{ctx.guild.name}** por: {razon}")
         except discord.Forbidden:
@@ -261,7 +301,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         razon = "Se borraron todas las advertencias previas."
         await db.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (ctx.guild.id, miembro.id))
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "ClearWarnings", razon)
-        await self._log_action(ctx, "ClearWarnings", miembro, razon)
+        await self._log_command_action(ctx, "ClearWarnings", miembro, razon)
         await ctx.send(f"✅ Todas las advertencias de **{miembro.display_name}** han sido borradas.", ephemeral=True)
 
     @commands.hybrid_command(name="lock", description="Bloquea el canal actual para que nadie (excepto mods) pueda hablar.")
@@ -272,9 +312,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         overwrite = channel.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = False
         await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal bloqueado por {ctx.author.name}")
-        
-        # Enviar log
-        await self._log_action(ctx, "Lock Channel", ctx.author, f"Canal bloqueado: {channel.mention}")
+        await self._log_command_action(ctx, "Lock Channel", ctx.author, f"Canal bloqueado.", channel=channel)
         await ctx.send(f"🔒 El canal {channel.mention} ha sido bloqueado.", ephemeral=True)
 
     @commands.hybrid_command(name="unlock", description="Desbloquea el canal actual.")
@@ -285,12 +323,11 @@ class ModerationCog(commands.Cog, name="Moderación"):
         overwrite = channel.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = None
         await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal desbloqueado por {ctx.author.name}")
-
-        # Enviar log
-        await self._log_action(ctx, "Unlock Channel", ctx.author, f"Canal desbloqueado: {channel.mention}")
+        await self._log_command_action(ctx, "Unlock Channel", ctx.author, f"Canal desbloqueado.", channel=channel)
         await ctx.send(f"🔓 El canal {channel.mention} ha sido desbloqueado.", ephemeral=True)
 
-    # El resto de los comandos que no necesitan logs o protección (mutelist, modlogs, warnings, automod) se quedan igual.
+    # --- COMANDOS INFORMATIVOS (SIN CAMBIOS) ---
+    # (mutelist, modlogs, warnings, automod)
 
     @commands.hybrid_command(name="mutelist", description="Muestra la lista de usuarios silenciados actualmente.")
     @commands.has_permissions(moderate_members=True)
@@ -308,7 +345,6 @@ class ModerationCog(commands.Cog, name="Moderación"):
                 description += f"• {member.mention} - Termina en {discord.utils.format_dt(member.timed_out_until, 'R')}\n"
         embed.description = description
         await ctx.send(embed=embed, ephemeral=True)
-
 
     @commands.hybrid_command(name="modlogs", description="Muestra el historial de moderación de un usuario.")
     @commands.has_permissions(moderate_members=True)
@@ -348,8 +384,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
                             inline=False)
         await ctx.send(embed=embed, ephemeral=True)
 
-    # --- COMANDOS DE AUTOMODERACIÓN ---
-
+    # --- COMANDOS DE AUTOMODERACIÓN (SIN CAMBIOS) ---
     @commands.hybrid_group(name="automod", description="Configura las opciones de auto-moderación.")
     @commands.has_permissions(manage_guild=True)
     async def automod(self, ctx: commands.Context):
