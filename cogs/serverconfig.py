@@ -14,50 +14,35 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import aiohttp
 
-# --- FUNCIÓN DE GENERACIÓN DE IMÁGENES ---
-
-# En cogs/serverconfig.py
-
-async def generate_banner_image(member: discord.Member, message: str, background_url: str):
+# --- FUNCIÓN DE GENERACIÓN DE IMÁGENES (SIN CAMBIOS) ---
+async def generate_banner_image(session: aiohttp.ClientSession, member: discord.Member, message: str, background_url: str):
     """
-    Genera una imagen de banner personalizada.
+    Genera una imagen de banner personalizada usando la sesión http compartida.
     """
     try:
-        # Descargar el fondo y el avatar de forma asíncrona
-        async with aiohttp.ClientSession() as session:
-            async with session.get(background_url) as resp:
-                if resp.status != 200:
-                    print(f"No se pudo descargar el fondo: {background_url}")
-                    return None
-                background_bytes = await resp.read()
+        async with session.get(background_url) as resp:
+            if resp.status != 200:
+                print(f"No se pudo descargar el fondo: {background_url}")
+                return None
+            background_bytes = await resp.read()
 
-            async with session.get(member.display_avatar.url) as resp:
-                if resp.status != 200:
-                    print(f"No se pudo descargar el avatar de {member.display_name}")
-                    return None
-                avatar_bytes = await resp.read()
+        async with session.get(member.display_avatar.url) as resp:
+            if resp.status != 200:
+                print(f"No se pudo descargar el avatar de {member.display_name}")
+                return None
+            avatar_bytes = await resp.read()
 
-        # Abrir las imágenes con Pillow
         bg = Image.open(BytesIO(background_bytes)).convert("RGBA")
         avatar = Image.open(BytesIO(avatar_bytes)).convert("RGBA")
-
-        # Redimensionar
         bg = bg.resize((1000, 400))
         avatar = avatar.resize((256, 256))
-
-        # Crear una máscara circular para el avatar
         mask = Image.new('L', avatar.size, 0)
         draw_mask = ImageDraw.Draw(mask)
         draw_mask.ellipse((0, 0) + avatar.size, fill=255)
-
-        # Pegar el avatar en el fondo
         bg.paste(avatar, (372, 20), mask)
-
-        # Añadir el texto
         draw = ImageDraw.Draw(bg)
         try:
-            # Asegúrate de tener la fuente en tu carpeta 'utils'
-            font_path = "utils/arial.ttf"
+            font_path = "utils/arial.ttf" 
             title_font = ImageFont.truetype(font_path, 60)
             subtitle_font = ImageFont.truetype(font_path, 40)
         except IOError:
@@ -65,25 +50,14 @@ async def generate_banner_image(member: discord.Member, message: str, background
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
 
-        # --- INICIO DE LAS CORRECCIONES ---
-
-        # 1. Reemplazar la mención por el nombre de usuario en el mensaje
-        # Esto evita que se dibuje el <@ID>
         processed_message = message.replace(member.mention, f"@{member.display_name}")
-
-        # 2. Acortar el mensaje si es muy largo para que no se salga de la imagen
-        max_length = 50 # Ajusta este número si es necesario
+        max_length = 50 
         if len(processed_message) > max_length:
             processed_message = processed_message[:max_length] + "..."
-            
-        # --- FIN DE LAS CORRECCIONES ---
 
-        # Dibujar el nombre del usuario
         draw.text((500, 280), member.display_name, fill="white", font=title_font, anchor="ms")
-        # Dibujar el mensaje personalizado ya procesado
         draw.text((500, 340), processed_message, fill="#d1d1d1", font=subtitle_font, anchor="ms")
 
-        # Guardar la imagen final en un buffer de memoria
         final_buffer = BytesIO()
         bg.save(final_buffer, format="PNG")
         final_buffer.seek(0)
@@ -93,7 +67,8 @@ async def generate_banner_image(member: discord.Member, message: str, background
     except Exception as e:
         print(f"Error generando el banner: {e}")
         return None
-    
+
+
 # --- COG PRINCIPAL ---
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
@@ -134,31 +109,29 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
-    # --- LISTENERS ---
+    # --- LISTENERS (SIN CAMBIOS) ---
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         settings = await self.get_settings(member.guild.id)
         if not settings: return
 
-        # Enviar banner de bienvenida
         if channel_id := settings.get("welcome_channel_id"):
             if channel := self.bot.get_channel(channel_id):
                 msg = (settings.get("welcome_message") or self.DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
                 background_url = settings.get("welcome_banner_url") or self.DEFAULT_WELCOME_BANNER
                 
-                banner_file = await generate_banner_image(member, msg, background_url)
+                banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url)
                 
                 if banner_file:
                     try:
                         await channel.send(file=banner_file)
                     except discord.Forbidden:
                         print(f"No tengo permisos para enviar el banner de bienvenida en {channel.name}")
-                else: # Fallback a un embed simple si la generación de imagen falla
+                else: 
                     embed = discord.Embed(description=msg, color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                     try: await channel.send(embed=embed)
                     except discord.Forbidden: pass
 
-        # Asignar autorol
         if role_id := settings.get("autorole_id"):
             if role := member.guild.get_role(role_id):
                 try: await member.add_roles(role, reason="Autorol al unirse")
@@ -172,14 +145,14 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 msg = (settings.get("goodbye_message") or self.DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
                 background_url = settings.get("goodbye_banner_url") or self.DEFAULT_GOODBYE_BANNER
 
-                banner_file = await generate_banner_image(member, msg, background_url)
+                banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url)
                 
                 if banner_file:
                     try:
                         await channel.send(file=banner_file)
                     except discord.Forbidden:
                         print(f"No tengo permisos para enviar el banner de despedida en {channel.name}")
-                else: # Fallback a un embed simple
+                else:
                     embed = discord.Embed(description=msg, color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
                     try: await channel.send(embed=embed)
                     except discord.Forbidden: pass
@@ -213,29 +186,39 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         await self.save_setting(ctx.guild.id, 'goodbye_channel_id', canal.id)
         await ctx.send(f"✅ Canal de despedida: {canal.mention}.", ephemeral=True)
 
-    @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje de bienvenida.")
+    # --- COMANDOS MODIFICADOS ---
+    @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje y el banner de bienvenida.")
     @commands.has_permissions(manage_guild=True)
-    async def config_welcome(self, ctx: commands.Context, *, mensaje: str):
+    async def config_welcome(self, ctx: commands.Context, mensaje: str, banner_url: Optional[str] = None):
+        """
+        Configura el mensaje de bienvenida.
+        Usa {user} para mencionar al usuario y {server} para el nombre del servidor.
+        Opcionalmente, añade una URL de imagen para el banner.
+        """
         await self.save_setting(ctx.guild.id, 'welcome_message', mensaje)
-        await ctx.send("✅ Mensaje de bienvenida guardado.", ephemeral=True)
+        response_message = "✅ Mensaje de bienvenida guardado."
+        if banner_url:
+            await self.save_setting(ctx.guild.id, 'welcome_banner_url', banner_url)
+            response_message += "\n✅ Banner de bienvenida actualizado."
+        await ctx.send(response_message, ephemeral=True)
 
-    @commands.hybrid_command(name='configgoodbye', description="Personaliza el mensaje de despedida.")
+    @commands.hybrid_command(name='configgoodbye', description="Personaliza el mensaje y el banner de despedida.")
     @commands.has_permissions(manage_guild=True)
-    async def config_goodbye(self, ctx: commands.Context, *, mensaje: str):
+    async def config_goodbye(self, ctx: commands.Context, mensaje: str, banner_url: Optional[str] = None):
+        """
+        Configura el mensaje de despedida.
+        Usa {user} para el nombre del usuario y {server} para el nombre del servidor.
+        Opcionalmente, añade una URL de imagen para el banner.
+        """
         await self.save_setting(ctx.guild.id, 'goodbye_message', mensaje)
-        await ctx.send("✅ Mensaje de despedida guardado.", ephemeral=True)
+        response_message = "✅ Mensaje de despedida guardado."
+        if banner_url:
+            await self.save_setting(ctx.guild.id, 'goodbye_banner_url', banner_url)
+            response_message += "\n✅ Banner de despedida actualizado."
+        await ctx.send(response_message, ephemeral=True)
         
-    @commands.hybrid_command(name='setwelcomebanner', description="Establece la imagen de fondo para el banner de bienvenida.")
-    @commands.has_permissions(manage_guild=True)
-    async def set_welcome_banner(self, ctx: commands.Context, url: str):
-        await self.save_setting(ctx.guild.id, 'welcome_banner_url', url)
-        await ctx.send("✅ Banner de bienvenida actualizado.", ephemeral=True)
-
-    @commands.hybrid_command(name='setgoodbyebanner', description="Establece la imagen de fondo para el banner de despedida.")
-    @commands.has_permissions(manage_guild=True)
-    async def set_goodbye_banner(self, ctx: commands.Context, url: str):
-        await self.save_setting(ctx.guild.id, 'goodbye_banner_url', url)
-        await ctx.send("✅ Banner de despedida actualizado.", ephemeral=True)
+    # --- COMANDOS ELIMINADOS (Funcionalidad movida a los de arriba) ---
+    # setwelcomebanner y setgoodbyebanner ya no son necesarios.
         
     @commands.hybrid_command(name='setlogchannel', description="Establece el canal para el registro de moderación.")
     @commands.has_permissions(manage_guild=True)
