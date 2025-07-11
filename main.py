@@ -96,8 +96,11 @@ async def on_message(message: discord.Message):
         
     if message.content == f'<@{bot.user.id}>' or message.content == f'<@!{bot.user.id}>':
         embed = discord.Embed(
-            title=f"¡Holi, {message.author.display_name}!",
-            description=f"Mi prefijo de texto aquí es `!`, pero te recomiendo usar mis comandos de barra diagonal (`/`).\nUsa `/help` o visita mi página de comandos para ver todo lo que puedo hacer.",
+            title=f"🥕 ¡Hola, {message.author.display_name}! Soy Umapyoi.",
+            description=(
+                "¡Lista para la carrera! Mi objetivo es ser tu compañera todo-en-uno.\n\n"
+                "Para descubrir todo mi potencial, usa el comando `/help` o visita mi página web de comandos."
+            ),
             color=bot.CREAM_COLOR
         )
         embed.set_thumbnail(url=bot.user.display_avatar.url)
