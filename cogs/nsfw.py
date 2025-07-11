@@ -26,12 +26,6 @@ class NSFWCog(commands.Cog, name="NSFW"):
         # MODIFICADO: Pasamos la sesión compartida del bot
         await get_interactive_gif(self.bot.http_session, ctx, "waifu", "nsfw", self_action_phrases=["Waifu NSFW"])
 
-    @commands.hybrid_command(name="blowjob_nsfw", description="Muestra una imagen NSFW de un blowjob.")
-    @commands.is_nsfw()
-    async def blowjob_nsfw(self, ctx: commands.Context):
-        # MODIFICADO: Pasamos la sesión compartida del bot
-        await get_interactive_gif(self.bot.http_session, ctx, "blowjob", "nsfw", self_action_phrases=["Blowjob NSFW"])
-
     # --- Comandos con categoría de REEMPLAZO ---
     # Las siguientes categorías no existen en waifu.pics, así que usamos 'waifu' como reemplazo para que el comando no falle.
     @commands.hybrid_command(name="boobs_nsfw", description="Muestra una imagen NSFW de pechos.")
