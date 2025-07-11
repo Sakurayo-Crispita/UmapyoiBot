@@ -4,6 +4,7 @@ import os
 import traceback
 import datetime
 import glob 
+import io
 import aiohttp
 from aiohttp import TCPConnector
 import ssl
@@ -13,10 +14,10 @@ import certifi
 from utils import database_manager
 from utils import constants
 from dotenv import load_dotenv
-
 # --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+OWNER_ID = os.getenv("OWNER_ID")
 DB_FILE = "bot_data.db" 
 
 def cleanup_tts_files():
@@ -34,7 +35,7 @@ def cleanup_tts_files():
 
 class UmapyoiBot(commands.Bot):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, owner_id=int(OWNER_ID) if OWNER_ID else None, **kwargs)
         self.db_file = DB_FILE
         self.GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -204,51 +205,76 @@ async def on_guild_join(guild: discord.Guild):
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
+    # Ignorar errores comunes que no necesitan notificación
     if isinstance(error, (commands.CommandNotFound, commands.errors.NotOwner)):
         return
     if isinstance(error, commands.errors.HybridCommandError) and isinstance(error.original, (discord.errors.InteractionResponded, discord.errors.NotFound)):
         print(f"Ignorando error de interacción ya respondida o no encontrada.")
         return
 
+    # Manejar cooldowns
     if isinstance(error, commands.CommandOnCooldown):
         seconds = int(error.retry_after)
         days, remainder = divmod(seconds, 86400)
         hours, remainder = divmod(remainder, 3600)
         minutes, seconds = divmod(remainder, 60)
-        
         time_str = ""
         if days > 0: time_str += f"{days}d "
         if hours > 0: time_str += f"{hours}h "
         if minutes > 0: time_str += f"{minutes}m "
-        if seconds > 0 and days == 0 and hours == 0: time_str += f"{seconds}s"
-            
+        if seconds > 0 and not time_str: time_str += f"{seconds}s"
         await ctx.send(f"⏳ Vuelve a intentarlo en **{time_str.strip()}**.", ephemeral=True)
         return
 
+    # Manejar permisos faltantes
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ No tienes los permisos necesarios para usar este comando.", ephemeral=True)
+        return
     elif isinstance(error, commands.BotMissingPermissions):
         permisos = ", ".join(p.replace('_', ' ').capitalize() for p in error.missing_permissions)
         await ctx.send(f"⚠️ No puedo ejecutar esa acción porque me faltan los siguientes permisos: **{permisos}**", ephemeral=True)
+        return
     
-    else:
-        print(f"Error no manejado en '{ctx.command.name if ctx.command else 'Comando desconocido'}':")
-        traceback.print_exception(type(error), error, error.__traceback__)
-        with open('bot_errors.log', 'a', encoding='utf-8') as f:
-            f.write(f"--- {datetime.datetime.now()} ---\n")
-            f.write(f"Comando: {ctx.command.name if ctx.command else 'N/A'}\n")
-            if ctx.guild: f.write(f"Servidor: {ctx.guild.name} ({ctx.guild.id})\n")
-            f.write(f"Usuario: {ctx.author} ({ctx.author.id})\n")
-            traceback.print_exception(type(error), error, error.__traceback__, file=f)
-            f.write("\n")
-        try:
-            if not hasattr(ctx.command, 'on_error'):
-                await ctx.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
-        except (discord.errors.InteractionResponded, AttributeError):
+    # Para todos los demás errores, notificar al dueño
+    print(f"Error no manejado en '{ctx.command.name if ctx.command else 'Comando desconocido'}':")
+    traceback.print_exception(type(error), error, error.__traceback__)
+    
+    # --- NUEVO: Notificación de error por MD ---
+    if bot.owner_id:
+        owner = bot.get_user(bot.owner_id)
+        if owner:
+            # Crear un embed con la información del error
+            embed = discord.Embed(
+                title="🚨 ¡Alerta de Error en Umapyoi!",
+                color=discord.Color.red(),
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
+            )
+            embed.add_field(name="Servidor", value=f"{ctx.guild.name} (`{ctx.guild.id}`)", inline=False)
+            embed.add_field(name="Canal", value=f"{ctx.channel.mention} (`{ctx.channel.id}`)", inline=False)
+            embed.add_field(name="Usuario", value=f"{ctx.author} (`{ctx.author.id}`)", inline=False)
+            embed.add_field(name="Comando", value=f"`{ctx.command.qualified_name}`" if ctx.command else "N/A", inline=False)
+            embed.add_field(name="Error", value=f"```py\n{type(error).__name__}: {error}\n```", inline=False)
+            
+            # Preparar el traceback completo como un archivo de texto
+            error_traceback = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+            trace_file = discord.File(io.StringIO(error_traceback), filename="traceback.txt")
+
             try:
-                await ctx.followup.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
-            except Exception:
-                pass
+                await owner.send(embed=embed, file=trace_file)
+            except discord.Forbidden:
+                print("No se pudo enviar el MD de error al dueño (MDs cerrados o no es amigo).")
+            except Exception as e:
+                print(f"Error al enviar el MD de error: {e}")
+
+    # Mensaje genérico para el usuario
+    try:
+        if not hasattr(ctx.command, 'on_error'):
+            await ctx.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
+    except (discord.errors.InteractionResponded, AttributeError):
+        try:
+            await ctx.followup.send("🔧 ¡Vaya! Algo salió mal. El error ha sido registrado y mi creador lo revisará.", ephemeral=True)
+        except Exception:
+            pass
 
 def main():
     if not DISCORD_TOKEN:
