@@ -5,7 +5,9 @@ import traceback
 import datetime
 import glob 
 import aiohttp
-from aiohttp import TCPConnector # <-- 1. AÑADIDO: Importamos el conector TCP
+from aiohttp import TCPConnector
+import ssl  # <-- 1. AÑADIDO: Importamos la librería SSL
+import certifi # <-- 2. AÑADIDO: Importamos la librería de certificados
 
 # Importamos nuestros módulos de utilidades
 from utils import database_manager
@@ -42,10 +44,14 @@ class UmapyoiBot(commands.Bot):
         self.http_session = None
 
     async def setup_hook(self):
-        # --- 2. MODIFICADO: Creamos la sesión con un DNS específico ---
-        connector = TCPConnector(resolver=aiohttp.AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"]))
+        # --- 3. MODIFICADO: Creamos la sesión con un contexto SSL y DNS específico ---
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = TCPConnector(
+            resolver=aiohttp.AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"]),
+            ssl=ssl_context,
+        )
         self.http_session = aiohttp.ClientSession(connector=connector)
-        # -----------------------------------------------------------
+        # -------------------------------------------------------------------------
         
         cleanup_tts_files()
         print("Verificando y creando tablas de la base de datos si no existen...")
@@ -103,7 +109,7 @@ async def on_message(message: discord.Message):
         view = discord.ui.View()
         invite_link = discord.utils.oauth_url(bot.user.id, permissions=discord.Permissions(permissions=8))
         view.add_item(discord.ui.Button(label="¡Invítame!", emoji="🥳", url=invite_link))
-        view.add_item(discord.ui.Button(label="Soporte", emoji="�", url="https://discord.gg/fwNeZsGkSj"))
+        view.add_item(discord.ui.Button(label="Soporte", emoji="🆘", url="https://discord.gg/fwNeZsGkSj"))
         
         await message.channel.send(embed=embed, view=view)
         return # Importante: Salimos para no procesar el mensaje como un comando
@@ -164,7 +170,7 @@ async def on_guild_join(guild: discord.Guild):
             color=bot.CREAM_COLOR
         )
         private_embed.set_thumbnail(url=bot.user.display_avatar.url)
-        private_embed.add_field(name="🚀 ¿Cómo empezar?", value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.", inline=False)
+        private_embed.add_field(name="� ¿Cómo empezar?", value="El comando más importante es `/help`. Úsalo en cualquier canal para ver todas mis categorías y comandos.", inline=False)
         private_embed.add_field(name="🎵 Para escuchar música", value="Simplemente únete a un canal de voz y escribe `/play <nombre de la canción o enlace>`.", inline=False)
         private_embed.set_footer(text="¡Espero que disfrutes de mi compañía!")
         try:
