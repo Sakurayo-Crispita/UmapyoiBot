@@ -16,6 +16,8 @@ import aiohttp
 
 # --- FUNCIÓN DE GENERACIÓN DE IMÁGENES ---
 
+# En cogs/serverconfig.py
+
 async def generate_banner_image(member: discord.Member, message: str, background_url: str):
     """
     Genera una imagen de banner personalizada.
@@ -39,7 +41,7 @@ async def generate_banner_image(member: discord.Member, message: str, background
         bg = Image.open(BytesIO(background_bytes)).convert("RGBA")
         avatar = Image.open(BytesIO(avatar_bytes)).convert("RGBA")
 
-        # Redimensionar (ajusta estos valores según tu imagen de fondo)
+        # Redimensionar
         bg = bg.resize((1000, 400))
         avatar = avatar.resize((256, 256))
 
@@ -49,28 +51,37 @@ async def generate_banner_image(member: discord.Member, message: str, background
         draw_mask.ellipse((0, 0) + avatar.size, fill=255)
 
         # Pegar el avatar en el fondo
-        # Ajusta la posición (x, y) según tu fondo
         bg.paste(avatar, (372, 20), mask)
 
         # Añadir el texto
-        # Añadir el texto
         draw = ImageDraw.Draw(bg)
         try:
-            # --- CÓDIGO CORREGIDO ---
-            # Ahora busca la fuente en la carpeta 'utils' de tu proyecto
-            font_path = "utils/arial.ttf" 
+            # Asegúrate de tener la fuente en tu carpeta 'utils'
+            font_path = "utils/arial.ttf"
             title_font = ImageFont.truetype(font_path, 60)
             subtitle_font = ImageFont.truetype(font_path, 40)
         except IOError:
-            # Este mensaje ahora te avisará si no encuentra la fuente en 'utils/'
             print("Fuente 'utils/arial.ttf' no encontrada, usando la fuente por defecto.")
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
 
+        # --- INICIO DE LAS CORRECCIONES ---
+
+        # 1. Reemplazar la mención por el nombre de usuario en el mensaje
+        # Esto evita que se dibuje el <@ID>
+        processed_message = message.replace(member.mention, f"@{member.display_name}")
+
+        # 2. Acortar el mensaje si es muy largo para que no se salga de la imagen
+        max_length = 50 # Ajusta este número si es necesario
+        if len(processed_message) > max_length:
+            processed_message = processed_message[:max_length] + "..."
+            
+        # --- FIN DE LAS CORRECCIONES ---
+
         # Dibujar el nombre del usuario
         draw.text((500, 280), member.display_name, fill="white", font=title_font, anchor="ms")
-        # Dibujar el mensaje personalizado
-        draw.text((500, 340), message, fill="#d1d1d1", font=subtitle_font, anchor="ms")
+        # Dibujar el mensaje personalizado ya procesado
+        draw.text((500, 340), processed_message, fill="#d1d1d1", font=subtitle_font, anchor="ms")
 
         # Guardar la imagen final en un buffer de memoria
         final_buffer = BytesIO()
@@ -82,8 +93,7 @@ async def generate_banner_image(member: discord.Member, message: str, background
     except Exception as e:
         print(f"Error generando el banner: {e}")
         return None
-
-
+    
 # --- COG PRINCIPAL ---
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
