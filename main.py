@@ -84,10 +84,31 @@ intents.moderation = True
 
 bot = UmapyoiBot(command_prefix='!', intents=intents, case_insensitive=True, help_command=None)
 
+async def ensure_bot_role(guild: discord.Guild):
+    existing_role = discord.utils.get(guild.roles, name=bot.user.name)
+    if existing_role:
+        if existing_role not in guild.me.roles:
+            await guild.me.add_roles(existing_role, reason="Asignando rol único del bot")
+        return
+
+    try:
+        role = await guild.create_role(
+            name=bot.user.name,
+            mentionable=True,
+            reason="Rol único para mencionar al bot"
+        )
+        await guild.me.add_roles(role, reason="Asignando rol único del bot")
+        print(f"✅ Rol '{role.name}' creado y asignado en {guild.name}")
+    except discord.Forbidden:
+        print(f"⚠️ No tengo permisos para crear rol en {guild.name}")
+
 @bot.event
 async def on_ready():
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
     await bot.change_presence(activity=discord.Game(name="¡Umapyoi ready! | /help"))
+
+    for guild in bot.guilds:
+        await ensure_bot_role(guild)
 
 # --- EVENTO ON_MESSAGE ---
 @bot.event
@@ -119,6 +140,7 @@ async def on_message(message: discord.Message):
 # --- EVENTO ON_GUILD_JOIN (RESTAURADO Y MEJORADO) ---
 @bot.event
 async def on_guild_join(guild: discord.Guild):
+    await ensure_bot_role(guild)
     # 1. Mensaje público
     target_channel = guild.system_channel
     if not (target_channel and target_channel.permissions_for(guild.me).send_messages):
