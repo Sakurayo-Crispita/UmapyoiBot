@@ -105,7 +105,7 @@ def setup_database():
         
     print("Base de datos verificada, configurada y migrada.")
 
-# --- Funciones genéricas para interactuar con la DB ---
+# - Funciones genéricas para interactuar con la DB -
 
 async def fetchone(query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
     """Ejecuta una consulta y devuelve una sola fila como un diccionario."""
@@ -138,7 +138,7 @@ async def execute(query: str, params: tuple = ()):
             conn.commit()
     return await asyncio.to_thread(_sync_execute)
 
-# --- Funciones específicas por Cog (sin cambios) ---
+# - Funciones específicas por Cog (sin cambios) -
 
 async def get_guild_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
     settings = await fetchone("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))

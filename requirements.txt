@@ -8,3 +8,4 @@ python-dotenv
 lyricsgenius
 gTTS
 aiodns
+certifi

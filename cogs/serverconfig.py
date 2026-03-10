@@ -14,7 +14,7 @@ from io import BytesIO
 import aiohttp
 import re
 
-# --- FUNCIÓN DE GENERACIÓN DE IMÁGENES ---
+# - FUNCIÓN DE GENERACIÓN DE IMÁGENES -
 async def generate_banner_image(
     session: aiohttp.ClientSession, 
     member: discord.Member, 
@@ -77,13 +77,12 @@ async def generate_banner_image(
         print(f"Error generando el banner: {e}")
         return None
 
-# --- COG PRINCIPAL ---
+# - COG PRINCIPAL -
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # --- NUEVO: Cache para evitar mensajes duplicados por eventos repetidos o múltiples instancias ---
-        self.recent_events = {} # Formato: {guild_id: {'join': {member_id: timestamp}, 'remove': {member_id: timestamp}}}
+        self.recent_events = {} 
 
     async def get_settings(self, guild_id: int):
         settings = await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))

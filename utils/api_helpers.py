@@ -5,7 +5,7 @@ import random
 from typing import Literal, Optional
 import asyncio
 
-# --- FUNCIÓN ORIGINAL (SIN CAMBIOS) ---
+# - FUNCIÓN ORIGINAL (SIN CAMBIOS) -
 async def get_interactive_gif(
     session: aiohttp.ClientSession, 
     ctx: commands.Context,
@@ -62,7 +62,7 @@ async def get_interactive_gif(
         await ctx.send("Ocurrió un error inesperado al procesar tu solicitud.", ephemeral=True)
 
 
-# --- NUEVA FUNCIÓN PARA LA API NEKOS.BEST ---
+# - NUEVA FUNCIÓN PARA LA API NEKOS.BEST -
 async def get_nekos_best_gif(
     session: aiohttp.ClientSession,
     ctx: commands.Context,
@@ -83,7 +83,6 @@ async def get_nekos_best_gif(
         async with session.get(api_url, timeout=timeout) as response:
             if response.status == 200:
                 data = await response.json()
-                # La estructura de esta API es diferente
                 gif_url = data.get("results", [{}])[0].get("url")
                 if gif_url:
                     embed = discord.Embed(description=action_text, color=ctx.author.color)
@@ -100,7 +99,7 @@ async def get_nekos_best_gif(
         await ctx.send("Ocurrió un error inesperado al procesar tu solicitud.", ephemeral=True)
 
 
-# --- GEMINI Y JIKAN HELPERS (SIN CAMBIOS) ---
+# - GEMINI Y JIKAN HELPERS (SIN CAMBIOS) -
 async def ask_gemini(api_key: str, question: str) -> str:
     if not api_key:
         return "❌ La función de IA no está configurada por el dueño del bot."
@@ -109,7 +108,6 @@ async def ask_gemini(api_key: str, question: str) -> str:
     headers = {"Content-Type": "application/json"}
     timeout = aiohttp.ClientTimeout(total=20)
     try:
-        # Usamos una sesión local aquí ya que no es parte del bot principal
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(api_url, json=payload, headers=headers) as response:
                 if response.status == 200:
@@ -129,7 +127,6 @@ async def search_anime(query: str) -> Optional[dict]:
     api_url = f"https://api.jikan.moe/v4/anime?q={query.replace(' ', '%20')}&limit=1"
     timeout = aiohttp.ClientTimeout(total=10)
     try:
-        # Usamos una sesión local aquí también
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(api_url) as response:
                 if response.status == 200:
