@@ -99,41 +99,61 @@ async def get_nekos_best_gif(
         await ctx.send("Ocurrió un error inesperado al procesar tu solicitud.", ephemeral=True)
 
 
-# - GEMINI Y JIKAN HELPERS (SIN CAMBIOS) -
-async def ask_gemini(api_key: str, question: str) -> str:
+# - GEMINI Y JIKAN HELPERS (ACTUALIZADOS) -
+async def ask_gemini(session: aiohttp.ClientSession, api_key: str, question: str) -> str:
+    """Envía una pregunta a la API de Gemini y devuelve la respuesta.
+    Usa la sesión HTTP compartida del bot y el modelo gemini-2.0-flash."""
     if not api_key:
         return "❌ La función de IA no está configurada por el dueño del bot."
-    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     payload = {"contents": [{"parts": [{"text": question}]}]}
     headers = {"Content-Type": "application/json"}
     timeout = aiohttp.ClientTimeout(total=20)
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(api_url, json=payload, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if 'candidates' in data and data['candidates']:
-                        return data['candidates'][0]['content']['parts'][0]['text']
-                    else:
-                        return "La IA no pudo generar una respuesta esta vez."
+        async with session.post(api_url, json=payload, headers=headers, timeout=timeout) as response:
+            if response.status == 200:
+                data = await response.json()
+                # Manejar respuestas bloqueadas por seguridad
+                if not data.get('candidates'):
+                    block_reason = data.get('promptFeedback', {}).get('blockReason', 'desconocida')
+                    return f"⚠️ La IA no pudo responder. Razón de bloqueo: {block_reason}"
+                
+                candidate = data['candidates'][0]
+                finish_reason = candidate.get('finishReason', '')
+                
+                if finish_reason == 'SAFETY':
+                    return "⚠️ La IA bloqueó la respuesta por motivos de seguridad. Intenta reformular tu pregunta."
+                
+                parts = candidate.get('content', {}).get('parts', [])
+                if parts and parts[0].get('text'):
+                    return parts[0]['text']
                 else:
-                    return f"Error al contactar la API de Gemini: {response.status}"
+                    return "La IA no pudo generar una respuesta esta vez."
+            elif response.status == 400:
+                return "❌ Error en la solicitud a Gemini. Verifica que la pregunta sea válida."
+            elif response.status == 403:
+                return "❌ La API key de Gemini no es válida o ha expirado."
+            elif response.status == 429:
+                return "⏳ Se ha excedido el límite de solicitudes a la IA. Inténtalo de nuevo en un momento."
+            else:
+                return f"Error al contactar la API de Gemini: {response.status}"
     except asyncio.TimeoutError:
         return "La IA tardó demasiado en responder."
     except Exception as e:
         return f"Ocurrió un error inesperado: {e}"
 
-async def search_anime(query: str) -> Optional[dict]:
+async def search_anime(session: aiohttp.ClientSession, query: str) -> Optional[dict]:
+    """Busca información de un anime usando la API de Jikan (MyAnimeList).
+    Usa la sesión HTTP compartida del bot."""
     api_url = f"https://api.jikan.moe/v4/anime?q={query.replace(' ', '%20')}&limit=1"
     timeout = aiohttp.ClientTimeout(total=10)
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(api_url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data['data'][0] if data.get('data') else None
-                else:
-                    return {"error": response.status}
+        async with session.get(api_url, timeout=timeout) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data['data'][0] if data.get('data') else None
+            else:
+                return {"error": response.status}
     except asyncio.TimeoutError:
         return {"error": "Timeout"}
     except Exception as e:

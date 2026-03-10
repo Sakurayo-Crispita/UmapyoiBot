@@ -35,7 +35,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         await ctx.defer()
         
         # Llamamos a nuestra función de ayuda centralizada
-        respuesta_ia = await ask_gemini(self.bot.GEMINI_API_KEY, pregunta)
+        respuesta_ia = await ask_gemini(self.bot.http_session, self.bot.GEMINI_API_KEY, pregunta)
 
         embed = discord.Embed(title="🤔 Pregunta para Umapyoi", description=f"**Tú preguntaste:**\n{pregunta}", color=discord.Color.gold())
         embed.add_field(name="💡 Mi Respuesta:", value=respuesta_ia)
@@ -45,7 +45,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
     async def anime(self, ctx: commands.Context, *, nombre: str):
         await ctx.defer()
         
-        anime_data = await search_anime(nombre)
+        anime_data = await search_anime(self.bot.http_session, nombre)
 
         if not anime_data:
             return await ctx.send(f"❌ No encontré ningún anime llamado `{nombre}`.", ephemeral=True)

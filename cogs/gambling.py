@@ -73,13 +73,8 @@ class GamblingCog(commands.Cog, name="Juegos de Apuestas"):
     # --- Las funciones de base de datos se han eliminado de aquí ---
 
     async def can_gamble(self, ctx: commands.Context) -> bool:
-        if not ctx.guild:
-            return False
-            
-        economy_cog = self.bot.get_cog("Economía")
-        if not economy_cog or not await economy_cog.is_economy_active(ctx):
-             await ctx.send("El sistema de economía debe estar activo para poder apostar.", ephemeral=True)
-             return False
+        await ctx.send("⚙️ El sistema de apuestas está en mantenimiento temporalmente.", ephemeral=True)
+        return False
 
         # Usamos el gestor de DB
         active_channels_rows = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))

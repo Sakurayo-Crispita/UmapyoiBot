@@ -1,20 +1,6 @@
-# import discord
-# from discord.ext import commands
-# import random
+# NSFW Cog – Deshabilitado
+# Los comandos NSFW han sido deshabilitados para cumplir con las políticas de Discord.
+# Este archivo mantiene una función setup() válida para que el loader de cogs no falle.
 
-# # Importamos nuestra función de ayuda centralizada
-# from utils.api_helpers import get_interactive_gif
-
-# class NSFWCog(commands.Cog, name="NSFW"):
-#     """
-#     Comandos NSFW que solo se pueden usar en canales marcados como tal.
-#     """
-#     def __init__(self, bot: commands.Bot):
-#         self.bot = bot
-
-# # --- Comandos deshabilitados para cumplir con las políticas de Discord ---
-
-# async def setup(bot: commands.Bot):
-#     # No añadir el cog al bot
-#     # await bot.add_cog(NSFWCog(bot))
-#     pass
+async def setup(bot):
+    pass  # Cog deshabilitado intencionalmente
