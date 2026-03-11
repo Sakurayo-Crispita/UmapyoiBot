@@ -70,8 +70,6 @@ async def test_nekosbest(session):
 def test_database():
     print("\n[5] Probando Inicialización de Base de Datos...")
     try:
-        # Asegurarse de que no usamos la DB real en producción para las pruebas si no queremos,
-        # pero para probar la creación de tablas setup_database() está bien.
         database_manager.setup_database()
         
         with sqlite3.connect("bot_data.db") as conn:
