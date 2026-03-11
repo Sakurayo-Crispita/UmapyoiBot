@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import asyncio
 import datetime
 from typing import Optional, Literal
@@ -83,6 +83,24 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.recent_events = {} 
+        self.cleanup_recent_events.start()
+
+    def cog_unload(self):
+        self.cleanup_recent_events.cancel()
+
+    @tasks.loop(minutes=30)
+    async def cleanup_recent_events(self):
+        """Limpia periódicamente la caché en RAM de eventos recientes para evitar memory leaks."""
+        now = datetime.datetime.now(datetime.timezone.utc)
+        for guild_events in self.recent_events.values():
+            for event_type in ['join', 'remove']:
+                # Crear lista de keys a borrar porque no se puede alterar dict durante iteración
+                keys_to_delete = [
+                    user_id for user_id, timestamp in guild_events.get(event_type, {}).items() 
+                    if (now - timestamp).total_seconds() > 300
+                ]
+                for k in keys_to_delete:
+                    del guild_events[event_type][k] 
 
     async def get_settings(self, guild_id: int):
         settings = await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))

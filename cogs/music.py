@@ -289,15 +289,29 @@ class MusicCog(commands.Cog, name="Música"):
         state = self.get_guild_state(ctx.guild.id)
         if not state.current_song: return await self.send_response(ctx, "No hay ninguna canción reproduciéndose.", ephemeral=True)
         await ctx.defer(ephemeral=True)
-        song_title = re.sub(r'\(.*?lyric.*?\)|\[.*?video.*?\]|official', '', state.current_song['title'], flags=re.IGNORECASE).strip()
+        
+        # Limpiar el título de basura común de YouTube
+        raw_title = state.current_song['title']
+        clean_title = re.sub(r'(?i)(\(|\[).*?(letra|lyric|video|audio|official|oficial|live|en vivo).*?(\)|\])', '', raw_title)
+        clean_title = re.sub(r'(?i)(official video|video oficial|audio oficial|official audio|con letra)', '', clean_title)
+        
+        # Separar artista y canción si hay un guion
+        if '-' in clean_title:
+            parts = clean_title.split('-', 1)
+            artist = parts[0].strip()
+            title = parts[1].strip()
+        else:
+            artist = ""
+            title = clean_title.strip()
+            
         try:
-            song = await asyncio.to_thread(self.genius.search_song, song_title)
+            song = await asyncio.to_thread(self.genius.search_song, title, artist)
             if song and song.lyrics:
-                lyrics = song.lyrics[:3997] + "..." if len(song.lyrics) > 4000 else song.lyrics
+                lyrics = song.lyrics[:3996] + "..." if len(song.lyrics) > 4000 else song.lyrics
                 embed = discord.Embed(title=f"🎤 Letra de: {song.title}", description=lyrics, color=self.bot.CREAM_COLOR)
                 embed.set_footer(text=f"Artista: {song.artist}")
                 await self.send_response(ctx, embed=embed, ephemeral=True)
-            else: await self.send_response(ctx, "❌ No se encontraron letras para esta canción.", ephemeral=True)
+            else: await self.send_response(ctx, f"❌ No se encontraron letras para: **{title}**", ephemeral=True)
         except Exception as e: await self.send_response(ctx, f"❌ Ocurrió un error al buscar la letra: {e}", ephemeral=True)
 
     @commands.hybrid_command(name='shuffle', description="Mezcla la cola de canciones actual.")

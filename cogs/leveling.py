@@ -11,6 +11,7 @@ class LevelingCog(commands.Cog, name="Niveles"):
     """Comandos para ver tu nivel y competir en el ranking de XP."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.xp_cooldowns = {} # user_id -> datetime
 
     # --- Las funciones de base de datos se han eliminado de aquí ---
 
@@ -37,9 +38,20 @@ class LevelingCog(commands.Cog, name="Niveles"):
             await self.process_xp(message)
 
     async def process_xp(self, message: discord.Message):
-        """Procesa la ganancia de XP de un usuario."""
+        """Procesa la ganancia de XP de un usuario considerando cooldowns."""
+        import datetime
         guild_id, user_id = message.guild.id, message.author.id
         
+        # --- NUEVO: Comprobación de Cooldown (Anti-Spam de XP) ---
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if user_id in self.xp_cooldowns:
+            time_since_last_xp = (now - self.xp_cooldowns[user_id]).total_seconds()
+            if time_since_last_xp < 60:
+                return # Ignora si pasaron menos de 60 segundos
+                
+        self.xp_cooldowns[user_id] = now
+        # --- FIN DE Comprobación ---
+
         level, xp = await db.get_user_level(guild_id, user_id)
         
         new_xp = xp + random.randint(15, 25)
