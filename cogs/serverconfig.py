@@ -424,5 +424,58 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         await self.save_setting(ctx.guild.id, 'leveling_enabled', 1 if estado == 'on' else 0)
         await ctx.send(f"✅ Sistema de niveles **{'activado' if estado == 'on' else 'desactivado'}**.", ephemeral=True)
 
+    @commands.hybrid_command(name='serverconfig', aliases=['configuracion', 'settings'], description="Muestra el panel de configuración completo del servidor.")
+    @commands.has_permissions(manage_guild=True)
+    async def serverconfig(self, ctx: commands.Context):
+        """Muestra un resumen de toda la configuración del bot en este servidor."""
+        await ctx.defer()
+        
+        settings = await self.get_settings(ctx.guild.id)
+        if not settings: return await ctx.send("❌ Error al cargar la configuración del servidor.", ephemeral=True)
+        
+        eco_settings = await db.get_guild_economy_settings(ctx.guild.id)
+        tts_settings = await db.fetchone("SELECT * FROM tts_guild_settings WHERE guild_id = ?", (ctx.guild.id,))
+        tts_channel = await db.fetchone("SELECT * FROM tts_active_channels WHERE guild_id = ?", (ctx.guild.id,))
+        casino_channels = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))
+        
+        embed = discord.Embed(title=f"⚙️ Panel de Configuración: {ctx.guild.name}", color=self.bot.CREAM_COLOR)
+        if ctx.guild.icon:
+            embed.set_thumbnail(url=ctx.guild.icon.url)
+        
+        # 1. Canales Principales
+        welcome_ch = f"<#{settings['welcome_channel_id']}>" if settings.get('welcome_channel_id') else "🚫 Inactivo"
+        goodbye_ch = f"<#{settings['goodbye_channel_id']}>" if settings.get('goodbye_channel_id') else "🚫 Inactivo"
+        log_ch = f"<#{settings['log_channel_id']}>" if settings.get('log_channel_id') else "🚫 Inactivo"
+        creator_ch = f"<#{settings['temp_channel_creator_id']}>" if settings.get('temp_channel_creator_id') else "🚫 Inactivo"
+        
+        canales_texto = f"**Bienvenidas:** {welcome_ch} (`/setwelcomechannel`)\n**Despedidas:** {goodbye_ch} (`/setgoodbyechannel`)\n**Moderación (Logs):** {log_ch} (`/setlogchannel`)\n**Creador de Temp Voz:** {creator_ch} (`/setcreatorchannel`)"
+        embed.add_field(name="📁 Canales Base", value=canales_texto, inline=False)
+        
+        # 2. Moderación
+        anti_invite = "✅ Activado" if settings.get('automod_anti_invite') else "🚫 Desactivado"
+        banned_words = settings.get('automod_banned_words')
+        badwords_status = f"✅ Activado ({len([w for w in banned_words.split(',') if w])} palabras)" if banned_words else "🚫 Desactivado"
+        autorole = f"<@&{settings['autorole_id']}>" if settings.get('autorole_id') else "🚫 Inactivo"
+        
+        mod_texto = f"**Anti-Invites:** {anti_invite} (`/automod anti_invites`)\n**Filtro Palabras:** {badwords_status} (`/automod badwords`)\n**Rol Automático:** {autorole} (`/setautorole`)"
+        embed.add_field(name="🛡️ Moderación (Automod)", value=mod_texto, inline=False)
+        
+        # 3. Economía y Sistemas
+        leveling = "✅ Activado" if settings.get('leveling_enabled', 1) else "🚫 Desactivado"
+        currency = f"**{eco_settings.get('currency_name', 'créditos')}** {eco_settings.get('currency_emoji', '🪙')}" if eco_settings else "**créditos** 🪙"
+        casino_ch_list = ", ".join(f"<#{r['channel_id']}>" for r in casino_channels) if casino_channels else "🚫 Inactivo"
+        
+        eco_texto = f"**Sistema Niveles:** {leveling} (`/levels`)\n**Moneda Local:** {currency} (`/economy set-currency`)\n**Canales Casino:** {casino_ch_list} (`/gambling addchannel`)"
+        embed.add_field(name="💸 Economía y Niveles", value=eco_texto, inline=False)
+        
+        # 4. Texto a Voz (TTS)
+        tts_lang = tts_settings['lang'] if tts_settings else "es"
+        tts_ch = f"<#{tts_channel['text_channel_id']}>" if tts_channel else "🚫 Inactivo"
+        
+        tts_texto = f"**Idioma:** `{tts_lang}` (`/set_language_tts`)\n**Canal TTS:** {tts_ch} (`/setup_tts`)"
+        embed.add_field(name="🔊 Texto a Voz (TTS)", value=tts_texto, inline=False)
+        
+        await ctx.send(embed=embed)
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(ServerConfigCog(bot))

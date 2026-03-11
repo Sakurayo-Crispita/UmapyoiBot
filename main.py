@@ -191,7 +191,7 @@ async def on_guild_join(guild: discord.Guild):
 
             # Diccionario de emojis para cada categoría
             emoji_map = {
-                "Música": "🎵", "Niveles": "📈", "Economía": "💰", "Juegos de Apuestas": "🎲",
+                "Música": "🎵", "Niveles": "📈", "Economía": "💰", "Juegos de Azar": "🎲",
                 "Juegos e IA": "🎮", "Interacción": "👋", "Moderación": "🛡️",
                 "Configuración del Servidor": "⚙️", "Texto a Voz": "🔊", "Utilidad": "�️"
             }
@@ -199,7 +199,7 @@ async def on_guild_join(guild: discord.Guild):
             # Enviar la lista detallada de comandos por categoría
             for cog_name, cog in bot.cogs.items():
                 commands_list = cog.get_commands()
-                if not commands_list or cog_name in ["Juegos de Apuestas", "Economía"]:
+                if not commands_list or cog_name in ["Juegos de Azar", "Economía"]:
                     continue
 
                 embed = discord.Embed(
@@ -248,12 +248,16 @@ async def on_command_error(ctx: commands.Context, error):
         await ctx.send(f"⏳ Vuelve a intentarlo en **{time_str.strip()}**.", ephemeral=True)
         return
 
+    # Desempaquetar HybridCommandError para procesar el error original correctamente
+    if isinstance(error, commands.errors.HybridCommandError):
+        error = error.original
+
     # Manejar permisos faltantes
-    if isinstance(error, commands.MissingPermissions):
+    if isinstance(error, (commands.MissingPermissions, discord.app_commands.errors.MissingPermissions)):
         await ctx.send("❌ No tienes los permisos necesarios para usar este comando.", ephemeral=True)
         return
-    elif isinstance(error, commands.BotMissingPermissions):
-        permisos = ", ".join(p.replace('_', ' ').capitalize() for p in error.missing_permissions)
+    elif isinstance(error, (commands.BotMissingPermissions, discord.app_commands.errors.BotMissingPermissions)):
+        permisos = ", ".join(p.replace('_', ' ').capitalize() for p in (getattr(error, 'missing_permissions', [])))
         await ctx.send(f"⚠️ No puedo ejecutar esa acción porque me faltan los siguientes permisos: **{permisos}**", ephemeral=True)
         return
     

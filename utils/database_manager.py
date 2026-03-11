@@ -100,6 +100,13 @@ def setup_database():
         cursor.execute('''CREATE TABLE IF NOT EXISTS tts_guild_settings (guild_id INTEGER PRIMARY KEY, lang TEXT NOT NULL DEFAULT 'es')''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS tts_active_channels (guild_id INTEGER PRIMARY KEY, text_channel_id INTEGER NOT NULL)''')
         
+        # --- Tablas de Tienda e Inventario ---
+        cursor.execute('''CREATE TABLE IF NOT EXISTS shop_items (item_id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, name TEXT COLLATE NOCASE, description TEXT, price INTEGER, type TEXT, raw_data TEXT)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS inventory (guild_id INTEGER, user_id INTEGER, item_id INTEGER, quantity INTEGER DEFAULT 1, PRIMARY KEY (guild_id, user_id, item_id))''')
+        
+        # --- Tabla de Gacha Collection ---
+        cursor.execute('''CREATE TABLE IF NOT EXISTS gacha_collection (guild_id INTEGER, user_id INTEGER, character_name TEXT, rarity TEXT, image_url TEXT)''')
+        
         run_migrations(conn)
         conn.commit()
         

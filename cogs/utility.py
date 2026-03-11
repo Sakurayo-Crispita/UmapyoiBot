@@ -16,7 +16,7 @@ class HelpSelect(discord.ui.Select):
             "Música": "🎵",
             "Niveles": "📈",
             "Economía": "💰",
-            "Juegos de Apuestas": "🎲",
+            "Juegos de Azar": "🎲",
             "Juegos e IA": "🎮",
             "Interacción": "👋",
             "NSFW": "🔞",
@@ -65,17 +65,58 @@ class HelpView(discord.ui.View):
         super().__init__(timeout=180)
         self.add_item(HelpSelect(bot, cog_map))
 
+class TicketCloseView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        
+    @discord.ui.button(label="Cerrar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="ticket_close_btn")
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Cerrando este ticket en 5 segundos...")
+        import asyncio
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
+
+class TicketOpenView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        
+    @discord.ui.button(label="Abrir Ticket", style=discord.ButtonStyle.primary, emoji="🎟️", custom_id="ticket_open_btn")
+    async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        category = interaction.channel.category
+        
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
+        }
+        
+        channel = await guild.create_text_channel(
+            name=f"ticket-{interaction.user.name}",
+            category=category,
+            overwrites=overwrites,
+            topic=f"Ticket de {interaction.user.id}"
+        )
+        
+        embed = discord.Embed(title="🎫 Soporte Técnico", description=f"Bienvenido {interaction.user.mention}. Un administrador revisará tu caso en breve.\nPor favor describe tu problema detalladamente.", color=discord.Color.blue())
+        await channel.send(embed=embed, view=TicketCloseView())
+        
+        await interaction.response.send_message(f"✅ Se ha abierto tu ticket aquí: {channel.mention}", ephemeral=True)
+
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.bot.add_view(TicketOpenView())
+        self.bot.add_view(TicketCloseView())
+        
         # --- MAPA DE COGS CORREGIDO ---
         # Este mapa ahora define el orden y los nombres para el autocompletado y el menú
         self.cog_map = {
             "música": "Música",
             "niveles": "Niveles",
             "economía": "Economía",
-            "apuestas": "Juegos de Apuestas",
+            "apuestas": "Juegos de Azar",
             "juegos": "Juegos e IA",
             "interaccion": "Interacción",
             "nsfw": "NSFW",
@@ -229,6 +270,18 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             await ctx.message.delete()
             await ctx.send(mensaje)
     
+    @commands.hybrid_group(name="ticket", description="Configura el sistema de soporte automatizado.")
+    @commands.has_permissions(administrator=True)
+    async def ticket(self, ctx: commands.Context):
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Comandos: `/ticket setup`", ephemeral=True)
+
+    @ticket.command(name="setup", description="Genera el panel interactivo de creación de tickets en este canal.")
+    async def ticket_setup(self, ctx: commands.Context):
+        embed = discord.Embed(title="📠 Soporte Técnico", description="¿Necesitas ayuda con algo del servidor o quieres hacer una denuncia?\n\n**Oprime el botón abajo para abrir un ticket de soporte privado.**", color=self.bot.CREAM_COLOR)
+        await ctx.send(embed=embed, view=TicketOpenView())
+        await ctx.message.delete()
+        
     @commands.command(name='sync', hidden=True)
     @commands.is_owner()
     async def sync(self, ctx: commands.Context):

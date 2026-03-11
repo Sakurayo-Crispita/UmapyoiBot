@@ -5,9 +5,71 @@ from PIL import Image
 from io import BytesIO
 from typing import Literal, Optional
 import aiohttp
+import html
+import asyncio
 from utils.constants import WANTED_TEMPLATE_URL
-# Importamos nuestros helpers de API
+# Importamos nuestros helpers de API e integración de BD
 from utils.api_helpers import ask_gemini, search_anime
+from utils import database_manager as db
+
+class TriviaView(discord.ui.View):
+    def __init__(self, ctx: commands.Context, cog, correct_ans: str, prize: int):
+        super().__init__(timeout=20.0)
+        self.ctx = ctx
+        self.cog = cog
+        self.correct_ans = correct_ans
+        self.prize = prize
+        self.answered = False
+
+    async def on_timeout(self):
+        if not self.answered:
+            for item in self.children: item.disabled = True
+            embed = discord.Embed(title="⏰ ¡Tiempo agotado!", description=f"Nadie respondió a tiempo. La respuesta correcta era: **{self.correct_ans}**", color=discord.Color.red())
+            try: await self.message.edit(embed=embed, view=self)
+            except: pass
+
+    async def check_answer(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.answered: return
+        
+        if button.label == self.correct_ans or (len(self.correct_ans) > 77 and self.correct_ans.startswith(button.label.replace('...', ''))):
+            self.answered = True
+            for item in self.children:
+                item.disabled = True
+                if item.label == button.label: item.style = discord.ButtonStyle.success
+            
+            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=self.prize)
+            embed = discord.Embed(title="🎉 ¡Correcto!", description=f"{interaction.user.mention} conocía la respuesta: **{self.correct_ans}**.\nSe le han transferido directamente **+{self.prize}** monedas a su cartera.", color=discord.Color.green())
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.send_message(f"❌ '{button.label}' es incorrecto.", ephemeral=True)
+
+    @discord.ui.button(label="A", style=discord.ButtonStyle.primary)
+    async def btn_a(self, interaction: discord.Interaction, button: discord.ui.Button): await self.check_answer(interaction, button)
+    @discord.ui.button(label="B", style=discord.ButtonStyle.primary)
+    async def btn_b(self, interaction: discord.Interaction, button: discord.ui.Button): await self.check_answer(interaction, button)
+    @discord.ui.button(label="C", style=discord.ButtonStyle.primary)
+    async def btn_c(self, interaction: discord.Interaction, button: discord.ui.Button): await self.check_answer(interaction, button)
+    @discord.ui.button(label="D", style=discord.ButtonStyle.primary)
+    async def btn_d(self, interaction: discord.Interaction, button: discord.ui.Button): await self.check_answer(interaction, button)
+
+class ConfessionModal(discord.ui.Modal, title="Confesión Anónima"):
+    texto = discord.ui.TextInput(label="Escribe tu secreto aquí", style=discord.TextStyle.paragraph, max_length=1500, placeholder="Nadie sabrá que fuiste tú, ni siquiera los administradores...", required=True)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        embed = discord.Embed(title="🕵️ Confesión Anónima", description=self.texto.value, color=discord.Color.dark_purple())
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message("Confesión publicada exitosamente. Tu identidad está a salvo.", ephemeral=True)
+
+class ConfessView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Confesarse", style=discord.ButtonStyle.secondary, emoji="🕵️", custom_id="confess_open_btn")
+    async def open_confess(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ConfessionModal())
+
+
+
 
 # --- DICCIONARIOS DE TRADUCCIÓN ---
 # Para traducir campos que vienen en inglés de la API
@@ -161,11 +223,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         embed.add_field(name="Mi Respuesta", value=respuesta, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name="coinflip", description="Lanza una moneda al aire.")
-    async def coinflip(self, ctx: commands.Context):
-        resultado = random.choice(["Cara", "Cruz"])
-        emoji = "🪙"
-        await ctx.send(f"{emoji} ¡Ha salido **{resultado}**!")
+
 
     @commands.hybrid_command(name="rolldice", description="Lanza uno o más dados.")
     async def rolldice(self, ctx: commands.Context, cantidad: int = 1, caras: int = 6):
@@ -219,6 +277,111 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         
         await ctx.send(embed=embed)
 
+    @commands.hybrid_group(name="gacha", description="Juega al gacha de personajes de anime.")
+    async def gacha(self, ctx: commands.Context):
+        if ctx.invoked_subcommand is None:
+            await ctx.send("🎰 **Comandos Disp:** `/gacha pull`, `/gacha list`", ephemeral=True)
+
+    @gacha.command(name="pull", description="Tira del gacha por 500 monedas y obtén un personaje aleatorio.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def gacha_pull(self, ctx: commands.Context):
+        await ctx.defer()
+        apuesta = 500
+        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        emoji_currency = settings.get('currency_emoji', '🪙')
+        
+        wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
+        if wallet < apuesta: return await ctx.send(f"❌ Efectivo insuficiente. Cada tirada cuesta **{apuesta:,} {emoji_currency}**.", ephemeral=True)
+        
+        await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-apuesta)
+        
+        try:
+            async with self.bot.http_session.get("https://api.jikan.moe/v4/random/characters") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    char_data = data['data']
+                    char_name = char_data.get('name', 'Desconocido')
+                    img_url = char_data.get('images', {}).get('jpg', {}).get('image_url')
+                else:
+                    char_name = random.choice(["Goku", "Naruto", "Luffy", "Saitama", "Rem", "Nezuko", "Levi"])
+                    img_url = None
+        except:
+             char_name = "Komi-san (Error de conexión)"
+             img_url = None
+             
+        # Generar Rareza
+        r = random.randint(1, 1000)
+        if r <= 10: rarity, stars, color = "Mítico", "⭐⭐⭐⭐⭐", discord.Color.gold()
+        elif r <= 60: rarity, stars, color = "Legendario", "⭐⭐⭐⭐", discord.Color.brand_red()
+        elif r <= 200: rarity, stars, color = "Épico", "⭐⭐⭐", discord.Color.purple()
+        elif r <= 500: rarity, stars, color = "Raro", "⭐⭐", discord.Color.blue()
+        else: rarity, stars, color = "Común", "⭐", discord.Color.light_grey()
+        
+        await db.execute("INSERT INTO gacha_collection (guild_id, user_id, character_name, rarity, image_url) VALUES (?, ?, ?, ?, ?)", (ctx.guild.id, ctx.author.id, char_name, rarity, img_url))
+        
+        embed = discord.Embed(title="🎰 Invocación Gacha", description=f"¡Has conseguido a **{char_name}**!\n\n**Rareza:** {rarity} {stars}", color=color)
+        if img_url: embed.set_image(url=img_url)
+        embed.set_footer(text=f"-{apuesta} {emoji_currency} cobrados de tu cartera")
+        await ctx.send(embed=embed)
+
+    @gacha.command(name="list", aliases=['collection'], description="Muestra tu colección de personajes del gacha.")
+    async def gacha_list(self, ctx: commands.Context):
+        chars = await db.fetchall("SELECT character_name, rarity FROM gacha_collection WHERE guild_id = ? AND user_id = ?", (ctx.guild.id, ctx.author.id))
+        if not chars: return await ctx.send("❌ No tienes ningún personaje en tu colección. Usa `/gacha pull`.", ephemeral=True)
+        
+        counts = {"Mítico": [], "Legendario": [], "Épico": [], "Raro": [], "Común": []}
+        for c in chars:
+            counts[c['rarity']].append(c['character_name'])
+            
+        embed = discord.Embed(title=f"📚 Colección Gacha de {ctx.author.display_name}", color=self.bot.CREAM_COLOR)
+        embed.description = f"Personajes totales: **{len(chars)}**"
+        for r, lst in counts.items():
+            if lst:
+                show = ", ".join(lst[:8]) + (f" (y {len(lst)-8} más)" if len(lst) > 8 else "")
+                embed.add_field(name=f"{r} ({len(lst)})", value=show, inline=False)
+                
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="trivia", description="Responde una pregunta de cultura pop/anime más rápido para ganar un premio de monedas.")
+    @commands.cooldown(1, 30, commands.BucketType.guild)
+    async def trivia(self, ctx: commands.Context):
+        # Anime trivia open db
+        url = "https://opentdb.com/api.php?amount=1&category=31&type=multiple"
+        try:
+            async with self.bot.http_session.get(url) as resp:
+                data = await resp.json()
+                if data['response_code'] != 0: return await ctx.send("No pude obtener los archivos de la trivia maestra. Prueba en un momento.")
+                q_data = data['results'][0]
+        except Exception as e:
+            return await ctx.send(f"❌ Error conectando a la base de datos de trivia: {e}")
+            
+        question = html.unescape(q_data['question'])
+        correct = html.unescape(q_data['correct_answer'])
+        options = [html.unescape(o) for o in q_data['incorrect_answers']] + [correct]
+        random.shuffle(options)
+        
+        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        emoji = settings.get('currency_emoji', '🪙')
+        prize = random.randint(150, 400)
+        
+        embed = discord.Embed(title="🧠 Trivia de Rapidez", description=f"**{question}**\n\nPremio estipulado: **{prize}** {emoji}", color=discord.Color.teal())
+        
+        view = TriviaView(ctx, self, correct, prize)
+        for i, opt in enumerate(options):
+            lbl = opt[:77] + "..." if len(opt) > 80 else opt
+            view.children[i].label = lbl
+            
+        msg = await ctx.send(embed=embed, view=view)
+        view.message = msg
+
+    @commands.hybrid_command(name="setup_confessions", description="Coloca el panel interactivo de confesiones anónimas en este canal (Admin).")
+    @commands.has_permissions(administrator=True)
+    async def setup_confessions(self, ctx: commands.Context):
+        embed = discord.Embed(title="📮 Buzón de Confesiones", description="¿Tienes un secreto oscuro? ¿Un mensaje para alguien en el servidor? Exprésalo de forma segura y 100% anónima.\n\n**Oprime el botón abajo para abrir el confesionario privado.** Nadie sabrá tu identidad.", color=self.bot.CREAM_COLOR)
+        await ctx.send(embed=embed, view=ConfessView())
+        await ctx.message.delete()
 
 async def setup(bot: commands.Bot):
+    # Registrar las vistas persistentes
+    bot.add_view(ConfessView())
     await bot.add_cog(FunCog(bot))

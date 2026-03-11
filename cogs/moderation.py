@@ -279,6 +279,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.hybrid_command(name="warn", description="Advierte a un usuario.")
     @commands.has_permissions(moderate_members=True)
     async def warn(self, ctx: commands.Context, miembro: discord.Member, *, razon: str):
+        await ctx.defer(ephemeral=True)
         if miembro.id == self.bot.user.id:
             return await ctx.send("🥕 No puedes advertirme a mí.", ephemeral=True)
         if miembro.id == ctx.author.id:
