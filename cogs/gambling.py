@@ -247,8 +247,8 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
             desc = f"La moneda dio volteretas y cayó en **{result.upper()}**.\n\n❌ Has fallado la predicción. Perdiste dramáticamente tu apuesta de **{apuesta:,} {emoji_currency}**."
             color = discord.Color.red()
             
-        embed = discord.Embed(title="🪙 Lanzamiento de Moneda", description=desc, color=color)
-        embed.set_thumbnail(url="https://i.imgur.com/vHq0A6U.gif") # Un gif genérico de una moneda
+        embed = discord.Embed(title="Lanzamiento de Moneda", description=desc, color=color)
+        embed.set_thumbnail(url="https://tenor.com/es/view/panic-ahhhhh-scream-anime-gif-2513962606784638167") # Un gif genérico de una moneda
         embed.set_footer(text=f"Cartera Remanente: {new_wallet:,}")
         await ctx.send(embed=embed)
 
@@ -396,7 +396,7 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
             embed.description = f"**Click.** 💨\n\nSobreviviste. Había una recámara vacía. Te llevas tu apuesta de vuelta y además ganas un bono de supervivencia. Recibes **{ganancia_total:,} {emoji}**."
             embed.color = discord.Color.green()
             
-        embed.set_thumbnail(url="https://i.imgur.com/vHq0A6U.gif" if not muerto else "https://static.wikia.nocookie.net/minecraft_gamepedia/images/1/1b/Explosion.gif")
+        embed.set_thumbnail(url="https://tenor.com/es/view/yukino-angelica-shoot-shooting-gun-gif-1454556699999467861" if not muerto else "https://tenor.com/es/view/yumeko-kakegurui-poker-baralho-gif-22742248")
         embed.set_footer(text=f"Cartera Remanente: {new_wallet:,} {emoji}")
         await msg.edit(embed=embed)
 

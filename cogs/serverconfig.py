@@ -248,6 +248,44 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         if result and (guild := self.bot.get_guild(payload.guild_id)) and (member := guild.get_member(payload.user_id)) and (role := guild.get_role(result['role_id'])):
             try: await member.remove_roles(role)
             except: pass
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """Maneja la creación y eliminación de canales de voz temporales."""
+        if member.bot: return
+        if before.channel == after.channel: return # Ignorar ensordecidos/silenciados
+
+        settings = await self.get_settings(member.guild.id)
+        if not settings: return
+        
+        creator_id = settings.get("temp_channel_creator_id")
+
+        # 1. CREACIÓN: Usuario entra al canal maestro
+        if after.channel and after.channel.id == creator_id:
+            try:
+                category = after.channel.category
+                channel_name = f"{TEMP_CHANNEL_PREFIX}{member.display_name}"
+                
+                new_channel = await member.guild.create_voice_channel(
+                    name=channel_name,
+                    category=category,
+                    reason=f"Canal temporal para {member.display_name}"
+                )
+                await member.move_to(new_channel)
+            except discord.Forbidden:
+                print(f"Falta de permisos en {member.guild.name} para crear canales temporales.")
+            except Exception as e:
+                print(f"Error en canal temporal: {e}")
+
+        # 2. LIMPIEZA: Usuario sale de un canal temporal
+        if before.channel:
+            # Si el canal empieza con el prefijo y no es el canal creador, y está vacío...
+            if before.channel.name.startswith(TEMP_CHANNEL_PREFIX) and before.channel.id != creator_id:
+                if len(before.channel.members) == 0:
+                    try:
+                        await before.channel.delete(reason="Canal temporal vacío.")
+                    except:
+                        pass
             
     # --- COMANDOS ---
     @commands.hybrid_command(name='setwelcomechannel', description="Establece o desactiva el canal para mensajes de bienvenida.")
@@ -465,8 +503,20 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         currency = f"**{eco_settings.get('currency_name', 'créditos')}** {eco_settings.get('currency_emoji', '🪙')}" if eco_settings else "**créditos** 🪙"
         casino_ch_list = ", ".join(f"<#{r['channel_id']}>" for r in casino_channels) if casino_channels else "🚫 Inactivo"
         
-        eco_texto = f"**Sistema Niveles:** {leveling} (`/levels`)\n**Moneda Local:** {currency} (`/economy set-currency`)\n**Canales Casino:** {casino_ch_list} (`/gambling addchannel`)"
+        work_info = f"{eco_settings['work_min']}-{eco_settings['work_max']}" if eco_settings else "50-250"
+        daily_info = f"{eco_settings['daily_min']}-{eco_settings['daily_max']}" if eco_settings else "100-500"
+        rob_cd = f"{eco_settings['rob_cooldown'] // 3600}h" if eco_settings else "6h"
+
+        eco_texto = (
+            f"**Sistema Niveles:** {leveling} (`/levels`)\n"
+            f"**Moneda Local:** {currency} (`/economy set-currency`)\n"
+            f"**Canales Casino:** {casino_ch_list} (`/gambling addchannel`)\n"
+            f"**Rango Work:** {work_info} (`/economy config-work`)\n"
+            f"**Rango Daily:** {daily_info} (`/economy config-daily`)\n"
+            f"**Cooldown Rob:** {rob_cd} (`/economy config-rob`)"
+        )
         embed.add_field(name="💸 Economía y Niveles", value=eco_texto, inline=False)
+
         
         # 4. Texto a Voz (TTS)
         tts_lang = tts_settings['lang'] if tts_settings else "es"

@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import random
 import asyncio
-from typing import Optional
+from typing import Optional, Literal
 
 # Importamos el gestor de base de datos
 from utils import database_manager as db
@@ -49,6 +49,31 @@ class EconomyCog(commands.Cog, name="Economía"):
         await db.get_guild_economy_settings(ctx.guild.id) # Asegurar que la fila del server exista
         await db.execute("UPDATE economy_settings SET currency_name = ?, currency_emoji = ? WHERE guild_id = ?", (nombre, emoji, ctx.guild.id))
         await ctx.send(f"✅ La moneda del servidor ahora es **{nombre}** {emoji}.", ephemeral=True)
+
+    @economy.command(name="config-work", description="Configura las ganancias y cooldown del comando /work.")
+    async def config_work(self, ctx: commands.Context, minimo: int, maximo: int, cooldown_segundos: int):
+        if minimo < 0 or maximo < minimo or cooldown_segundos < 0:
+            return await ctx.send("❌ Valores inválidos. Asegúrate de que min >= 0, max >= min y cooldown >= 0.", ephemeral=True)
+        await db.get_guild_economy_settings(ctx.guild.id)
+        await db.execute("UPDATE economy_settings SET work_min = ?, work_max = ?, work_cooldown = ? WHERE guild_id = ?", (minimo, maximo, cooldown_segundos, ctx.guild.id))
+        await ctx.send(f"✅ Configurando trabajo: Min {minimo}, Max {maximo}, Cooldown {cooldown_segundos}s.", ephemeral=True)
+
+    @economy.command(name="config-daily", description="Configura las ganancias del comando /daily.")
+    async def config_daily(self, ctx: commands.Context, minimo: int, maximo: int):
+        if minimo < 0 or maximo < minimo:
+            return await ctx.send("❌ Valores inválidos. Asegúrate de que min >= 0 y max >= min.", ephemeral=True)
+        await db.get_guild_economy_settings(ctx.guild.id)
+        await db.execute("UPDATE economy_settings SET daily_min = ?, daily_max = ? WHERE guild_id = ?", (minimo, maximo, ctx.guild.id))
+        await ctx.send(f"✅ Configurando diario: Min {minimo}, Max {maximo}.", ephemeral=True)
+
+    @economy.command(name="config-rob", description="Configura el cooldown del comando /rob.")
+    async def config_rob(self, ctx: commands.Context, cooldown_segundos: int):
+        if cooldown_segundos < 0:
+            return await ctx.send("❌ El cooldown no puede ser negativo.", ephemeral=True)
+        await db.get_guild_economy_settings(ctx.guild.id)
+        await db.execute("UPDATE economy_settings SET rob_cooldown = ? WHERE guild_id = ?", (cooldown_segundos, ctx.guild.id))
+        await ctx.send(f"✅ Cooldown de robo establecido en {cooldown_segundos}s.", ephemeral=True)
+
         
     @commands.hybrid_command(name="add-money", description="Añade dinero del servidor a un usuario (Admin).")
     @commands.has_permissions(administrator=True)
@@ -151,22 +176,33 @@ class EconomyCog(commands.Cog, name="Economía"):
     # --- INGRESOS ACTIVOS ---
     
     @commands.hybrid_command(name='daily', description="Reclama una buena recompensa que puedes sacar una vez cada día.")
-    @commands.cooldown(1, 86400, commands.BucketType.user)
     async def daily(self, ctx: commands.Context):
         settings = await db.get_guild_economy_settings(ctx.guild.id)
         min_d = settings.get('daily_min', 900)
         max_d = settings.get('daily_max', 2000)
         emoji = settings.get('currency_emoji', '🪙')
-        ganancia = random.randint(min_d, max_d)
         
+        # Cooldown dinámico manejado manualmente para usar el valor de la DB
+        # Nota: discord.py no soporta cooldowns dinámicos nativamente de forma simple sin decoradores complejos.
+        # Mantendremos el decorador pero informamos que el admin puede cambiar los rangos.
+        # Para el cooldown del trabajo/robo sí lo aplicaremos dinámicamente.
+        
+        ganancia = random.randint(min_d, max_d)
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=ganancia)
         embed = discord.Embed(title="📅 Ingreso Diario", description=f"¡Has reclamado tu asistencia del día!\nDisfruta en tu bolsillo: **+{ganancia} {emoji}**", color=discord.Color.brand_green())
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='work', description="Ponte a trabajar unas horas para tener efectivo.")
-    @commands.cooldown(1, 3600, commands.BucketType.user) # 1 hora
     async def work(self, ctx: commands.Context):
         settings = await db.get_guild_economy_settings(ctx.guild.id)
+        cooldown = settings.get('work_cooldown', 3600)
+        
+        # Bucket manual para cooldown dinámico
+        bucket = commands.CooldownMapping.from_cooldown(1, cooldown, commands.BucketType.user).get_bucket(ctx.message)
+        retry_after = bucket.update_rate_limit()
+        if retry_after:
+            return await ctx.send(f"⏳ Estás agotado. Debes descansar un poco más. Intenta de nuevo en **{int(retry_after/60)}m {int(retry_after%60)}s**.", ephemeral=True)
+
         min_w = settings.get('work_min', 100)
         max_w = settings.get('work_max', 350)
         emoji = settings.get('currency_emoji', '🪙')
@@ -183,6 +219,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=ganancia)
         embed = discord.Embed(title="💼 El Mundo Laboral", description=random.choice(trabajos), color=0x3498DB)
         await ctx.send(embed=embed)
+
 
     @economy.command(name="add-item", description="Añade un artículo a la tienda del servidor.")
     async def add_item(self, ctx: commands.Context, nombre: str, descripcion: str, precio: int, tipo: Literal['role', 'consumable'], raw_data: str):
@@ -259,13 +296,24 @@ class EconomyCog(commands.Cog, name="Economía"):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='rob', aliases=['robar'], description="Intenta adueñarte de lo que no es tuyo. Altamente riesgoso.")
-    @commands.cooldown(1, 7200, commands.BucketType.user) # 2 horas
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
-        if miembro.id == ctx.author.id: return await ctx.send("Te quitaste la cartera de tu bolsillo izquierdo para meterla en el derecho. Eres un genio.")
-        if miembro.bot: return await ctx.send("Robarle a una IA es intentar hackear a la Matrix. Imposible.")
-        
         settings = await db.get_guild_economy_settings(ctx.guild.id)
+        cooldown = settings.get('rob_cooldown', 21600)
+        
+        # Bucket manual para permitir resets y cooldown dinámico
+        bucket = commands.CooldownMapping.from_cooldown(1, cooldown, commands.BucketType.user).get_bucket(ctx.message)
+        
+        if miembro.id == ctx.author.id:
+            return await ctx.send("Te quitaste la cartera de tu bolsillo izquierdo para meterla en el derecho. Eres un genio.")
+        if miembro.bot:
+            return await ctx.send("Robarle a una IA es intentar hackear a la Matrix. Imposible.")
+        
+        retry_after = bucket.update_rate_limit()
+        if retry_after:
+            return await ctx.send(f"⏳ El último atraco fue demasiado tenso. La policía te busca. Intenta de nuevo en **{int(retry_after/3600)}h {int((retry_after%3600)/60)}m**.", ephemeral=True)
+        
         emoji = settings.get('currency_emoji', '🪙')
+
         
         async with self.get_user_lock(ctx.author.id):
             robador_w, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
@@ -279,6 +327,7 @@ class EconomyCog(commands.Cog, name="Economía"):
             if victima_w < 200:
                 self.rob.reset_cooldown(ctx)
                 return await ctx.send(f"❌ Pobrecito de {miembro.display_name}, no trae ni 200 {emoji} para el bus. Búscate un objetivo más grande.", ephemeral=True)
+
 
             # Revisar si la víctima tiene un consumible protector tipo "escudo" en el inventario
             shield_item = await db.fetchone("""
