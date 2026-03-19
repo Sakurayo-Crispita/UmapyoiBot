@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Servidor - UmapyoiBot</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=2.8">
+</head>
+<body class="module-page">
+    <!-- Navigation -->
+    <nav id="navbar" class="scrolled">
+        <div class="container">
+            <a href="/" class="logo">
+                <img src="/static/assets/mascot.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 8px; vertical-align: middle; margin-right: 4px; box-shadow: 0 2px 8px rgba(255,107,158,0.3);"> Umapyoi<span>.</span>
+            </a>
+            <div class="menu-toggle" id="menu-toggle">
+                <i data-lucide="menu"></i>
+            </div>
+            <ul class="nav-links" id="nav-links">
+                <li class="nav-item">
+                    <a href="/" class="nav-link">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link active">Módulos <i data-lucide="chevron-down"></i></a>
+                    <div class="dropdown">
+                        <a href="/modules/music" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="music"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Música</h5>
+                                <p>Alta fidelidad sin lag.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/economy" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="coins"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Economía Global</h5>
+                                <p>Minijuegos y rankings.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/levels" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="trending-up"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Niveles & XP</h5>
+                                <p>Rangos personalizados.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/moderation" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="shield-check"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Moderación</h5>
+                                <p>Seguridad para tu chat.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/serverconfig" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="settings"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Configuración</h5>
+                                <p>Personalización total.</p>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">Recursos <i data-lucide="chevron-down"></i></a>
+                    <div class="dropdown">
+                        <a href="/docs" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="book-open"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Comandos</h5>
+                                <p>Documentación completa.</p>
+                            </div>
+                        </a>
+                        <a href="https://discord.gg/fwNeZsGkSj" target="_blank" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="help-circle"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Soporte</h5>
+                                <p>Servidor oficial de ayuda.</p>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                {% if session.get('user') %}
+                <li class="nav-item">
+                    <a href="/dashboard" class="nav-link">
+                        <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png" style="width:24px; border-radius:50%;" alt="Avatar">
+                        Dashboard
+                    </a>
+                </li>
+                <li><a href="https://discord.com/api/oauth2/authorize?client_id=1389616993098924164&permissions=8&scope=bot%20applications.commands" class="btn btn-p" target="_blank">Invitar Bot</a></li>
+                {% else %}
+                <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
+                {% endif %}
+                <li>
+                    <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
+                        <i data-lucide="moon" id="theme-icon"></i>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="module-hero">
+        <div class="container">
+            <h1>Configuración <span>Total</span></h1>
+            <p>Personaliza cada aspecto de Umapyoi para que se adapte perfectamente a tu comunidad. Bienvenidas, despedidas, roles automáticos y más.</p>
+            <div class="hero-actions">
+                <a href="/login" class="btn btn-p">Personalización Avanzada</a>
+                <a href="/docs#serverconfig" class="btn btn-ghost">Ver Ayuda</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="module-features">
+            <div class="feature-card glass" data-reveal>
+                <div class="feature-icon"><i data-lucide="image"></i></div>
+                <h3>Bienvenidas/Despedidas</h3>
+                <p>Tarjetas visuales hermosas con banner personalizado para recibir a tus nuevos miembros.</p>
+            </div>
+            <div class="feature-card glass" data-reveal>
+                <div class="feature-icon"><i data-lucide="user-plus"></i></div>
+                <h3>Auto-Roles</h3>
+                <p>Asignación automática de roles al entrar o mediante reacciones en mensajes específicos.</p>
+            </div>
+            <div class="feature-card glass" data-reveal>
+                <div class="feature-icon"><i data-lucide="message-square"></i></div>
+                <h3>Salas Temporales</h3>
+                <p>Sistema dinámico de canales de voz que se crean y eliminan automáticamente (Voz 2.0).</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                &copy; 2026 Umapyoi Bot. Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+
+        function updateThemeIcon(theme) {
+            themeIcon.setAttribute('data-lucide', theme === 'light' ? 'moon' : 'sun');
+            lucide.createIcons();
+        }
+
+        // Navbar & Mobile Menu
+        const menuToggle = document.getElementById('menu-toggle');
+        const navLinks = document.getElementById('nav-links');
+        
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('revealed');
+            });
+        });
+        document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>

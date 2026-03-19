@@ -37,6 +37,19 @@ class ModerationCog(commands.Cog, name="Moderación"):
     """Comandos para mantener el orden y la seguridad en el servidor."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    async def cog_check(self, ctx: commands.Context):
+        """Check global para este Cog."""
+        if not ctx.guild: return True
+        settings = await db.get_cached_server_settings(ctx.guild.id) # Corrected from member.guild.id to ctx.guild.id
+        if not settings or not settings.get('mod_enabled', 1):
+            await ctx.send("❌ El módulo de **Moderación** está desactivado. Un administrador debe habilitarlo en el dashboard.", ephemeral=True)
+            return False
+        
+        # The original instruction had a check for log_channel_id here, but it was logically incorrect
+        # for a cog_check that is supposed to check if the moderation module is enabled.
+        # Reverting to the original logic for mod_enabled check.
+        return True
     
     # --- LISTENERS PARA LOGS DE MENSAJES (NUEVO DISEÑO) ---
 
@@ -46,18 +59,19 @@ class ModerationCog(commands.Cog, name="Moderación"):
         if before.author.bot or not before.guild or before.content == after.content:
             return
 
-        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (before.guild.id,))
-        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+        settings = await db.get_cached_server_settings(before.guild.id)
+        if not settings or not settings.get('mod_enabled', 1): return
+        
+        if not (log_channel_id := settings.get('log_channel_id')):
             return
         
         log_channel = self.bot.get_channel(log_channel_id)
-        if not log_channel:
-            return
+        if not log_channel: return
 
         embed = discord.Embed(
-            title="Mensaje Editado",
-            url=after.jump_url, # Enlace para saltar al mensaje
-            color=0x3498DB, # Azul Celeste
+            title="📝 Mensaje Editado",
+            url=after.jump_url,
+            color=self.bot.CREAM_COLOR,
             timestamp=datetime.datetime.now()
         )
         embed.set_author(name=f"{after.author.display_name}", icon_url=after.author.display_avatar.url)
@@ -80,8 +94,10 @@ class ModerationCog(commands.Cog, name="Moderación"):
         if message.author.bot or not message.guild:
             return
 
-        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (message.guild.id,))
-        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+        log_settings = await db.get_cached_server_settings(message.guild.id)
+        if not log_settings or not log_settings.get('mod_enabled', 1): return
+        
+        if not (log_channel_id := log_settings.get('log_channel_id')):
             return
 
         log_channel = self.bot.get_channel(log_channel_id)
@@ -130,7 +146,8 @@ class ModerationCog(commands.Cog, name="Moderación"):
         if message.author.bot or not message.guild:
             return
 
-        settings = await db.fetchone("SELECT automod_banned_words, log_channel_id FROM server_settings WHERE guild_id = ?", (message.guild.id,))
+        settings = await db.get_cached_server_settings(message.guild.id)
+        if not settings or not settings.get('mod_enabled', 1): return
         
         if settings and settings.get('automod_banned_words'):
             banned_words = [word for word in settings['automod_banned_words'].lower().split(',') if word]
@@ -141,7 +158,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
                     if log_channel_id := settings.get('log_channel_id'):
                         if log_channel := self.bot.get_channel(log_channel_id):
                             embed = discord.Embed(
-                                color=0x992D22, # Rojo Oscuro
+                                color=self.bot.CREAM_COLOR,
                                 timestamp=datetime.datetime.now(),
                                 description=f"📛 **Mensaje de {message.author.mention} eliminado por Automod en {message.channel.mention}**"
                             )
@@ -156,6 +173,298 @@ class ModerationCog(commands.Cog, name="Moderación"):
                     print(f"Error en automod on_message: {e}")
                 return # Detener procesamiento
 
+    # --- NUEVOS LISTENERS DE AUDITORÍA AVANZADA ---
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        """Log de entrada de nuevos miembros con análisis de antigüedad."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (member.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel:
+            return
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        account_age = now - member.created_at
+        is_new = account_age.days < 7
+
+        embed = discord.Embed(
+            title="📥 Nuevo Miembro",
+            color=self.bot.CREAM_COLOR,
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.add_field(name="Usuario", value=f"{member.mention} (`{member.id}`)", inline=False)
+        
+        age_str = f"{account_age.days} días" if account_age.days > 0 else "Hoy mismo"
+        warn_prefix = "⚠️ **CUENTA MUY RECIENTE** ⚠️\n" if is_new else ""
+        embed.add_field(name="Antigüedad de la Cuenta", value=f"{warn_prefix}Creada hace: {age_str} ({member.created_at.strftime('%d/%m/%Y')})", inline=False)
+        embed.set_footer(text=f"Total de miembros: {member.guild.member_count}")
+
+        try:
+            await log_channel.send(embed=embed)
+        except:
+            pass
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member):
+        """Log de salida de miembros con historial de roles."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (member.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel:
+            return
+
+        roles = [role.mention for role in member.roles if role != member.guild.default_role]
+        roles_str = ", ".join(roles) if roles else "Ninguno"
+
+        embed = discord.Embed(
+            title="📤 Miembro ha salido",
+            color=discord.Color.red(),
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.add_field(name="Usuario", value=f"{member} (`{member.id}`)", inline=False)
+        
+        if member.joined_at:
+            duration = datetime.datetime.now(datetime.timezone.utc) - member.joined_at
+            days = duration.days
+            embed.add_field(name="Tiempo en el servidor", value=f"{days} días" if days > 0 else "Menos de un día", inline=True)
+        
+        embed.add_field(name="Roles que tenía", value=roles_str, inline=False)
+        embed.set_footer(text=f"Total de miembros: {member.guild.member_count}")
+
+        try:
+            await log_channel.send(embed=embed)
+        except:
+            pass
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """Log de actividad en canales de voz."""
+        if member.bot: return
+        if before.channel == after.channel: return
+
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (member.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        embed = discord.Embed(timestamp=datetime.datetime.now())
+        embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
+
+        if not before.channel:
+            embed.title = "🔊 Conexión a Voz"
+            embed.color = discord.Color.green()
+            embed.description = f"**{member.mention} se unió a {after.channel.mention}**"
+        elif not after.channel:
+            embed.title = "🔇 Desconexión de Voz"
+            embed.color = discord.Color.red()
+            embed.description = f"**{member.mention} salió de {before.channel.mention}**"
+        else:
+            embed.title = "🔄 Cambio de Canal de Voz"
+            embed.color = 0xF1C40F # Amarillo/Dorado
+            embed.description = f"**{member.mention} se movió:**\nDe {before.channel.mention} a {after.channel.mention}"
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        """Log de creación de canales."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (channel.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        tipo = "Texto" if isinstance(channel, discord.TextChannel) else "Voz" if isinstance(channel, discord.VoiceChannel) else "Categoría"
+        
+        embed = discord.Embed(
+            title=f"🆕 Canal de {tipo} Creado",
+            color=discord.Color.green(),
+            description=f"Se ha creado el canal {channel.mention}",
+            timestamp=datetime.datetime.now()
+        )
+        embed.add_field(name="Nombre", value=channel.name)
+        if hasattr(channel, 'category') and channel.category:
+            embed.add_field(name="Categoría", value=channel.category.name)
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        """Log de eliminación de canales."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (channel.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        tipo = "Texto" if isinstance(channel, discord.TextChannel) else "Voz" if isinstance(channel, discord.VoiceChannel) else "Categoría"
+        
+        embed = discord.Embed(
+            title=f"🗑️ Canal de {tipo} Eliminado",
+            color=discord.Color.red(),
+            description=f"Se ha eliminado el canal **#{channel.name}**",
+            timestamp=datetime.datetime.now()
+        )
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
+        """Log de actualizaciones de canales (nombre, tópico)."""
+        if before.name == after.name and (not isinstance(before, discord.TextChannel) or before.topic == after.topic):
+            return
+
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (before.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        embed = discord.Embed(
+            title="⚙️ Canal Actualizado",
+            color=0xF39C12, # Naranja
+            description=f"Se han realizado cambios en {after.mention}",
+            timestamp=datetime.datetime.now()
+        )
+
+        if before.name != after.name:
+            embed.add_field(name="Nombre cambiado", value=f"Antes: `{before.name}`\nDespués: `{after.name}`", inline=False)
+        
+        if isinstance(before, discord.TextChannel) and before.topic != after.topic:
+            embed.add_field(name="Tópico cambiado", value=f"Antes: `{before.topic or 'Ninguno'}`\nDespués: `{after.topic or 'Ninguno'}`", inline=False)
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role: discord.Role):
+        """Log de creación de roles."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (role.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        embed = discord.Embed(
+            title="🆕 Rol Creado",
+            color=discord.Color.green(),
+            description=f"Se ha creado el rol {role.mention}",
+            timestamp=datetime.datetime.now()
+        )
+        embed.add_field(name="Nombre", value=role.name)
+        embed.add_field(name="Color", value=str(role.color))
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        """Log de eliminación de roles."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (role.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        embed = discord.Embed(
+            title="🗑️ Rol Eliminado",
+            color=discord.Color.red(),
+            description=f"Se ha eliminado el rol **{role.name}**",
+            timestamp=datetime.datetime.now()
+        )
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
+        """Log de cambios en roles (nombre, color)."""
+        if before.name == after.name and before.color == after.color:
+            return
+
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (before.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        embed = discord.Embed(
+            title="⚙️ Rol Actualizado",
+            color=0x34495E, # Gris Oscuro
+            description=f"Cambios en el rol {after.mention}",
+            timestamp=datetime.datetime.now()
+        )
+
+        if before.name != after.name:
+            embed.add_field(name="Nombre cambiado", value=f"Antes: `{before.name}`\nDespués: `{after.name}`", inline=False)
+        
+        if before.color != after.color:
+            embed.add_field(name="Color cambiado", value=f"Antes: `{before.color}`\nDespués: `{after.color}`", inline=False)
+
+        try: await log_channel.send(embed=embed)
+        except: pass
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        """Log de cambios en miembros (apodos, roles)."""
+        log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (before.guild.id,))
+        if not (log_settings and (log_channel_id := log_settings.get('log_channel_id'))):
+            return
+        
+        log_channel = self.bot.get_channel(log_channel_id)
+        if not log_channel: return
+
+        embed = discord.Embed(timestamp=datetime.datetime.now())
+        embed.set_author(name=after.display_name, icon_url=after.display_avatar.url)
+
+        # 1. Cambio de Apodo
+        if before.nick != after.nick:
+            embed.title = "📝 Apodo Cambiado"
+            embed.color = 0x9B59B6 # Púrpura
+            embed.description = f"**{after.mention} ha cambiado su apodo**"
+            embed.add_field(name="Antes", value=f"`{before.nick or before.name}`")
+            embed.add_field(name="Después", value=f"`{after.nick or after.name}`")
+            try: await log_channel.send(embed=embed)
+            except: pass
+
+        # 2. Cambio de Roles
+        if before.roles != after.roles:
+            added_roles = [role for role in after.roles if role not in before.roles]
+            removed_roles = [role for role in before.roles if role not in after.roles]
+
+            if added_roles or removed_roles:
+                embed = discord.Embed(title="🎭 Roles Actualizados", timestamp=datetime.datetime.now())
+                embed.set_author(name=after.display_name, icon_url=after.display_avatar.url)
+                embed.color = 0x1ABC9C # Turquesa
+                
+                desc = f"**Cambios en los roles de {after.mention}:**\n"
+                if added_roles:
+                    desc += f"➕ **Añadidos:** {', '.join([r.mention for r in added_roles])}\n"
+                if removed_roles:
+                    desc += f"➖ **Quitados:** {', '.join([r.mention for r in removed_roles])}"
+                
+                embed.description = desc
+                try: await log_channel.send(embed=embed)
+                except: pass
+
     # --- FUNCIÓN AUXILIAR PARA LOGS DE COMANDOS ---
     async def _log_command_action(self, ctx: commands.Context, action: str, member: discord.Member | discord.User, reason: str, **kwargs):
         """Función auxiliar para enviar logs de acciones de moderación por comandos."""
@@ -167,7 +476,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         if not log_channel:
             return
 
-        embed = discord.Embed(title=f"🚨 Acción de Moderación: {action}", color=discord.Color.red(), timestamp=datetime.datetime.now())
+        embed = discord.Embed(title=f"🚨 Acción de Moderación: {action}", color=self.bot.CREAM_COLOR, timestamp=datetime.datetime.now())
         embed.set_author(name=f"{ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
         embed.add_field(name="Usuario Afectado", value=f"{member.mention} (`{member.id}`)", inline=False)
         embed.add_field(name="Razón", value=reason, inline=False)
@@ -193,12 +502,17 @@ class ModerationCog(commands.Cog, name="Moderación"):
         await ctx.defer(ephemeral=True)
         deleted = await ctx.channel.purge(limit=cantidad)
         await self._log_command_action(ctx, "Clear", ctx.author, "Borrado masivo de mensajes.", channel=ctx.channel, count=len(deleted))
-        await ctx.send(f"✅ Se han borrado **{len(deleted)}** mensajes.", ephemeral=True)
+        
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="🧹 Limpieza Completa", icon_url=ctx.author.display_avatar.url)
+        embed.description = f"Se han eliminado **{len(deleted)}** mensajes exitosamente."
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="kick", description="Expulsa a un miembro del servidor.")
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx: commands.Context, miembro: discord.Member, *, razon: str = "No se especificó una razón."):
+        await ctx.defer(ephemeral=True)
         if miembro.id == self.bot.user.id:
             return await ctx.send("🥕 No puedo expulsarme a mí misma.", ephemeral=True)
         if miembro.id == ctx.author.id:
@@ -209,12 +523,17 @@ class ModerationCog(commands.Cog, name="Moderación"):
         await miembro.kick(reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Kick", razon)
         await self._log_command_action(ctx, "Kick", miembro, razon)
-        await ctx.send(f"✅ **{miembro.display_name}** ha sido expulsado.", ephemeral=True)
+        
+        embed = discord.Embed(color=discord.Color.orange())
+        embed.set_author(name="👢 Usuario Expulsado", icon_url=miembro.display_avatar.url)
+        embed.description = f"**{miembro.display_name}** ha sido expulsado del servidor.\n**Razón:** {razon}"
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="ban", description="Banea a un miembro del servidor.")
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx: commands.Context, miembro: discord.Member, *, razon: str = "No se especificó una razón."):
+        await ctx.defer(ephemeral=True)
         if miembro.id == self.bot.user.id:
             return await ctx.send("🥕 No puedo banearme a mí misma.", ephemeral=True)
         if miembro.id == ctx.author.id:
@@ -225,12 +544,17 @@ class ModerationCog(commands.Cog, name="Moderación"):
         await miembro.ban(reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Ban", razon)
         await self._log_command_action(ctx, "Ban", miembro, razon)
-        await ctx.send(f"✅ **{miembro.display_name}** ha sido baneado.", ephemeral=True)
+        
+        embed = discord.Embed(color=discord.Color.red())
+        embed.set_author(name="🔨 Usuario Baneado", icon_url=miembro.display_avatar.url)
+        embed.description = f"**{miembro.display_name}** ha sido baneado permanentemente.\n**Razón:** {razon}"
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="unban", description="Desbanea a un usuario del servidor.")
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx: commands.Context, usuario_id: str, *, razon: str = "No se especificó una razón."):
+        await ctx.defer(ephemeral=True)
         try:
             user = await self.bot.fetch_user(int(usuario_id))
         except (ValueError, discord.NotFound):
@@ -248,6 +572,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(moderate_members=True)
     @commands.bot_has_permissions(moderate_members=True)
     async def timeout(self, ctx: commands.Context, miembro: discord.Member, duracion: str, *, razon: str = "No se especificó una razón."):
+        await ctx.defer(ephemeral=True)
         if miembro.id == self.bot.user.id:
             return await ctx.send("🥕 No puedes silenciarme.", ephemeral=True)
         if miembro.id == ctx.author.id:
@@ -262,7 +587,11 @@ class ModerationCog(commands.Cog, name="Moderación"):
         await miembro.timeout(delta, reason=f"{razon} (Moderador: {ctx.author.name})")
         await db.add_mod_log(ctx.guild.id, miembro.id, ctx.author.id, "Timeout", razon, duracion)
         await self._log_command_action(ctx, "Timeout", miembro, razon, duration=duracion)
-        await ctx.send(f"✅ **{miembro.display_name}** ha sido silenciado por **{duracion}**.", ephemeral=True)
+        
+        embed = discord.Embed(color=discord.Color.gold())
+        embed.set_author(name="⏳ Usuario Silenciado", icon_url=miembro.display_avatar.url)
+        embed.description = f"**{miembro.display_name}** ha sido silenciado por **{duracion}**.\n**Razón:** {razon}"
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="unmute", description="Quita el silencio a un miembro.")
     @commands.has_permissions(moderate_members=True)
@@ -292,7 +621,11 @@ class ModerationCog(commands.Cog, name="Moderación"):
             await miembro.send(f"Has recibido una advertencia en **{ctx.guild.name}** por: {razon}")
         except discord.Forbidden:
             pass
-        await ctx.send(f"⚠️ **{miembro.display_name}** ha sido advertido.", ephemeral=True)
+            
+        embed = discord.Embed(color=discord.Color.yellow())
+        embed.set_author(name="⚠️ Usuario Advertido", icon_url=miembro.display_avatar.url)
+        embed.description = f"Se ha registrado una advertencia para **{miembro.display_name}**.\n**Razón:** {razon}"
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="clearwarnings", description="Borra todas las advertencias de un usuario.")
     @commands.has_permissions(manage_guild=True)
@@ -307,12 +640,17 @@ class ModerationCog(commands.Cog, name="Moderación"):
     @commands.has_permissions(manage_channels=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def lock(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        await ctx.defer(ephemeral=True)
         channel = canal or ctx.channel
         overwrite = channel.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = False
         await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Canal bloqueado por {ctx.author.name}")
         await self._log_command_action(ctx, "Lock Channel", ctx.author, f"Canal bloqueado.", channel=channel)
-        await ctx.send(f"🔒 El canal {channel.mention} ha sido bloqueado.", ephemeral=True)
+        
+        embed = discord.Embed(color=discord.Color.dark_grey())
+        embed.set_author(name="🔒 Canal Bloqueado", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+        embed.description = f"El canal {channel.mention} ha sido bloqueado exitosamente."
+        await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="unlock", description="Desbloquea el canal actual.")
     @commands.has_permissions(manage_channels=True)

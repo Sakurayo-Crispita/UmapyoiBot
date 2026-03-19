@@ -25,6 +25,10 @@ class BlackJackView(discord.ui.View):
 
     async def on_timeout(self):
         for item in self.children: item.disabled = True
+        
+        # Reembolsar la apuesta
+        await db.update_balance(self.author.guild.id, self.author.id, wallet_change=self.bet)
+        
         timeout_embed = self.create_embed()
         timeout_embed.description = "⌛ El crupier ha cerrado la mesa por inactividad. Recuperas tu apuesta."
         if self.message:
@@ -69,6 +73,15 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         self.cards = ['🇦', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🇯', '🇶', '🇰']
         self.card_values = {'🇦': 11, '2️⃣': 2, '3️⃣': 3, '4️⃣': 4, '5️⃣': 5, '6️⃣': 6, '7️⃣': 7, '8️⃣': 8, '9️⃣': 9, '🔟': 10, '🇯': 10, '🇶': 10, '🇰': 10}
 
+    async def cog_check(self, ctx: commands.Context):
+        """Check global para este Cog."""
+        if not ctx.guild: return True
+        settings = await db.get_cached_server_settings(ctx.guild.id)
+        if settings and not settings.get('gamble_enabled', 1):
+            await ctx.send("❌ El módulo de **Juegos de Azar** está desactivado. Un administrador debe habilitarlo en el dashboard.", ephemeral=True)
+            return False
+        return True
+
     async def can_gamble(self, ctx: commands.Context) -> bool:
         """Verifica si el usuario puede apostar en este canal."""
         active_channels_rows = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))
@@ -112,17 +125,19 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         
         if player_score > 21:
             result_message = f"Te pasaste de 21. ¡Perdiste tus **{view.bet:,} {emoji}**!"
-            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=-view.bet)
+            # No hay cambio, ya se cobró al inicio
         elif dealer_score > 21 or player_score > dealer_score:
-            ganancia = view.bet # Gana el 100% de lo apostado (devuelve apuesta + ganancia)
-            result_message = f"¡Le has ganado al Crupier! ¡Ganas **{ganancia:,} {emoji}** netos!"
-            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=view.bet)
+            ganancia_neta = view.bet 
+            result_message = f"¡Le has ganado al Crupier! ¡Ganas **{ganancia_neta:,} {emoji}** netos!"
+            # Se le devuelve la apuesta + la ganancia neta
+            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=view.bet + ganancia_neta)
         elif player_score < dealer_score:
             result_message = f"El Crupier gana. ¡Perdiste tus **{view.bet:,} {emoji}**!"
-            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=-view.bet)
+            # Ya se cobró al inicio
         else:
             result_message = "Mismo puntaje, ha sido un Empate (Push). Se te devuelve tu dinero."
-            # Al ser un empate, no debitamos ni sumamos en el balance real.
+            # Se le devuelve la apuesta íntegra
+            await db.update_balance(interaction.guild.id, interaction.user.id, wallet_change=view.bet)
 
         final_embed = view.create_embed(show_dealer_card=True)
         final_embed.description = result_message
@@ -148,11 +163,13 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         await db.execute("DELETE FROM gambling_active_channels WHERE guild_id = ? AND channel_id = ?", (ctx.guild.id, canal.id))
         await ctx.send(f"❌ Se ha clausurado el casino de {canal.mention}.", ephemeral=True)
 
-    @commands.hybrid_command(name='blackjack', description="Echa una partida de cartas contra la casa.")
+    @commands.hybrid_command(name='blackjack', aliases=['bj'], description="Juega al blackjack contra la casa.")
     async def blackjack(self, ctx: commands.Context, apuesta: int):
+        if not ctx.guild: return
+        await ctx.defer()
         if not await self.can_gamble(ctx): return
 
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
 
         if apuesta <= 0: return await ctx.send("❌ Apuesta algo más que aire vacío.", ephemeral=True)
@@ -161,16 +178,20 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         if wallet < apuesta: return await ctx.send(f"❌ Efectivo insuficiente en la cartera. (Tienes **{wallet:,} {emoji}**)", ephemeral=True)
 
+        # Cobro inmediato para evitar exploits
+        await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-apuesta)
+
         view = BlackJackView(self, ctx, apuesta)
         msg = await ctx.send(embed=view.create_embed(), view=view)
         view.message = msg
 
-    @commands.hybrid_command(name='tragamonedas', aliases=['slots'], description="Apuesta la cartera en la máquina de la suerte.")
+    @commands.hybrid_command(name='slots', aliases=['tragamonedas'], description="Prueba suerte en la máquina tragamonedas.")
     async def slots(self, ctx: commands.Context, apuesta: int):
-        if not await self.can_gamble(ctx): return
+        if not ctx.guild: return
         await ctx.defer()
+        if not await self.can_gamble(ctx): return
         
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
 
         if apuesta <= 0: return await ctx.send("❌ Inserta al menos 1 moneda.", ephemeral=True)
@@ -183,11 +204,6 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         emojis = ["🍒", "🔔", "🍋", "⭐", "💎", "🍀", "🍇", "💩"]
         
         reels = [random.choice(emojis) for _ in range(3)]
-        
-        # Micro-trampa para aumentar las ganancias de la máquina (House Edge)
-        hack = random.randint(1, 100)
-        if hack <= 10 and reels[0] == reels[1] == reels[2]:
-            reels[2] = random.choice(emojis) # Rompemos el jackpot de forma sigilosa
             
         result_text = f"**[ {reels[0]}  |  {reels[1]}  |  {reels[2]} ]**"
 
@@ -202,31 +218,38 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
             result_text += f"\n\n¡Casi! Tienes dos iguales y ganas **{winnings:,} {emoji}**."
         else:
             winnings = 0
-            result_text += "\n\n¡Mala suerte, tira otra vez! Perdiste tu apuesta de **{apuesta:,}**."
+            result_text += f"\n\n¡Mala suerte, tira otra vez! Perdiste tu apuesta de **{apuesta:,} {emoji}**."
         
         # Cálculo de dinero
         net_change = winnings - apuesta
         new_wallet, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=net_change)
 
-        embed = discord.Embed(title="🎰 Tragamonedas Intergaláctica 🎰", description=result_text, color=self.bot.CREAM_COLOR)
-        embed.set_footer(text=f"Tu nueva cartera: {new_wallet:,} {emoji}")
+        # --- NUEVO DISEÑO PREMIUM ---
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="🎰 Tragamonedas Intergaláctica", icon_url=ctx.author.display_avatar.url)
+        embed.description = f"{result_text}\n\n**Nueva Cartera:** {new_wallet:,} {emoji}"
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='coinflip', aliases=['cf'], description="Apuesta al todo o nada lanzando una moneda al aire.")
     async def coinflip(self, ctx: commands.Context, apuesta: int, cara_o_cruz: str):
+        if not ctx.guild: return
+        await ctx.defer()
         if not await self.can_gamble(ctx): return
         
         choice = cara_o_cruz.lower()
         if choice not in ['cara', 'cruz', 'heads', 'tails']:
             return await ctx.send("❌ Debes elegir verbalmente `cara` o `cruz`.", ephemeral=True)
             
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji_currency = settings.get('currency_emoji', '🪙')
 
         if apuesta <= 0: return await ctx.send("❌ Apostar sentimientos no es válido aquí.", ephemeral=True)
 
         wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
         if wallet < apuesta: return await ctx.send(f"❌ Efectivo insuficiente en tu cartera. (Tienes **{wallet:,} {emoji_currency}**)", ephemeral=True)
+
+        # Cobro inmediato
+        await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-apuesta)
 
         # Convertir a texto estandarizado
         if choice == 'heads': choice = 'cara'
@@ -238,28 +261,32 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         
         # Calculamos si ganó o perdió
         if choice == result:
-            ganancia = apuesta
-            new_wallet, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=ganancia)
-            desc = f"La moneda voló y cayó en **{result.upper()}**.\n\n🎉 ¡Has acertado con precisión milimétrica! Te llevas tu ganancia de **{ganancia:,} {emoji_currency}**."
-            color = discord.Color.green()
+            ganancia_neta = apuesta
+            # Se devuelve apuesta + ganancia neta
+            new_wallet, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=apuesta + ganancia_neta)
+            desc = f"La moneda voló y cayó en **{result.upper()}**.\n\n🎉 ¡Has acertado con precisión milimétrica! Te llevas tu ganancia de **{ganancia_neta:,} {emoji_currency}**."
         else:
-            new_wallet, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-apuesta)
+            new_wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
             desc = f"La moneda dio volteretas y cayó en **{result.upper()}**.\n\n❌ Has fallado la predicción. Perdiste dramáticamente tu apuesta de **{apuesta:,} {emoji_currency}**."
-            color = discord.Color.red()
-            
-        embed = discord.Embed(title="Lanzamiento de Moneda", description=desc, color=color)
-        embed.set_thumbnail(url="https://tenor.com/es/view/panic-ahhhhh-scream-anime-gif-2513962606784638167") # Un gif genérico de una moneda
-        embed.set_footer(text=f"Cartera Remanente: {new_wallet:,}")
-        await ctx.send(embed=embed)
+        
+        # --- NUEVO DISEÑO PREMIUM ---
+        file = discord.File("gif-image/panic.gif", filename="panic.gif")
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="🪙 Lanzamiento de Moneda", icon_url=ctx.author.display_avatar.url)
+        embed.description = f"{desc}\n\n**Nueva Cartera:** {new_wallet:,} {emoji_currency}"
+        embed.set_thumbnail(url="attachment://panic.gif")
+        await ctx.send(embed=embed, file=file)
 
-    @commands.hybrid_command(name='horse_race', aliases=['carrera'], description="Apuesta en una carrera de caballos interactiva.")
+    @commands.hybrid_command(name='horse_race', aliases=['carrera'], description="Apuesta por un caballo en la competencia profesional de la Umamusume.")
     async def horse_race(self, ctx: commands.Context, apuesta: int, caballo: int):
+        if not ctx.guild: return
+        await ctx.defer()
         if not await self.can_gamble(ctx): return
         
         if caballo not in [1, 2, 3, 4]:
             return await ctx.send("❌ Elige un caballo válido: 1, 2, 3 o 4.", ephemeral=True)
             
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji_currency = settings.get('currency_emoji', '🪙')
 
         if apuesta <= 0: return await ctx.send("❌ Apostar sentimientos no es válido aquí.", ephemeral=True)
@@ -312,17 +339,19 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
             ganancia_total = int(apuesta * 3.5) # Devuelve su apuesta + ganancia (2.5x netos)
             new_wallet, _ = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=ganancia_total)
             embed.description += f"\n\n🎉 ¡Tu caballo finalizó en **primer lugar**! Ganaste **{ganancia_total:,} {emoji_currency}**."
-            embed.color = discord.Color.green()
         else:
             new_wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
             embed.description += f"\n\n❌ El caballo **{ganador}** cruzó la meta primero. Perdiste tu apuesta de **{apuesta:,} {emoji_currency}**."
-            embed.color = discord.Color.red()
+        
+        embed.color = self.bot.CREAM_COLOR
             
         embed.set_footer(text=f"Cartera Remanente: {new_wallet:,} {emoji_currency}")
         await msg.edit(embed=embed)
 
-    @commands.hybrid_command(name='roulette', aliases=['ruleta'], description="Gira la ruleta clásica. Elige rojo, negro, verde o un número (0-36).")
+    @commands.hybrid_command(name='roulette', aliases=['ruleta'], description="Gira la ruleta y apuesta por un color o número.")
     async def roulette(self, ctx: commands.Context, apuesta: int, eleccion: str):
+        if not ctx.guild: return
+        await ctx.defer()
         if not await self.can_gamble(ctx): return
         
         eleccion = eleccion.lower()
@@ -330,7 +359,7 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
         if eleccion not in opciones_validas:
             return await ctx.send("❌ Elige: `rojo`, `negro`, `verde`, o un número del `0` al `36`.", ephemeral=True)
             
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji_currency = settings.get('currency_emoji', '🪙')
 
         if apuesta <= 0: return await ctx.send("❌ Apuesta algo de verdad.", ephemeral=True)
@@ -362,15 +391,19 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
             desc = f"La bola gira y cae en... **{num} {color.upper()} {emoji_bola}**\n\n❌ Apostaste a **{eleccion}**, pierdes tus **{apuesta:,} {emoji_currency}**."
             color_embed = discord.Color.red()
             
-        embed = discord.Embed(title="🎡 Ruleta de Casino", description=desc, color=color_embed)
-        embed.set_footer(text=f"Cartera: {new_wallet:,} {emoji_currency} | House Edge Activo")
+        # --- NUEVO DISEÑO PREMIUM ---
+        embed = discord.Embed(color=color_embed)
+        embed.set_author(name="🎡 Ruleta de Casino", icon_url=ctx.author.display_avatar.url)
+        embed.description = f"{desc}\n\n**Nueva Cartera:** {new_wallet:,} {emoji_currency}"
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='russian_roulette', aliases=['ruleta_rusa'], description="Alta tensión. Un revólver, una bala, 6 recámaras. Supervivencia pura.")
+    @commands.hybrid_command(name='russian_roulette', aliases=['ruleta_rusa'], description="Un juego mortal por dinero. 1 de 6.")
     async def russian_roulette(self, ctx: commands.Context, apuesta: int):
+        if not ctx.guild: return
+        await ctx.defer()
         if not await self.can_gamble(ctx): return
         
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
 
         if apuesta <= 0: return await ctx.send("❌ No puedes jugar gratis.", ephemeral=True)
@@ -396,9 +429,15 @@ class GamblingCog(commands.Cog, name="Juegos de Azar"):
             embed.description = f"**Click.** 💨\n\nSobreviviste. Había una recámara vacía. Te llevas tu apuesta de vuelta y además ganas un bono de supervivencia. Recibes **{ganancia_total:,} {emoji}**."
             embed.color = discord.Color.green()
             
-        embed.set_thumbnail(url="https://tenor.com/es/view/yukino-angelica-shoot-shooting-gun-gif-1454556699999467861" if not muerto else "https://tenor.com/es/view/yumeko-kakegurui-poker-baralho-gif-22742248")
-        embed.set_footer(text=f"Cartera Remanente: {new_wallet:,} {emoji}")
-        await msg.edit(embed=embed)
+        # --- NUEVO DISEÑO PREMIUM ---
+        file_name = "buena.gif" if not muerto else "bang.gif"
+        file = discord.File(f"gif-image/{file_name}", filename=file_name)
+        
+        embed.set_author(name="🔫 Ruleta Rusa", icon_url=ctx.author.display_avatar.url)
+        embed.set_thumbnail(url=f"attachment://{file_name}")
+        embed.description = f"{embed.description}\n\n**Nueva Cartera:** {new_wallet:,} {emoji}"
+        
+        await msg.edit(embed=embed, attachments=[file])
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(GamblingCog(bot))

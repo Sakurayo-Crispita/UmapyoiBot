@@ -7,10 +7,20 @@ import random
 import lyricsgenius
 from enum import Enum
 import re
+import os
+from utils import constants
+from utils import database_manager as db
 
 # --- CLASES AUXILIARES DE MÚSICA ---
 class LoopState(Enum):
     OFF = 0; SONG = 1; QUEUE = 2
+
+def format_duration(seconds: int) -> str:
+    """Invierte segundos a un formato amigable (ej: 4m 20s)."""
+    if not seconds: return "Desconocido"
+    if seconds >= 3600:
+        return f"{seconds // 3600}h {(seconds % 3600) // 60}m {seconds % 60}s"
+    return f"{seconds // 60}m {seconds % 60}s"
 
 class GuildState:
     def __init__(self, guild_id: int):
@@ -36,59 +46,82 @@ class MusicPanelView(discord.ui.View):
 
     def _update_button_styles(self, interaction: discord.Interaction):
         state = self.music_cog.get_guild_state(interaction.guild.id)
-        loop_button: discord.ui.Button = discord.utils.get(self.children, custom_id='loop_button')
+        
+        # Actualizar botón de Bucle
+        loop_button = discord.utils.get(self.children, custom_id='loop_button')
         if loop_button:
-            if state.loop_state == LoopState.OFF: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.secondary, "Loop", "🔁"
-            elif state.loop_state == LoopState.SONG: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Song", "🔂"
-            else: loop_button.style, loop_button.label, loop_button.emoji = discord.ButtonStyle.success, "Loop Queue", "🔁"
-        autoplay_button: discord.ui.Button = discord.utils.get(self.children, custom_id='autoplay_button')
-        if autoplay_button: autoplay_button.style = discord.ButtonStyle.success if state.autoplay else discord.ButtonStyle.secondary
-        pause_button: discord.ui.Button = discord.utils.get(self.children, custom_id='pause_resume_button')
+            if state.loop_state == LoopState.OFF:
+                loop_button.style, loop_button.emoji = discord.ButtonStyle.secondary, "🔁"
+            elif state.loop_state == LoopState.SONG:
+                loop_button.style, loop_button.emoji = discord.ButtonStyle.success, "🔂"
+            else:
+                loop_button.style, loop_button.emoji = discord.ButtonStyle.success, "🔁"
+        
+        # Actualizar botón de Autoplay
+        autoplay_button = discord.utils.get(self.children, custom_id='autoplay_button')
+        if autoplay_button:
+            autoplay_button.style = discord.ButtonStyle.success if state.autoplay else discord.ButtonStyle.secondary
+        
+        # Actualizar botón de Pausa/Reanudar
+        pause_button = discord.utils.get(self.children, custom_id='pause_resume_button')
         if pause_button and interaction.guild.voice_client:
-            if interaction.guild.voice_client.is_paused(): pause_button.label, pause_button.emoji = "Reanudar", "▶️"
-            else: pause_button.label, pause_button.emoji = "Pausa", "⏸️"
+            if interaction.guild.voice_client.is_paused():
+                pause_button.emoji, pause_button.style = "▶️", discord.ButtonStyle.success
+            else:
+                pause_button.emoji, pause_button.style = "⏸️", discord.ButtonStyle.secondary
 
     async def _execute_command(self, interaction: discord.Interaction, command_name: str):
         command = self.music_cog.bot.get_command(command_name)
-        if not command: return await interaction.response.send_message("Error interno.", ephemeral=True, delete_after=5)
+        if not command: return await interaction.response.send_message(" Error interno.", ephemeral=True, delete_after=5)
         ctx = await self.music_cog.bot.get_context(interaction.message)
         ctx.author = interaction.user; ctx.interaction = interaction
         await command.callback(self.music_cog, ctx)
 
-    @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary, emoji="⏪", row=0, custom_id="previous_button")
+    # FILA 0: CONTROLES DE REPRODUCCIÓN
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⏮️", row=0, custom_id="previous_button")
     async def previous_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'previous')
-    @discord.ui.button(label="Pausa", style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
+    
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
     async def pause_resume_button(self, i: discord.Interaction, b: discord.ui.Button):
         vc = i.guild.voice_client
         if not vc or not (vc.is_playing() or vc.is_paused()): return await i.response.send_message("No hay nada para pausar o reanudar.", ephemeral=True, delete_after=10)
         if vc.is_paused(): vc.resume(); msg = "▶️ Canción reanudada."
         else: vc.pause(); msg = "⏸️ Canción pausada."
         self._update_button_styles(i); await i.response.edit_message(view=self); await i.followup.send(msg, ephemeral=True, delete_after=10)
-    @discord.ui.button(label="Saltar", style=discord.ButtonStyle.primary, emoji="⏭️", row=0, custom_id="skip_button")
+    
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⏭️", row=0, custom_id="skip_button")
     async def skip_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'skip')
-    @discord.ui.button(label="Barajar", style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
+
+    # FILA 1: MODOS Y AJUSTES
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
     async def shuffle_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'shuffle')
-    @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
+    
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
     async def loop_button(self, i: discord.Interaction, _: discord.ui.Button):
         state = self.music_cog.get_guild_state(i.guild.id)
-        if state.loop_state==LoopState.OFF: state.loop_state,msg = LoopState.SONG,'Bucle de canción activado.'
-        elif state.loop_state==LoopState.SONG: state.loop_state,msg = LoopState.QUEUE,'Bucle de cola activado.'
-        else: state.loop_state,msg = LoopState.OFF,'Bucle desactivado.'
+        if state.loop_state == LoopState.OFF: state.loop_state, msg = LoopState.SONG, 'Bucle de canción activado.'
+        elif state.loop_state == LoopState.SONG: state.loop_state, msg = LoopState.QUEUE, 'Bucle de cola activado.'
+        else: state.loop_state, msg = LoopState.OFF, 'Bucle desactivado.'
         self._update_button_styles(i); await i.response.edit_message(view=self); await i.followup.send(f"🔁 {msg}", ephemeral=True, delete_after=5)
-    @discord.ui.button(label="Autoplay", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
+    
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
     async def autoplay_button(self, i: discord.Interaction, _: discord.ui.Button):
         state = self.music_cog.get_guild_state(i.guild.id); state.autoplay = not state.autoplay
         status = "activado" if state.autoplay else "desactivado"
         self._update_button_styles(i); await i.response.edit_message(view=self); await i.followup.send(f"🔄 Autoplay **{status}**.", ephemeral=True, delete_after=5)
-    @discord.ui.button(label="Sonando", style=discord.ButtonStyle.primary, emoji="🎵", row=2, custom_id="nowplaying_button")
-    async def nowplaying_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'nowplaying')
-    @discord.ui.button(label="Cola", style=discord.ButtonStyle.primary, emoji="🎶", row=2, custom_id="queue_button")
+
+    # FILA 2: UTILIDADES
+    @discord.ui.button(label="Cola", style=discord.ButtonStyle.secondary, emoji="📜", row=2, custom_id="queue_button")
     async def queue_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'queue')
-    @discord.ui.button(label="Letra", style=discord.ButtonStyle.primary, emoji="🎤", row=2, custom_id="lyrics_button")
+    
+    @discord.ui.button(label="Letra", style=discord.ButtonStyle.secondary, emoji="🎤", row=2, custom_id="lyrics_button")
     async def lyrics_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'lyrics')
+
+    # FILA 3: GESTIÓN Y SALIDA
     @discord.ui.button(label="Detener", style=discord.ButtonStyle.danger, emoji="⏹️", row=3, custom_id="stop_button")
     async def stop_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'stop')
-    @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.danger, emoji="👋", row=3, custom_id="leave_button")
+    
+    @discord.ui.button(label="Salir", style=discord.ButtonStyle.danger, emoji="🚪", row=3, custom_id="leave_button")
     async def leave_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'leave')
 
 class MusicCog(commands.Cog, name="Música"):
@@ -100,6 +133,15 @@ class MusicCog(commands.Cog, name="Música"):
         else: self.genius = None
         self.voice_locks: dict[int, asyncio.Lock] = {}
 
+    async def cog_check(self, ctx: commands.Context):
+        """Check global para este Cog."""
+        if not ctx.guild: return True
+        settings = await db.get_cached_server_settings(ctx.guild.id)
+        if settings and not settings.get('music_enabled', 1):
+            await ctx.send("❌ El módulo de **Música** está desactivado. Un administrador debe habilitarlo en el dashboard.", ephemeral=True)
+            return False
+        return True
+
     def get_guild_state(self, guild_id: int) -> GuildState:
         if guild_id not in self.guild_states: self.guild_states[guild_id] = GuildState(guild_id)
         return self.guild_states[guild_id]
@@ -108,13 +150,48 @@ class MusicCog(commands.Cog, name="Música"):
         if guild_id not in self.voice_locks: self.voice_locks[guild_id] = asyncio.Lock()
         return self.voice_locks[guild_id]
 
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """Limpia el panel y el estado si el bot es desconectado o se queda solo."""
+        if member.id == self.bot.user.id:
+            if before.channel and not after.channel: # Bot desconectado
+                state = self.get_guild_state(member.guild.id)
+                state.queue.clear(); state.current_song = None; state.autoplay = False
+                if state.active_panel:
+                    try: await state.active_panel.delete()
+                    except: pass
+                    state.active_panel = None
+        
+        # Opcional: Desconexión si el bot se queda solo (ahorro de recursos)
+        elif before.channel and not after.channel:
+            vc = member.guild.voice_client
+            if vc and vc.channel == before.channel and len(before.channel.members) == 1: # Solo el bot
+                await asyncio.sleep(30) # Esperar un poco por si alguien vuelve
+                if len(before.channel.members) == 1:
+                    state = self.get_guild_state(member.guild.id)
+                    if state.active_panel:
+                        try: await state.active_panel.delete()
+                        except: pass
+                        state.active_panel = None
+                    await vc.disconnect()
+
     async def ensure_voice_client(self, channel: discord.VoiceChannel) -> discord.VoiceClient | None:
         async with self.get_voice_lock(channel.guild.id):
             vc = channel.guild.voice_client
             if not vc:
-                try: return await asyncio.wait_for(channel.connect(), timeout=15.0)
-                except Exception as e: print(f"Error al conectar a voz: {e}"); return None
-            if vc.channel != channel: await vc.move_to(channel)
+                try: 
+                    return await asyncio.wait_for(channel.connect(reconnect=True, timeout=20.0), timeout=25.0)
+                except asyncio.TimeoutError:
+                    print(f"⌛ Tiempo de espera agotado al conectar a voz en {channel.guild.name}")
+                    return None
+                except Exception as e: 
+                    print(f"❌ Error al conectar a voz: {e}")
+                    return None
+            if vc.channel != channel: 
+                try:
+                    await vc.move_to(channel)
+                except Exception as e:
+                    print(f"❌ Error al mover canal de voz: {e}")
             return vc
 
     async def send_response(self, ctx: commands.Context | discord.Interaction, content: str = None, embed: discord.Embed = None, ephemeral: bool = False, view: discord.ui.View = discord.utils.MISSING):
@@ -129,10 +206,22 @@ class MusicCog(commands.Cog, name="Música"):
         if state.active_panel:
             try: await state.active_panel.delete()
             except: pass
-        embed = discord.Embed(title="🎵 Reproduciendo Ahora 🎵", color=self.bot.CREAM_COLOR, description=f"**[{song.get('title', 'Título Desconocido')}]({song.get('webpage_url', '#')})**")
-        embed.add_field(name="Pedido por", value=song['requester'].mention, inline=True)
-        if duration := song.get('duration'): embed.add_field(name="Duración", value=str(datetime.timedelta(seconds=duration)), inline=True)
-        if thumbnail := song.get('thumbnail'): embed.set_thumbnail(url=thumbnail)
+        
+        embed = discord.Embed(title="✨ MESA DE MEZCLAS UMAPYOI", color=self.bot.CREAM_COLOR)
+        
+        info_song = f"🎵 **Canción:** [{song.get('title', 'Título Desconocido')}]({song.get('webpage_url', '#')})\n"
+        info_song += f"👤 **Solicitante:** {song['requester'].mention}\n"
+        info_song += f"🕒 **Duración:** `{format_duration(song.get('duration', 0))}`\n"
+        info_song += f"🎤 **Artista:** `{song.get('uploader', 'Desconocido')}`\n"
+        info_song += f"🔊 **Volumen:** `{int(state.volume * 100)}%`"
+        
+        embed.description = info_song
+        
+        if thumbnail := song.get('thumbnail'):
+            embed.set_thumbnail(url=thumbnail)
+            
+        embed.set_footer(text="Umapyoi Music • Usa los botones para controlar", icon_url=self.bot.user.display_avatar.url)
+        
         view = MusicPanelView(self)
         try:
             if channel := ctx.channel or (ctx.interaction and ctx.interaction.channel):
@@ -195,10 +284,21 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.hybrid_command(name='join', description="Hace que el bot se una a tu canal de voz.")
     async def join(self, ctx: commands.Context):
-        if not ctx.author.voice or not ctx.author.voice.channel: return await self.send_response(ctx, "Debes estar en un canal de voz.", ephemeral=True)
+        if not ctx.author.voice or not ctx.author.voice.channel: 
+            return await self.send_response(ctx, "Debes estar en un canal de voz.", ephemeral=True)
+        
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            
         channel = ctx.author.voice.channel
-        if vc := await self.ensure_voice_client(channel): await self.send_response(ctx, f"👋 ¡Hola! Me he unido a **{channel.name}**.", ephemeral=True)
-        else: await self.send_response(ctx, "❌ No pude conectarme al canal de voz.", ephemeral=True)
+        vc = await self.ensure_voice_client(channel)
+        
+        if vc: 
+            emoji = getattr(constants, 'EMOJI_CHECK', '✅')
+            await self.send_response(ctx, f"{emoji} ¡Hola! Me he unido a **{channel.name}**.", ephemeral=True)
+        else: 
+            emoji = getattr(constants, 'EMOJI_ERROR', '❌')
+            await self.send_response(ctx, f"{emoji} No pude conectarme al canal de voz. Revisa mis permisos o intenta cambiar la región del canal.", ephemeral=True)
 
     @commands.hybrid_command(name='leave', description="Desconecta el bot del canal de voz.")
     async def leave(self, ctx: commands.Context):
@@ -210,7 +310,8 @@ class MusicCog(commands.Cog, name="Música"):
             except: pass
             state.active_panel = None
         await vc.disconnect()
-        await self.send_response(ctx, "👋 ¡Adiós! Me he desconectado.", ephemeral=True)
+        emoji = getattr(constants, 'EMOJI_LEAVE', '🚪')
+        await self.send_response(ctx, f"{emoji} ¡Adiós! Me he desconectado.", ephemeral=True)
 
     @commands.hybrid_command(name='play', aliases=['p'], description="Reproduce una canción o playlist.")
     async def play(self, ctx: commands.Context, *, search_query: str):
@@ -229,23 +330,50 @@ class MusicCog(commands.Cog, name="Música"):
             added_count = 0
             for entry in entries:
                 if entry and entry.get('url'):
-                    state.queue.append({'title': entry.get('title', 'Título desconocido'), 'url': entry.get('url'), 'webpage_url': entry.get('webpage_url'), 'thumbnail': entry.get('thumbnail'), 'duration': entry.get('duration'), 'requester': ctx.author})
+                    state.queue.append({
+                        'title': entry.get('title', 'Título desconocido'),
+                        'url': entry.get('url'),
+                        'webpage_url': entry.get('webpage_url'),
+                        'thumbnail': entry.get('thumbnail'),
+                        'duration': entry.get('duration'),
+                        'uploader': entry.get('uploader', 'Artista desconocido'),
+                        'requester': ctx.author
+                    })
                     added_count += 1
             if added_count > 0:
-                playlist_msg = "de la playlist " if len(entries) > 1 and is_url else ""
-                await msg.edit(content=f'✅ ¡Añadido{"s" if added_count > 1 else ""} {added_count} canci{"ón" if added_count == 1 else "ones"} {playlist_msg}a la cola!')
-            else: await msg.edit(content="❌ No se pudieron procesar las canciones.")
+                # --- NUEVO DISEÑO DE RESPUESTA PREMIUM ---
+                embed = discord.Embed(color=self.bot.CREAM_COLOR)
+                
+                # Buscamos el emoji personalizado en las constantes o usamos uno por defecto
+                emoji_queue = getattr(constants, 'EMOJI_QUEUE', '✅')
+                
+                if added_count == 1:
+                    song = entries[0]
+                    embed.set_author(name="Canción Añadida a la Cola #1", icon_url=ctx.author.display_avatar.url)
+                    # Formato estilizado: [Título] [Duración]
+                    duration = format_duration(song.get('duration', 0))
+                    embed.description = f"**[{song.get('title', 'Desconocido')}]({song.get('webpage_url', '#')})** `[{duration}]`"
+                else:
+                    embed.set_author(name=f"Añadidas {added_count} canciones", icon_url=ctx.author.display_avatar.url)
+                    embed.description = f"Se han añadido {added_count} pistas a la cola con éxito."
+                
+                await msg.edit(content=None, embed=embed)
+            else: 
+                await msg.edit(content="❌ No se pudieron procesar las canciones.")
+            
             if not vc.is_playing() and not state.current_song: self.play_next_song(ctx)
         except Exception as e: await msg.edit(content=f'❌ Ocurrió un error: {e}'); print(f"Error en Play: {e}")
 
     @commands.hybrid_command(name='skip', description="Salta la canción actual.")
     async def skip(self, ctx: commands.Context):
+        await ctx.defer(ephemeral=True)
         if (vc := ctx.guild.voice_client) and (vc.is_playing() or vc.is_paused()):
             vc.stop(); await self.send_response(ctx, "⏭️ Canción saltada.", ephemeral=True)
         else: await self.send_response(ctx, "No hay nada que saltar.", ephemeral=True)
 
     @commands.hybrid_command(name='stop', description="Detiene la reproducción y limpia la cola.")
     async def stop(self, ctx: commands.Context):
+        await ctx.defer(ephemeral=True)
         state = self.get_guild_state(ctx.guild.id); state.queue.clear(); state.current_song=None; state.autoplay=False; state.loop_state=LoopState.OFF
         if (vc := ctx.guild.voice_client) and (vc.is_playing() or vc.is_paused()): vc.stop()
         if state.active_panel:
@@ -256,6 +384,7 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.hybrid_command(name='pause', description="Pausa o reanuda la canción actual.")
     async def pause(self, ctx: commands.Context):
+        await ctx.defer(ephemeral=True)
         vc = ctx.guild.voice_client
         if not vc or not (vc.is_playing() or vc.is_paused()): return await self.send_response(ctx, "No hay nada que pausar o reanudar.", ephemeral=True)
         if vc.is_paused(): vc.resume(); await self.send_response(ctx, "▶️ Canción reanudada.", ephemeral=True)
@@ -263,6 +392,7 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.hybrid_command(name='queue', aliases=['q'], description="Muestra la cola de canciones.")
     async def queue(self, ctx: commands.Context):
+        await ctx.defer(ephemeral=True)
         state = self.get_guild_state(ctx.guild.id)
         if not state.current_song and not state.queue: return await self.send_response(ctx, "La cola está vacía.", ephemeral=True)
         embed = discord.Embed(title="🎵 Cola de Música 🎵", color=self.bot.CREAM_COLOR)
@@ -275,6 +405,7 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.hybrid_command(name='nowplaying', aliases=['np'], description="Muestra la canción que está sonando.")
     async def nowplaying(self, ctx: commands.Context):
+        await ctx.defer(ephemeral=True)
         state = self.get_guild_state(ctx.guild.id)
         if not state.current_song: return await self.send_response(ctx, "No hay ninguna canción reproduciéndose.", ephemeral=True)
         song = state.current_song

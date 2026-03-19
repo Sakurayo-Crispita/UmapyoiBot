@@ -29,7 +29,7 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{author} le da un beso en la mejilla a {target}.",
             "¡El amor está en el aire! {author} besa a {target}."
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "kiss", "sfw", target=miembro, action_templates=action_phrases)
+        await get_nekos_best_gif(self.bot.http_session, ctx, "kiss", target=miembro, action_templates=action_phrases)
 
     # ... (cuddle, hug, pat, slap, tickle, poke se quedan igual) ...
     @commands.hybrid_command(name="cuddle", description="Acurrúcate con otro usuario.")
@@ -44,7 +44,7 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "{author} y {target} se acurrucan juntos para ver una película.",
             "¡Aww! {author} y {target} son la definición de tierno."
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "cuddle", "sfw", target=miembro, action_templates=action_phrases)
+        await get_nekos_best_gif(self.bot.http_session, ctx, "cuddle", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="hug", description="Dale un abrazo a otro usuario.")
     async def hug(self, ctx: commands.Context, miembro: discord.Member):
@@ -58,7 +58,7 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "¡Necesitabas un abrazo! {author} está aquí para {target}.",
             "Los problemas se van con un abrazo de {author} a {target}."
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "hug", "sfw", target=miembro, action_templates=action_phrases)
+        await get_nekos_best_gif(self.bot.http_session, ctx, "hug", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="pat", description="Dale una palmadita en la cabeza a alguien.")
     async def pat(self, ctx: commands.Context, miembro: discord.Member):
@@ -71,7 +71,8 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "Pat, pat, pat... {author} consuela a {target}.",
             "{target} ronronea (o casi) por las palmaditas de {author}."
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "pat", "sfw", target=miembro, action_templates=action_phrases)
+        # nekos.best usa 'pat'
+        await get_nekos_best_gif(self.bot.http_session, ctx, "pat", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="slap", description="Dale una bofetada a alguien.")
     async def slap(self, ctx: commands.Context, miembro: discord.Member):
@@ -85,7 +86,7 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "Una bofetada correctiva de {author} para {target}.",
             "En toda la cara. {author} abofeteó a {target}."
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "slap", "sfw", target=miembro, action_templates=action_phrases)
+        await get_nekos_best_gif(self.bot.http_session, ctx, "slap", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="tickle", description="Hazle cosquillas a alguien.")
     async def tickle(self, ctx: commands.Context, miembro: discord.Member):
@@ -96,7 +97,7 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "¡Cosquillas, cosquillas! {author} ataca a {target}.",
             "{target} se retuerce de la risa. ¡Culpa de {author}!"
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "tickle", "sfw", target=miembro, action_templates=action_phrases)
+        await get_nekos_best_gif(self.bot.http_session, ctx, "tickle", target=miembro, action_templates=action_phrases)
 
     @commands.hybrid_command(name="poke", description="Pica a alguien para llamar su atención.")
     async def poke(self, ctx: commands.Context, miembro: discord.Member):
@@ -107,7 +108,7 @@ class InteractionCog(commands.Cog, name="Interacción"):
             "Hey, {target}, {author} te está molestando.",
             "Poke, poke, poke... {author} no dejará en paz a {target}."
         ]
-        await get_interactive_gif(self.bot.http_session, ctx, "poke", "sfw", target=miembro, action_templates=action_phrases)
+        await get_nekos_best_gif(self.bot.http_session, ctx, "poke", target=miembro, action_templates=action_phrases)
 
 
     # --- COMANDO /baka MODIFICADO ---

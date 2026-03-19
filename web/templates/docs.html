@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comandos - UmapyoiBot</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Custom Style with Cache Busting -->
+    <link rel="stylesheet" href="/static/styles.css?v=2.8">
+    <style>
+        .docs-page {
+            padding-top: 120px;
+            background: var(--bg-main);
+            min-height: 100vh;
+        }
+
+        .docs-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 48px;
+            align-items: start;
+        }
+
+        /* Sidebar Sophistication */
+        .sidebar {
+            position: sticky;
+            top: 120px;
+            padding: 24px;
+            border-radius: var(--radius-md);
+            background: var(--bg-alt);
+            border: 1px solid var(--border-color);
+        }
+
+        .sidebar h3 {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cat-list {
+            list-style: none;
+        }
+
+        .cat-item {
+            margin-bottom: 8px;
+        }
+
+        .cat-link {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .cat-link:hover, .cat-link.active {
+            background: var(--p-pink);
+            color: white;
+        }
+
+        .cat-count {
+            font-size: 0.8rem;
+            background: var(--border-color);
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: var(--text-muted);
+        }
+
+        .cat-link.active .cat-count {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        /* Search Bar */
+        .search-box {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px 16px 50px;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-color);
+            background: var(--bg-alt);
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--p-pink);
+            box-shadow: 0 0 0 4px var(--p-pink-soft);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        /* Command Cards */
+        .cmd-group {
+            margin-bottom: 60px;
+            scroll-margin-top: 120px;
+        }
+
+        .cmd-group-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            color: var(--p-pink);
+        }
+
+        .cmd-card {
+            background: var(--bg-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            transition: var(--transition);
+            overflow: hidden;
+        }
+
+        .cmd-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--p-pink);
+        }
+
+        .cmd-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cmd-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+        }
+
+        .cmd-title span {
+            color: var(--p-pink);
+            font-family: monospace;
+            background: var(--p-pink-soft);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .cmd-body {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .cmd-card.open .cmd-body {
+            padding: 0 20px 20px;
+            max-height: 500px;
+        }
+
+        .cmd-desc {
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .cmd-params {
+            background: var(--bg-main);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px dashed var(--border-color);
+        }
+
+        .cmd-params code {
+            color: var(--p-pink-deep);
+            font-weight: 600;
+        }
+
+        .cat-icon-small {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            vertical-align: middle;
+            opacity: 0.8;
+        }
+
+        .cat-link span {
+            display: flex;
+            align-items: center;
+        }
+
+        @media (max-width: 968px) {
+            .docs-layout { grid-template-columns: 1fr; gap: 32px; }
+            .sidebar { position: static; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="scrolled">
+        <div class="container">
+            <a href="/" class="logo">
+                <img src="/static/assets/mascot.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 8px; vertical-align: middle; margin-right: 4px; box-shadow: 0 2px 8px rgba(255,107,158,0.3);"> Umapyoi<span>.</span>
+            </a>
+            <div class="menu-toggle" id="menu-toggle">
+                <i data-lucide="menu"></i>
+            </div>
+            <ul class="nav-links" id="nav-links">
+                <li class="nav-item">
+                    <a href="/" class="nav-link">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">Módulos <i data-lucide="chevron-down"></i></a>
+                    <div class="dropdown">
+                        <a href="/modules/music" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="music"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Música</h5>
+                                <p>Alta fidelidad sin lag.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/economy" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="coins"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Economía Global</h5>
+                                <p>Minijuegos y rankings.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/levels" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="trending-up"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Niveles & XP</h5>
+                                <p>Rangos personalizados.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/moderation" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="shield-check"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Moderación</h5>
+                                <p>Seguridad para tu chat.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/serverconfig" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="settings"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Configuración</h5>
+                                <p>Personalización total.</p>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link active">Recursos <i data-lucide="chevron-down"></i></a>
+                    <div class="dropdown">
+                        <a href="/docs" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="book-open"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Comandos</h5>
+                                <p>Documentación completa.</p>
+                            </div>
+                        </a>
+                        <a href="https://discord.gg/fwNeZsGkSj" target="_blank" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="help-circle"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Soporte</h5>
+                                <p>Servidor oficial de ayuda.</p>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                {% if session.get('user') %}
+                <li class="nav-item">
+                    <a href="/dashboard" class="nav-link">
+                        <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png" style="width:24px; border-radius:50%;" alt="Avatar">
+                        Dashboard
+                    </a>
+                </li>
+                <li><a href="https://discord.com/api/oauth2/authorize?client_id=1389616993098924164&permissions=8&scope=bot%20applications.commands" class="btn btn-p" target="_blank">Invitar Bot</a></li>
+                {% else %}
+                <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
+                {% endif %}
+                <li>
+                    <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
+                        <i data-lucide="moon" id="theme-icon"></i>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="docs-page">
+        <div class="container docs-layout">
+            <aside class="sidebar">
+                <h3><i data-lucide="layers"></i> Categorías</h3>
+                <ul class="cat-list" id="cat-list">
+                    <!-- Dinámico -->
+                </ul>
+            </aside>
+
+            <section class="content">
+                <div class="search-box">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Buscar comando (ej. play, skip)...">
+                </div>
+
+                <div id="cmd-container">
+                    <!-- Dinámico -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                &copy; 2026 Umapyoi Bot. Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        // Navbar Scroll & Mobile Menu
+        const nav = document.getElementById('navbar');
+        const menuToggle = document.getElementById('menu-toggle');
+        const navLinks = document.getElementById('nav-links');
+
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) nav.classList.add('scrolled');
+            else nav.classList.remove('scrolled');
+        });
+
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const html = document.documentElement;
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+
+        function updateThemeIcon(theme) {
+            themeIcon.setAttribute('data-lucide', theme === 'light' ? 'moon' : 'sun');
+            lucide.createIcons();
+        }
+
+        // Docs Engine
+        let allData = [];
+
+        async function initDocs() {
+            try {
+                // Cache busting adding a timestamp/version
+                const res = await fetch('/static/commands.json?v=' + Date.now());
+                allData = await res.json();
+                render(allData);
+            } catch (e) {
+                console.error("Docs error:", e);
+                document.getElementById('cmd-container').innerHTML = `<div style="text-align:center; padding:100px; color:red;">Error al cargar comandos: ${e.message}</div>`;
+            }
+        }
+
+        function render(data) {
+            const catList = document.getElementById('cat-list');
+            const cmdContainer = document.getElementById('cmd-container');
+            
+            catList.innerHTML = '';
+            cmdContainer.innerHTML = '';
+
+            data.forEach((cat, i) => {
+                // Sidebar
+                const li = document.createElement('li');
+                li.className = 'cat-item';
+                const catId = cat.category.toLowerCase().replace(/\s+/g, '-');
+                li.innerHTML = `
+                    <a href="#${catId}" class="cat-link">
+                        <span><i data-lucide="${cat.icon || 'box'}" class="cat-icon-small"></i> ${cat.category}</span>
+                        <span class="cat-count">${cat.commands.length}</span>
+                    </a>
+                `;
+                catList.appendChild(li);
+
+                // Content
+                const group = document.createElement('div');
+                group.className = 'cmd-group';
+                group.id = catId;
+                group.innerHTML = `<h2 class="cmd-group-header"><i data-lucide="${cat.icon || 'box'}"></i> ${cat.category}</h2>`;
+
+                cat.commands.forEach(cmd => {
+                    const card = document.createElement('div');
+                    card.className = 'cmd-card';
+                    card.innerHTML = `
+                        <div class="cmd-header">
+                            <div class="cmd-title">
+                                <span>/</span> ${cmd.name}
+                            </div>
+                            <i data-lucide="chevron-down"></i>
+                        </div>
+                        <div class="cmd-body">
+                            <p class="cmd-desc">${cmd.desc}</p>
+                            <div class="cmd-params">
+                                <strong>Uso:</strong> <code>${cmd.usage}</code>
+                            </div>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => card.classList.toggle('open'));
+                    group.appendChild(card);
+                });
+
+                cmdContainer.appendChild(group);
+            });
+            lucide.createIcons();
+        }
+
+        // Search Engine
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allData.map(cat => ({
+                ...cat,
+                commands: cat.commands.filter(c => 
+                    c.name.toLowerCase().includes(term) || 
+                    c.desc.toLowerCase().includes(term)
+                )
+            })).filter(cat => cat.commands.length > 0);
+            render(filtered);
+        });
+
+        initDocs();
+    </script>
+</body>
+</html>

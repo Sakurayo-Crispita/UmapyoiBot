@@ -15,10 +15,10 @@ async def get_interactive_gif(
     action_templates: list[str] = [],
     self_action_phrases: list[str] = []
 ):
-    """
-    Función que ahora usa la sesión de aiohttp compartida del bot.
-    """
-    await ctx.defer(ephemeral=False)
+    try:
+        await ctx.defer(ephemeral=False)
+    except:
+        pass
 
     if target and target != ctx.author:
         templates = action_templates
@@ -29,36 +29,38 @@ async def get_interactive_gif(
         templates = self_action_phrases
     
     action_text = random.choice(templates).format(author=ctx.author.mention, target=target.mention if target else "")
-
     api_url = f"https://api.waifu.pics/{gif_type}/{category}"
-    timeout = aiohttp.ClientTimeout(total=10)
+    timeout = aiohttp.ClientTimeout(total=12)
+
+    async def fetch_url(url):
+        async with session.get(url, timeout=timeout) as resp:
+            if resp.status == 200:
+                return await resp.json(), 200
+            return None, resp.status
+
     try:
-        async with session.get(api_url, timeout=timeout) as response:
-            if response.status == 404:
-                await ctx.send(f"❌ La categoría '{category}' no fue encontrada en la API. Se usará un reemplazo.", ephemeral=True)
-                api_url = f"https://api.waifu.pics/{gif_type}/waifu"
-                async with session.get(api_url, timeout=timeout) as fallback_response:
-                    if fallback_response.status != 200:
-                        await ctx.send("Error incluso con la API de respaldo. Por favor, reporta esto.", ephemeral=True)
-                        return
-                    response = fallback_response
-            
-            if response.status == 200:
-                data = await response.json()
-                gif_url = data.get('url')
-                if gif_url:
-                    embed = discord.Embed(description=action_text, color=ctx.author.color)
-                    embed.set_image(url=gif_url)
-                    await ctx.send(embed=embed)
-                else:
-                    await ctx.send("La API no devolvió una URL válida.", ephemeral=True)
+        data, status = await fetch_url(api_url)
+
+        if status == 404:
+            await ctx.send(f"❌ La categoría '{category}' no fue encontrada en la API. Se usará un reemplazo.", ephemeral=True)
+            api_url = f"https://api.waifu.pics/{gif_type}/waifu"
+            data, status = await fetch_url(api_url)
+
+        if status == 200 and data:
+            gif_url = data.get('url')
+            if gif_url:
+                embed = discord.Embed(description=action_text, color=ctx.author.color)
+                embed.set_image(url=gif_url)
+                await ctx.send(embed=embed)
             else:
-                await ctx.send(f"La API devolvió un error inesperado (Estado: {response.status}).", ephemeral=True)
+                await ctx.send("La API no devolvió una URL válida.", ephemeral=True)
+        else:
+            await ctx.send(f"La API devolvió un error (Estado: {status}).", ephemeral=True)
 
     except asyncio.TimeoutError:
         await ctx.send("La API tardó demasiado en responder. Inténtalo de nuevo más tarde.", ephemeral=True)
     except Exception as e:
-        print(f"Error crítico en get_interactive_gif: {e}")
+        print(f"Error crítico en get_interactive_gif ({category}): {e}")
         await ctx.send("Ocurrió un error inesperado al procesar tu solicitud.", ephemeral=True)
 
 
@@ -73,7 +75,10 @@ async def get_nekos_best_gif(
     """
     Obtiene un GIF de la API nekos.best.
     """
-    await ctx.defer(ephemeral=False)
+    try:
+        await ctx.defer(ephemeral=False)
+    except:
+        pass
     
     action_text = random.choice(action_templates).format(author=ctx.author.mention, target=target.mention if target else "")
     api_url = f"https://nekos.best/api/v2/{category}"
@@ -158,3 +163,42 @@ async def search_anime(session: aiohttp.ClientSession, query: str) -> Optional[d
         return {"error": "Timeout"}
     except Exception as e:
         return {"error": str(e)}
+
+# - DASHBOARD HELPERS -
+async def create_discord_message(channel_id: int, payload: dict, bot_token: str) -> Optional[int]:
+    """Crea un mensaje en un canal de Discord directamente vía HTTP API (usado por el dashboard)."""
+    api_url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+    headers = {
+        "Authorization": f"Bot {bot_token}",
+        "Content-Type": "application/json"
+    }
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.post(api_url, headers=headers, json=payload) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data.get('id')
+                else:
+                    error = await resp.text()
+                    print(f"Error creando mensaje por API: {resp.status} - {error}")
+                    return None
+        except Exception as e:
+            print(f"Excepción creando mensaje: {e}")
+            return None
+
+async def add_discord_reaction(channel_id: int, message_id: int, emoji: str, bot_token: str) -> bool:
+    """Añade una reacción a un mensaje en Discord directamente vía HTTP API."""
+    import urllib.parse
+    encoded_emoji = urllib.parse.quote(emoji)
+    api_url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{encoded_emoji}/@me"
+    headers = {"Authorization": f"Bot {bot_token}"}
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.put(api_url, headers=headers) as resp:
+                if resp.status != 204:
+                    error = await resp.text()
+                    print(f"Error añadiendo reacción por API: {resp.status} - {error}")
+                return resp.status == 204
+        except Exception as e:
+            print(f"Excepción añadiendo reacción: {e}")
+            return False

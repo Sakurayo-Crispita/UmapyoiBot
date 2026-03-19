@@ -4,6 +4,7 @@ import asyncio
 import datetime
 from typing import Optional, Literal
 from utils import database_manager as db
+from utils.lang_utils import _t
 from utils.constants import (
     DEFAULT_WELCOME_MESSAGE, DEFAULT_WELCOME_BANNER, 
     DEFAULT_GOODBYE_MESSAGE, DEFAULT_GOODBYE_BANNER,
@@ -13,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import aiohttp
 import re
+import urllib.parse
 
 # - FUNCIÓN DE GENERACIÓN DE IMÁGENES -
 async def generate_banner_image(
@@ -64,8 +66,12 @@ async def generate_banner_image(
         if len(processed_message) > max_length:
             processed_message = processed_message[:max_length] + "..."
 
-        draw.text((500, 320), member.display_name, fill=title_color, font=title_font, anchor="ms")
-        draw.text((500, 365), processed_message, fill=subtitle_color, font=subtitle_font, anchor="ms")
+        # Para asegurar que se lea en cualquier fondo, le aplicamos un borde negro suave (stroke) y default blanco
+        if title_color == "#000000": title_color = "#ffffff"
+        if subtitle_color == "#000000": subtitle_color = "#dddddd"
+        
+        draw.text((500, 320), member.display_name, fill=title_color, font=title_font, anchor="ms", stroke_width=2, stroke_fill="black")
+        draw.text((500, 365), processed_message, fill=subtitle_color, font=subtitle_font, anchor="ms", stroke_width=1, stroke_fill="black")
 
         final_buffer = BytesIO()
         bg.save(final_buffer, format="PNG")
@@ -103,11 +109,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                     del guild_events[event_type][k] 
 
     async def get_settings(self, guild_id: int):
-        settings = await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
-        if not settings:
-            await db.execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (guild_id,))
-            return await db.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
-        return settings
+        return await db.get_cached_server_settings(guild_id)
 
     async def save_setting(self, guild_id: int, key: str, value):
         allowed_keys = [
@@ -115,7 +117,9 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             'welcome_message', 'welcome_banner_url', 'goodbye_message', 'goodbye_banner_url', 
             'automod_anti_invite', 'automod_banned_words', 'temp_channel_creator_id', 'leveling_enabled',
             'welcome_title_color', 'welcome_subtitle_color', 'goodbye_title_color', 'goodbye_subtitle_color',
-            'welcome_top_text', 'goodbye_top_text'
+            'welcome_top_text', 'goodbye_top_text', 'prefix', 'language',
+            'mod_enabled', 'eco_enabled', 'gamble_enabled', 'tickets_enabled', 
+            'music_enabled', 'tts_enabled', 'rr_enabled'
         ]
         if key not in allowed_keys:
             return
@@ -130,9 +134,9 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         return await db.fetchone("SELECT role_id FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?", (guild_id, message_id, emoji))
 
     async def log_event(self, guild_id, embed):
-        settings = await self.get_settings(guild_id)
-        if settings and settings.get("log_channel_id"):
-            if log_channel := self.bot.get_channel(settings.get("log_channel_id")):
+        settings = await db.get_cached_server_settings(guild_id)
+        if settings and (log_channel_id := settings.get("log_channel_id")):
+            if log_channel := self.bot.get_channel(log_channel_id):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
@@ -150,39 +154,51 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.recent_events[member.guild.id]['join'][member.id] = now
         # --- FIN DE LA COMPROBACIÓN ---
 
-        settings = await self.get_settings(member.guild.id)
+        settings = await db.get_cached_server_settings(member.guild.id)
         if not settings: return
 
         if channel_id := settings.get("welcome_channel_id"):
             if channel := self.bot.get_channel(channel_id):
-                if top_text := settings.get("welcome_top_text"):
-                    formatted_top_text = top_text.format(user=member, server=member.guild, member_count=member.guild.member_count)
-                    try:
-                        await channel.send(formatted_top_text)
-                    except discord.Forbidden:
-                        print(f"No tengo permisos para enviar el texto superior de bienvenida en {channel.name}")
+                try:
+                    msg = (settings.get("welcome_message") or DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                except (KeyError, ValueError):
+                    msg = DEFAULT_WELCOME_MESSAGE.format(user=member, server=member.guild, member_count=member.guild.member_count)
 
-                msg = (settings.get("welcome_message") or DEFAULT_WELCOME_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                top_text = settings.get("welcome_top_text") or "¡Nuevo Miembro!"
+                try:
+                    top_text = top_text.format(user=member, server=member.guild, member_count=member.guild.member_count)
+                except (KeyError, ValueError):
+                    pass
+
                 background_url = settings.get("welcome_banner_url") or DEFAULT_WELCOME_BANNER
+                parsed_url = urllib.parse.urlparse(background_url)
+                if parsed_url.scheme not in ['http', 'https'] or any(x in parsed_url.netloc for x in ['localhost', '127.0.0.1', '::1', '169.254']):
+                    background_url = DEFAULT_WELCOME_BANNER
+
                 title_color = settings.get("welcome_title_color", "#000000")
                 subtitle_color = settings.get("welcome_subtitle_color", "#000000")
                 banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url, title_color, subtitle_color)
-                
+
+                embed = discord.Embed(
+                    description=f"**{top_text}**\n\n{msg}",
+                    color=discord.Color.green(),
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                embed.set_author(name=member.guild.name, icon_url=member.guild.icon.url if member.guild.icon else None)
+                embed.set_thumbnail(url=member.display_avatar.url)
+                embed.set_footer(text=f"Ahora somos {member.guild.member_count} miembros 🥕")
+
                 if banner_file:
-                    embed = discord.Embed(
-                        description=None, # La descripción ahora está en el texto superior
-                        color=discord.Color.green()
-                    )
                     embed.set_image(url="attachment://banner.png")
                     try:
                         await channel.send(embed=embed, file=banner_file)
                     except discord.Forbidden:
                         print(f"No tengo permisos para enviar el banner de bienvenida en {channel.name}")
-                else: 
-                    fallback_msg = (settings.get("welcome_top_text") or "") + "\n" + msg
-                    embed = discord.Embed(description=fallback_msg.strip(), color=discord.Color.green()).set_author(name=f"¡Bienvenido a {member.guild.name}!", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
-                    try: await channel.send(embed=embed)
-                    except discord.Forbidden: pass
+                else:
+                    try:
+                        await channel.send(embed=embed)
+                    except discord.Forbidden:
+                        pass
 
         if role_id := settings.get("autorole_id"):
             if role := member.guild.get_role(role_id):
@@ -202,37 +218,49 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         self.recent_events[member.guild.id]['remove'][member.id] = now
         # --- FIN DE LA COMPROBACIÓN ---
 
-        settings = await self.get_settings(member.guild.id)
+        settings = await db.get_cached_server_settings(member.guild.id)
         if settings and (channel_id := settings.get("goodbye_channel_id")):
             if channel := self.bot.get_channel(channel_id):
-                if top_text := settings.get("goodbye_top_text"):
-                    formatted_top_text = top_text.format(user=member, server=member.guild, member_count=member.guild.member_count)
-                    try:
-                        await channel.send(formatted_top_text)
-                    except discord.Forbidden:
-                        print(f"No tengo permisos para enviar el texto superior de despedida en {channel.name}")
+                try:
+                    msg = (settings.get("goodbye_message") or DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                except (KeyError, ValueError):
+                    msg = DEFAULT_GOODBYE_MESSAGE.format(user=member, server=member.guild, member_count=member.guild.member_count)
 
-                msg = (settings.get("goodbye_message") or DEFAULT_GOODBYE_MESSAGE).format(user=member, server=member.guild, member_count=member.guild.member_count)
+                top_text = settings.get("goodbye_top_text") or "¡Hasta pronto!"
+                try:
+                    top_text = top_text.format(user=member, server=member.guild, member_count=member.guild.member_count)
+                except (KeyError, ValueError):
+                    pass
+
                 background_url = settings.get("goodbye_banner_url") or DEFAULT_GOODBYE_BANNER
+                parsed_url = urllib.parse.urlparse(background_url)
+                if parsed_url.scheme not in ['http', 'https'] or any(x in parsed_url.netloc for x in ['localhost', '127.0.0.1', '::1', '169.254']):
+                    background_url = DEFAULT_GOODBYE_BANNER
+
                 title_color = settings.get("goodbye_title_color", "#000000")
                 subtitle_color = settings.get("goodbye_subtitle_color", "#000000")
                 banner_file = await generate_banner_image(self.bot.http_session, member, msg, background_url, title_color, subtitle_color)
-                
+
+                embed = discord.Embed(
+                    description=f"**{top_text}**\n\n{msg}",
+                    color=discord.Color.red(),
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                embed.set_author(name=member.guild.name, icon_url=member.guild.icon.url if member.guild.icon else None)
+                embed.set_thumbnail(url=member.display_avatar.url)
+                embed.set_footer(text=f"Ahora somos {member.guild.member_count} miembros 🥕")
+
                 if banner_file:
-                    embed = discord.Embed(
-                        description=None, # La descripción ahora está en el texto superior
-                        color=discord.Color.red()
-                    )
                     embed.set_image(url="attachment://banner.png")
                     try:
                         await channel.send(embed=embed, file=banner_file)
                     except discord.Forbidden:
                         print(f"No tengo permisos para enviar el banner de despedida en {channel.name}")
                 else:
-                    fallback_msg = (settings.get("goodbye_top_text") or "") + "\n" + msg
-                    embed = discord.Embed(description=fallback_msg.strip(), color=discord.Color.red()).set_author(name=f"Adiós, {member.display_name}", icon_url=member.display_avatar.url).set_footer(text=f"Ahora somos {member.guild.member_count} miembros.")
-                    try: await channel.send(embed=embed)
-                    except discord.Forbidden: pass
+                    try:
+                        await channel.send(embed=embed)
+                    except discord.Forbidden:
+                        pass
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -255,7 +283,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         if member.bot: return
         if before.channel == after.channel: return # Ignorar ensordecidos/silenciados
 
-        settings = await self.get_settings(member.guild.id)
+        settings = await db.get_cached_server_settings(member.guild.id)
         if not settings: return
         
         creator_id = settings.get("temp_channel_creator_id")
@@ -291,22 +319,30 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.hybrid_command(name='setwelcomechannel', description="Establece o desactiva el canal para mensajes de bienvenida.")
     @commands.has_permissions(manage_guild=True)
     async def set_welcome_channel(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+
         if canal:
             await self.save_setting(ctx.guild.id, 'welcome_channel_id', canal.id)
-            await ctx.send(f"✅ Canal de bienvenida establecido en {canal.mention}.", ephemeral=True)
+            await ctx.send(_t('bot.config.welcome_set', lang=lang, channel=canal.mention), ephemeral=True)
         else:
             await self.save_setting(ctx.guild.id, 'welcome_channel_id', None)
-            await ctx.send("✅ El canal de bienvenida ha sido desactivado.", ephemeral=True)
+            await ctx.send(_t('bot.config.welcome_disabled', lang=lang), ephemeral=True)
 
     @commands.hybrid_command(name='setgoodbyechannel', description="Establece o desactiva el canal para mensajes de despedida.")
     @commands.has_permissions(manage_guild=True)
     async def set_goodbye_channel(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+
         if canal:
             await self.save_setting(ctx.guild.id, 'goodbye_channel_id', canal.id)
-            await ctx.send(f"✅ Canal de despedida establecido en {canal.mention}.", ephemeral=True)
+            await ctx.send(_t('bot.config.goodbye_set', lang=lang, channel=canal.mention), ephemeral=True)
         else:
             await self.save_setting(ctx.guild.id, 'goodbye_channel_id', None)
-            await ctx.send("✅ El canal de despedida ha sido desactivado.", ephemeral=True)
+            await ctx.send(_t('bot.config.goodbye_disabled', lang=lang), ephemeral=True)
 
     @commands.hybrid_command(name='configwelcome', description="Personaliza el mensaje, banner y colores de la bienvenida.")
     @commands.has_permissions(manage_guild=True)
@@ -329,8 +365,12 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             response_message += "\n✅ Texto superior guardado."
 
         if banner_url:
-            await self.save_setting(ctx.guild.id, 'welcome_banner_url', banner_url)
-            response_message += "\n✅ Banner de bienvenida actualizado."
+            parsed = urllib.parse.urlparse(banner_url)
+            if parsed.scheme == "https":
+                await self.save_setting(ctx.guild.id, 'welcome_banner_url', banner_url)
+                response_message += "\n✅ Banner de bienvenida actualizado."
+            else:
+                response_message += "\n❌ La URL del banner debe ser `https://`."
         
         if color_titulo and re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color_titulo):
             await self.save_setting(ctx.guild.id, 'welcome_title_color', color_titulo)
@@ -363,8 +403,12 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
             response_message += "\n✅ Texto superior guardado."
 
         if banner_url:
-            await self.save_setting(ctx.guild.id, 'goodbye_banner_url', banner_url)
-            response_message += "\n✅ Banner de despedida actualizado."
+            parsed = urllib.parse.urlparse(banner_url)
+            if parsed.scheme == "https":
+                await self.save_setting(ctx.guild.id, 'goodbye_banner_url', banner_url)
+                response_message += "\n✅ Banner de despedida actualizado."
+            else:
+                response_message += "\n❌ La URL del banner debe ser `https://`."
 
         if color_titulo and re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color_titulo):
             await self.save_setting(ctx.guild.id, 'goodbye_title_color', color_titulo)
@@ -379,42 +423,54 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     @commands.hybrid_command(name='setlogchannel', description="Establece el canal para el registro de moderación.")
     @commands.has_permissions(manage_guild=True)
     async def set_log_channel(self, ctx: commands.Context, canal: discord.TextChannel):
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+
         await self.save_setting(ctx.guild.id, 'log_channel_id', canal.id)
-        await ctx.send(f"✅ Canal de logs: {canal.mention}.", ephemeral=True)
+        await ctx.send(_t('bot.config.log_set', lang=lang, channel=canal.mention), ephemeral=True)
 
     @commands.hybrid_command(name='setautorole', description="Establece un rol para asignar a nuevos miembros.")
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def set_autorole(self, ctx: commands.Context, rol: discord.Role):
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+
         if ctx.guild.me.top_role <= rol:
-            return await ctx.send("❌ No puedo asignar ese rol porque está en una posición igual o superior a la mía.", ephemeral=True)
+            return await ctx.send(_t('bot.config.autorole_error', lang=lang), ephemeral=True)
         await self.save_setting(ctx.guild.id, 'autorole_id', rol.id)
-        await ctx.send(f"✅ Rol automático configurado: {rol.mention}.", ephemeral=True)
+        await ctx.send(_t('bot.config.autorole_set', lang=lang, role=rol.mention), ephemeral=True)
 
     @commands.hybrid_command(name='createreactionrole', description="Crea un nuevo rol por reacción.")
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(add_reactions=True)
     async def create_reaction_role(self, ctx: commands.Context, id_del_mensaje: str, emoji: str, rol: discord.Role):
         await ctx.defer(ephemeral=True)
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+
         try:
             message_id = int(id_del_mensaje)
         except ValueError:
-            return await ctx.send("❌ El ID del mensaje debe ser un número.", ephemeral=True)
+            return await ctx.send(_t('bot.config.rr_error_msg', lang=lang), ephemeral=True)
 
         if not ctx.channel:
-            return await ctx.send("❌ Este comando no se puede usar aquí.", ephemeral=True)
+            return await ctx.send(_t('bot.common.error', lang=lang), ephemeral=True)
 
         try:
             message = await ctx.channel.fetch_message(message_id)
         except discord.NotFound:
-            return await ctx.send("❌ No se encontró un mensaje con ese ID en este canal.", ephemeral=True)
+            return await ctx.send(_t('bot.config.rr_error_not_found', lang=lang), ephemeral=True)
         except discord.Forbidden:
-            return await ctx.send("❌ No tengo permisos para leer el historial de este canal.", ephemeral=True)
+            return await ctx.send(_t('bot.common.error', lang=lang), ephemeral=True)
 
         try:
             await message.add_reaction(emoji)
             await self.add_reaction_role(ctx.guild.id, message_id, emoji, rol.id)
-            await ctx.send(f"✅ Rol por reacción creado. He reaccionado con {emoji} al mensaje.", ephemeral=True)
+            await ctx.send(_t('bot.config.rr_created', lang=lang), ephemeral=True)
         except discord.HTTPException:
             await ctx.send(f"❌ No se pudo añadir la reacción. Asegúrate de que el emoji sea válido.", ephemeral=True)
         except Exception as e:
@@ -462,19 +518,54 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         await self.save_setting(ctx.guild.id, 'leveling_enabled', 1 if estado == 'on' else 0)
         await ctx.send(f"✅ Sistema de niveles **{'activado' if estado == 'on' else 'desactivado'}**.", ephemeral=True)
 
+    @commands.hybrid_command(name='module', description="Habilitar o deshabilitar grandes bloques del bot (música, economía, etc).")
+    @commands.has_permissions(manage_guild=True)
+    async def toggle_module(self, ctx: commands.Context, modulo: Literal['niveles', 'moderacion', 'economia', 'apuestas', 'tickets', 'musica', 'tts', 'reaction_roles'], estado: Literal['on', 'off']):
+        module_options = {
+            'niveles': 'leveling_enabled',
+            'moderacion': 'mod_enabled',
+            'economia': 'eco_enabled',
+            'apuestas': 'gamble_enabled',
+            'tickets': 'tickets_enabled',
+            'musica': 'music_enabled',
+            'tts': 'tts_enabled',
+            'reaction_roles': 'rr_enabled'
+        }
+        
+        modulo_lower = modulo.lower()
+        if modulo_lower not in module_options:
+            valid_modules = ", ".join(f"`{m}`" for m in module_options.keys())
+            return await ctx.send(f"❌ Módulo no válido. Opciones: {valid_modules}", ephemeral=True)
+
+        column = module_options[modulo_lower]
+        target_value = 1 if estado == 'on' else 0
+        
+        # Obtener configuración actual y lenguaje
+        settings = await self.get_settings(ctx.guild.id)
+        lang = settings.get('language', 'es')
+        current_value = settings.get(column, 1 if modulo_lower != 'tickets' else 0) 
+        
+        status_text = _t(f'bot.config.{ "enabled" if estado == "on" else "disabled" }', lang=lang)
+        
+        if current_value == target_value:
+            return await ctx.send(f"⚠️ El módulo de **{modulo_lower.title()}** ya está **{status_text}**.", ephemeral=True)
+
+        await self.save_setting(ctx.guild.id, column, target_value)
+        await ctx.send(_t('bot.config.module_toggled', lang=lang, module=modulo_lower.title(), status=status_text), ephemeral=True)
+
     @commands.hybrid_command(name='serverconfig', aliases=['configuracion', 'settings'], description="Muestra el panel de configuración completo del servidor.")
     @commands.has_permissions(manage_guild=True)
     async def serverconfig(self, ctx: commands.Context):
         """Muestra un resumen de toda la configuración del bot en este servidor."""
         await ctx.defer()
         
-        settings = await self.get_settings(ctx.guild.id)
+        settings = await db.get_cached_server_settings(ctx.guild.id)
         if not settings: return await ctx.send("❌ Error al cargar la configuración del servidor.", ephemeral=True)
         
-        eco_settings = await db.get_guild_economy_settings(ctx.guild.id)
+        eco_settings = await db.get_cached_economy_settings(ctx.guild.id)
         tts_settings = await db.fetchone("SELECT * FROM tts_guild_settings WHERE guild_id = ?", (ctx.guild.id,))
         tts_channel = await db.fetchone("SELECT * FROM tts_active_channels WHERE guild_id = ?", (ctx.guild.id,))
-        casino_channels = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))
+        casino_channels_rows = await db.fetchall("SELECT channel_id FROM gambling_active_channels WHERE guild_id = ?", (ctx.guild.id,))
         
         embed = discord.Embed(title=f"⚙️ Panel de Configuración: {ctx.guild.name}", color=self.bot.CREAM_COLOR)
         if ctx.guild.icon:

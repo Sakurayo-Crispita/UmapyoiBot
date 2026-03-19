@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Sugerencia - UmapyoiBot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=2.8">
+    <style>
+        body { background: #0f1118; color: white; font-family: 'Inter', sans-serif; }
+        .feedback-container { max-width: 1200px; margin: 80px auto; padding: 20px; }
+        .feedback-header { margin-bottom: 40px; }
+        .feedback-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: start; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 30px; backdrop-filter: blur(10px); }
+        .form-group { margin-bottom: 25px; }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #a0a0c0; margin-bottom: 8px; letter-spacing: 0.8px; }
+        .form-hint { font-size: 0.75rem; color: #6a6a8e; margin-bottom: 8px; display: block; }
+        .form-input, .form-select, .form-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 15px; color: white; font-family: inherit; transition: all 0.3s; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--p-pink); outline: none; background: rgba(255, 255, 255, 0.05); }
+        .form-select option { background: #1a1d26; color: white; }
+        .form-textarea { resize: vertical; min-height: 150px; max-height: 400px; }
+        
+        .evidence-upload { border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 30px; text-align: center; transition: all 0.3s; cursor: pointer; background: rgba(0,0,0,0.2); }
+        .evidence-upload:hover { border-color: var(--p-pink); background: rgba(255, 71, 87, 0.05); }
+        .evidence-upload i { width: 32px; height: 32px; color: #a0a0c0; margin-bottom: 15px; }
+        
+        .submit-btn { width: 100%; background: var(--p-pink); color: white; border: none; border-radius: 8px; padding: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3); transition: all 0.3s; }
+        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4); }
+        
+        .sidebar-right { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 20px; }
+        .example-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; gap: 6px; }
+        
+        .success-overlay { position: fixed; inset: 0; background: rgba(15, 17, 24, 0.98); display: flex; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    {% if success %}
+    <div class="success-overlay">
+        <div style="width: 80px; height: 80px; background: var(--p-pink); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(255, 71, 87, 0.3);"><i data-lucide="heart" style="width: 48px; height: 48px; color: white;"></i></div>
+        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Outfit';">¡Sugerencia Enviada!</h1>
+        <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tus ideas. Nos ayudan a que UmapyoiBot sea cada vez mejor para toda la comunidad.</p>
+        <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
+    </div>
+    {% endif %}
+
+    <div class="feedback-container">
+        <a href="/dashboard" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
+            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Panel
+        </a>
+        <div class="feedback-header">
+            <h1 style="font-size: 3rem; font-family: 'Outfit', sans-serif; margin-bottom: 10px;">Enviar una sugerencia</h1>
+            <p style="color: #6a6a8e; font-size: 1.1rem;">¿Tienes una idea brillante? Compártela con nosotros para mejorar el bot.</p>
+        </div>
+
+        <div class="feedback-grid">
+            <form method="POST" class="glass-card" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="form-label">Categoría</label>
+                    <span class="form-hint">¿A qué área pertenece tu sugerencia?</span>
+                    <select name="category" class="form-select" required>
+                        <option value="" disabled selected>Selecciona una categoría</option>
+                        <option value="Comandos">Comandos</option>
+                        <option value="Música">Música</option>
+                        <option value="Economía">Economía</option>
+                        <option value="Dashboard">Dashboard</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <span class="form-hint">Escribe un título breve para tu idea (máximo 100 caracteres).</span>
+                    <input type="text" name="title" class="form-input" placeholder="Escribe un título breve..." required maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <span class="form-hint">Explica tu sugerencia con el mayor detalle posible (máximo 2000 caracteres).</span>
+                    <textarea name="description" class="form-textarea" placeholder="Describe tu sugerencia en detalle e indica por qué sería beneficiosa..." required maxlength="2000"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Adjuntos (Opcional)</label>
+                    <span class="form-hint">¿Tienes un boceto o ejemplo visual? Súbelo aquí o pega un enlace.</span>
+                    <div class="evidence-upload" onclick="document.getElementById('file-input').click()">
+                        <i data-lucide="image"></i>
+                        <p style="margin:0; font-weight:600;">Haz clic para seleccionar o arrastra archivos</p>
+                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Opcional: Máximo 8MB por archivo.</p>
+                        <input type="file" id="file-input" name="suggest_file" style="display:none;" multiple>
+                    </div>
+                    <div style="margin-top:15px;">
+                        <input type="url" name="evidence_url" class="form-input" placeholder="O pega un enlace directo a la imagen/video (opcional)">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ID del Usuario</label>
+                    <span class="form-hint">Tu ID de Discord (no editable).</span>
+                    <input type="text" name="user_discord_id" class="form-input" value="{{ user.id }}" readonly style="cursor: not-allowed; background: rgba(255,255,255,0.02); color: #6a6a8e;">
+                </div>
+
+                <button type="submit" class="submit-btn" style="background-color: var(--p-pink); border-color: var(--p-pink);">Enviar sugerencia</button>
+            </form>
+
+            <div class="sidebar-right">
+                <!-- STATIC EXAMPLE CARD -->
+                <div class="glass-card" style="border-left: 4px solid #7d5fff;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                        <div style="width:32px; height:32px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="lightbulb" style="width:16px; color:#7d5fff;"></i>
+                        </div>
+                        <span style="font-weight:700; font-size:0.9rem; color:#eee;">Ejemplo de sugerencia</span>
+                    </div>
+                    
+                    <div style="margin-bottom:20px;">
+                        <span class="example-badge" style="background: rgba(87, 95, 207, 0.2); color: #7d5fff;">Categoría: Comandos</span>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Título</label>
+                        <p style="font-weight:600; margin:0; font-size:1rem;">Añadir comando para ver estadísticas de servidor</p>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Descripción</label>
+                        <p style="font-size:0.85rem; color:#a0a0c0; line-height:1.6; margin:0;">
+                            Sería genial tener un comando como /serverstats que muestre:<br>
+                            • Cantidad de miembros activos<br>
+                            • Mensajes enviados en la última semana<br>
+                            • Gráfico de actividad por hora<br>
+                            Esto ayudaría a los administradores a entender mejor la actividad de su servidor.
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(125, 95, 255, 0.05); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #7d5fff; display: flex; gap: 10px; align-items: flex-start;">
+                        <i data-lucide="zap" style="width:14px; flex-shrink:0; margin-top:2px;"></i>
+                        <span>Tip: Sé específico y explica el beneficio de tu sugerencia.</span>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="background:rgba(255,255,255,0.01); border-style: dashed;">
+                    <p style="color:#6a6a8e; font-size:0.85rem; text-align:center; margin:0;">
+                        Tu opinión es vital para nosotros. Leemos cada sugerencia con atención.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // File input hint
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const count = this.files.length;
+            if (count > 0) {
+                const label = this.parentElement.querySelector('p');
+                label.innerText = count === 1 ? '1 archivo seleccionado' : count + ' archivos seleccionados';
+                label.style.color = 'var(--p-pink)';
+            }
+        });
+    </script>
+</body>
+</html>

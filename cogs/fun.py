@@ -56,9 +56,19 @@ class ConfessionModal(discord.ui.Modal, title="Confesión Anónima"):
     texto = discord.ui.TextInput(label="Escribe tu secreto aquí", style=discord.TextStyle.paragraph, max_length=1500, placeholder="Nadie sabrá que fuiste tú, ni siquiera los administradores...", required=True)
     
     async def on_submit(self, interaction: discord.Interaction):
+        settings = await db.get_cached_server_settings(interaction.guild.id)
+        target_channel_id = settings.get('confessions_channel_id')
+        target_channel = interaction.guild.get_channel(target_channel_id) if target_channel_id else interaction.channel
+        
         embed = discord.Embed(title="🕵️ Confesión Anónima", description=self.texto.value, color=discord.Color.dark_purple())
-        await interaction.channel.send(embed=embed)
-        await interaction.response.send_message("Confesión publicada exitosamente. Tu identidad está a salvo.", ephemeral=True)
+        
+        try:
+            await target_channel.send(embed=embed)
+            await interaction.response.send_message("Confesión publicada exitosamente. Tu identidad está a salvo.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ No tengo permisos para enviar mensajes en el canal de confesiones configurado.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error al enviar la confesión: {e}", ephemeral=True)
 
 class ConfessView(discord.ui.View):
     def __init__(self):
@@ -99,7 +109,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         # Llamamos a nuestra función de ayuda centralizada
         respuesta_ia = await ask_gemini(self.bot.http_session, self.bot.GEMINI_API_KEY, pregunta)
 
-        embed = discord.Embed(title="🤔 Pregunta para Umapyoi", description=f"**Tú preguntaste:**\n{pregunta}", color=discord.Color.gold())
+        embed = discord.Embed(title="🤔 Pregunta para Umapyoi", description=f"**Tú preguntaste:**\n{pregunta}", color=self.bot.CREAM_COLOR)
         embed.add_field(name="💡 Mi Respuesta:", value=respuesta_ia)
         await ctx.send(embed=embed)
 
@@ -138,7 +148,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
             title=display_title,
             url=anime_data.get('url', ''),
             description=synopsis,
-            color=discord.Color.blue()
+            color=self.bot.CREAM_COLOR
         )
 
         if image_url := anime_data.get('images', {}).get('jpg', {}).get('large_image_url'):
@@ -174,14 +184,12 @@ class FunCog(commands.Cog, name="Juegos e IA"):
         miembro = miembro or ctx.author
         try:
             wanted_template_url = WANTED_TEMPLATE_URL 
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get(wanted_template_url) as resp:
-                    if resp.status != 200: return await ctx.send(f"❌ No pude descargar la plantilla. Estado: {resp.status}")
-                    template_bytes = await resp.read()
-                async with session.get(miembro.display_avatar.url) as resp:
-                    if resp.status != 200: return await ctx.send("❌ No pude descargar el avatar.")
-                    avatar_bytes = await resp.read()
+            async with self.bot.http_session.get(wanted_template_url) as resp:
+                if resp.status != 200: return await ctx.send(f"❌ No pude descargar la plantilla. Estado: {resp.status}")
+                template_bytes = await resp.read()
+            async with self.bot.http_session.get(miembro.display_avatar.url) as resp:
+                if resp.status != 200: return await ctx.send("❌ No pude descargar el avatar.")
+                avatar_bytes = await resp.read()
             
             buffer = await self.bot.loop.run_in_executor(None, self.process_wanted_image, template_bytes, avatar_bytes)
             
@@ -193,6 +201,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
 
     @commands.hybrid_command(name='ppt', description="Juega Piedra, Papel o Tijera contra mí.")
     async def ppt(self, ctx: commands.Context, eleccion: Literal['piedra', 'papel', 'tijera']):
+        await ctx.defer()
         opciones = ['piedra', 'papel', 'tijera']
         eleccion_usuario = eleccion.lower()
         eleccion_bot = random.choice(opciones)
@@ -210,6 +219,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
 
     @commands.hybrid_command(name="8ball", description="Pregúntale a la bola 8 mágica sobre tu futuro.")
     async def eight_ball(self, ctx: commands.Context, *, pregunta: str):
+        await ctx.defer()
         respuestas = [
             "En mi opinión, sí.", "Es cierto.", "Es decididamente así.", "Probablemente.",
             "Buen pronóstico.", "Todo apunta a que sí.", "Sin duda.", "Sí.", "Puedes contar con ello.",
@@ -227,6 +237,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
 
     @commands.hybrid_command(name="rolldice", description="Lanza uno o más dados.")
     async def rolldice(self, ctx: commands.Context, cantidad: int = 1, caras: int = 6):
+        await ctx.defer()
         if cantidad > 100:
             return await ctx.send("No puedo lanzar más de 100 dados a la vez.", ephemeral=True)
         if caras > 1000:
@@ -244,6 +255,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
 
     @commands.hybrid_command(name="ship", description="Mide la compatibilidad entre dos personas.")
     async def ship(self, ctx: commands.Context, persona1: discord.Member, persona2: Optional[discord.Member] = None):
+        await ctx.defer()
         target2 = persona2 or ctx.author
         
         # Para que el resultado sea siempre el mismo para la misma pareja
@@ -287,7 +299,7 @@ class FunCog(commands.Cog, name="Juegos e IA"):
     async def gacha_pull(self, ctx: commands.Context):
         await ctx.defer()
         apuesta = 500
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji_currency = settings.get('currency_emoji', '🪙')
         
         wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
@@ -379,7 +391,9 @@ class FunCog(commands.Cog, name="Juegos e IA"):
     async def setup_confessions(self, ctx: commands.Context):
         embed = discord.Embed(title="📮 Buzón de Confesiones", description="¿Tienes un secreto oscuro? ¿Un mensaje para alguien en el servidor? Exprésalo de forma segura y 100% anónima.\n\n**Oprime el botón abajo para abrir el confesionario privado.** Nadie sabrá tu identidad.", color=self.bot.CREAM_COLOR)
         await ctx.send(embed=embed, view=ConfessView())
-        await ctx.message.delete()
+        if ctx.message:
+            try: await ctx.message.delete()
+            except: pass
 
 async def setup(bot: commands.Bot):
     # Registrar las vistas persistentes

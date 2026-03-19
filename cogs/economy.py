@@ -6,6 +6,7 @@ from typing import Optional, Literal
 
 # Importamos el gestor de base de datos
 from utils import database_manager as db
+from utils.lang_utils import _t
 
 def parse_amount(amount_str: str, current_balance: int) -> Optional[int]:
     """Interpreta textos como 'all', 'max', 'half' para facilitar la vida del usuario."""
@@ -25,6 +26,31 @@ class EconomyCog(commands.Cog, name="Economía"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.user_locks = {}
+        # Diccionario para persistir cooldowns dinámicos en RAM
+        self._last_uses = {
+            'work': {}, # (guild_id, user_id) -> timestamp
+            'rob': {},  # (guild_id, user_id) -> timestamp
+            'daily': {} # (guild_id, user_id) -> timestamp
+        }
+
+    async def cog_check(self, ctx: commands.Context):
+        """Check global para este Cog."""
+        if not ctx.guild: return True
+        settings = await db.get_cached_server_settings(ctx.guild.id)
+        if settings and not settings.get('eco_enabled', 1):
+            await ctx.send("❌ El módulo de **Economía** está desactivado. Un administrador debe habilitarlo en el dashboard.", ephemeral=True)
+            return False
+        
+        # Check active channels
+        allowed_channels = await db.fetchall("SELECT channel_id FROM economy_active_channels WHERE guild_id = ?", (ctx.guild.id,))
+        if allowed_channels:
+            allowed_ids = [int(ch['channel_id']) for ch in allowed_channels]
+            if ctx.channel.id not in allowed_ids:
+                channels_mentions = " ".join([f"<#{cid}>" for cid in allowed_ids])
+                await ctx.send(f"❌ Los comandos de economía solo están permitidos en: {channels_mentions}", ephemeral=True)
+                return False
+                
+        return True
         
     def get_user_lock(self, user_id: int) -> asyncio.Lock:
         if user_id not in self.user_locks:
@@ -42,7 +68,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.has_permissions(administrator=True)
     async def economy(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
-            await ctx.send("Comandos: `/economy set-currency`", ephemeral=True)
+            await ctx.send("Comandos: `/economy set-currency`, `/economy config-work`, `/economy config-daily`, `/economy config-rob`", ephemeral=True)
 
     @economy.command(name="set-currency", description="Cambia el nombre y emoji de la moneda.")
     async def set_currency(self, ctx: commands.Context, nombre: str, emoji: str):
@@ -50,35 +76,39 @@ class EconomyCog(commands.Cog, name="Economía"):
         await db.execute("UPDATE economy_settings SET currency_name = ?, currency_emoji = ? WHERE guild_id = ?", (nombre, emoji, ctx.guild.id))
         await ctx.send(f"✅ La moneda del servidor ahora es **{nombre}** {emoji}.", ephemeral=True)
 
-    @economy.command(name="config-work", description="Configura las ganancias y cooldown del comando /work.")
-    async def config_work(self, ctx: commands.Context, minimo: int, maximo: int, cooldown_segundos: int):
-        if minimo < 0 or maximo < minimo or cooldown_segundos < 0:
+    @economy.command(name="config-work", description="Ajusta ganancias y cooldown del trabajo.")
+    @commands.has_permissions(administrator=True)
+    async def config_work(self, ctx: commands.Context, min_paga: int, max_paga: int, segundos_espera: int):
+        if min_paga < 0 or max_paga < min_paga or segundos_espera < 0:
             return await ctx.send("❌ Valores inválidos. Asegúrate de que min >= 0, max >= min y cooldown >= 0.", ephemeral=True)
         await db.get_guild_economy_settings(ctx.guild.id)
-        await db.execute("UPDATE economy_settings SET work_min = ?, work_max = ?, work_cooldown = ? WHERE guild_id = ?", (minimo, maximo, cooldown_segundos, ctx.guild.id))
-        await ctx.send(f"✅ Configurando trabajo: Min {minimo}, Max {maximo}, Cooldown {cooldown_segundos}s.", ephemeral=True)
+        await db.execute("UPDATE economy_settings SET work_min = ?, work_max = ?, work_cooldown = ? WHERE guild_id = ?", (min_paga, max_paga, segundos_espera, ctx.guild.id))
+        await ctx.send(f"✅ **Trabajo configurado:**\n- Min: {min_paga}\n- Max: {max_paga}\n- Cooldown: {segundos_espera}s", ephemeral=True)
 
-    @economy.command(name="config-daily", description="Configura las ganancias del comando /daily.")
-    async def config_daily(self, ctx: commands.Context, minimo: int, maximo: int):
-        if minimo < 0 or maximo < minimo:
-            return await ctx.send("❌ Valores inválidos. Asegúrate de que min >= 0 y max >= min.", ephemeral=True)
+    @economy.command(name="config-daily", description="Ajusta ganancias del comando diario.")
+    @commands.has_permissions(administrator=True)
+    async def config_daily(self, ctx: commands.Context, min_diario: int, max_diario: int):
+        if min_diario < 0 or max_diario < min_diario:
+            return await ctx.send("❌ Valores inválidos.", ephemeral=True)
         await db.get_guild_economy_settings(ctx.guild.id)
-        await db.execute("UPDATE economy_settings SET daily_min = ?, daily_max = ? WHERE guild_id = ?", (minimo, maximo, ctx.guild.id))
-        await ctx.send(f"✅ Configurando diario: Min {minimo}, Max {maximo}.", ephemeral=True)
+        await db.execute("UPDATE economy_settings SET daily_min = ?, daily_max = ? WHERE guild_id = ?", (min_diario, max_diario, ctx.guild.id))
+        await ctx.send(f"✅ **Diario configurado:** Min {min_diario}, Max {max_diario}.", ephemeral=True)
 
-    @economy.command(name="config-rob", description="Configura el cooldown del comando /rob.")
-    async def config_rob(self, ctx: commands.Context, cooldown_segundos: int):
-        if cooldown_segundos < 0:
-            return await ctx.send("❌ El cooldown no puede ser negativo.", ephemeral=True)
+    @economy.command(name="config-rob", description="Ajusta el cooldown para robos.")
+    @commands.has_permissions(administrator=True)
+    async def config_rob(self, ctx: commands.Context, segundos_espera: int):
+        if segundos_espera < 0:
+            return await ctx.send("❌ Cooldown inválido.", ephemeral=True)
         await db.get_guild_economy_settings(ctx.guild.id)
-        await db.execute("UPDATE economy_settings SET rob_cooldown = ? WHERE guild_id = ?", (cooldown_segundos, ctx.guild.id))
-        await ctx.send(f"✅ Cooldown de robo establecido en {cooldown_segundos}s.", ephemeral=True)
+        await db.execute("UPDATE economy_settings SET rob_cooldown = ? WHERE guild_id = ?", (segundos_espera, ctx.guild.id))
+        await ctx.send(f"✅ **Cooldown de robo:** {segundos_espera}s.", ephemeral=True)
 
         
     @commands.hybrid_command(name="add-money", description="Añade dinero del servidor a un usuario (Admin).")
     @commands.has_permissions(administrator=True)
     async def add_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        if cantidad <= 0: return await ctx.send("❌ La cantidad debe ser mayor a 0.", ephemeral=True)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         await ctx.send(f"✅ Se han impreso **{cantidad} {emoji}** y añadido a la cartera de {miembro.mention}.")
@@ -86,124 +116,186 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.hybrid_command(name="remove-money", description="Quita dinero a un usuario. (Paga tus impuestos)")
     @commands.has_permissions(administrator=True)
     async def remove_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        if cantidad <= 0: return await ctx.send("❌ La cantidad debe ser mayor a 0.", ephemeral=True)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
         await ctx.send(f"🛑 Se han deducido **{cantidad} {emoji}** de la cartera de {miembro.mention}.")
 
     # --- BANCOS Y TRANSFERENCIAS ---
     
-    @commands.hybrid_command(name='balance', aliases=['bal', 'money'], description="Muestra la cartera y el banco de un usuario.")
+    @commands.hybrid_command(name='balance', aliases=['bal', 'money', 'atm'], description="Muestra la cartera y el banco de un usuario.")
     async def balance(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
+        if not ctx.guild: return
+        await ctx.defer()
         target = miembro or ctx.author
         if target.bot: return await ctx.send("🤖 Los bots formamos parte de una red de consciencia unificada que anula el concepto de capitalismo.")
-        await ctx.defer()
         
         wallet, bank = await db.get_balance(ctx.guild.id, target.id)
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         currency_name = settings.get('currency_name', 'créditos')
         emoji = settings.get('currency_emoji', '🪙')
         
         max_bank = await self.get_max_bank(ctx.guild.id, target.id)
         
-        embed = discord.Embed(title=f"💳 Balance de {target.display_name}", color=self.bot.CREAM_COLOR)
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+        
+        embed = discord.Embed(title=_t('bot.economy.balance_title', lang=lang, name=target.display_name), color=self.bot.CREAM_COLOR)
         embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(name="Cartera (Wallet)", value=f"**{wallet:,}** {emoji}", inline=True)
-        embed.add_field(name="Banco (Bank)", value=f"**{bank:,} / {max_bank:,}** {emoji}", inline=True)
-        embed.add_field(name="Neto Total", value=f"**{(wallet + bank):,}** {emoji}", inline=False)
-        embed.set_footer(text=f"Moneda Oficial: {currency_name.capitalize()}")
+        embed.add_field(name=_t('bot.economy.wallet', lang=lang), value=f"**{wallet:,}** {emoji}", inline=True)
+        embed.add_field(name=_t('bot.economy.bank', lang=lang), value=f"**{bank:,} / {max_bank:,}** {emoji}", inline=True)
+        embed.add_field(name=_t('bot.economy.total', lang=lang), value=f"**{(wallet + bank):,}** {emoji}", inline=False)
+        embed.set_footer(text=_t('bot.economy.footer', lang=lang, currency=currency_name.capitalize()))
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='deposit', aliases=['dep'], description="Mete dinero a la seguridad de tu banco. Uso: 'all' / 'max' / '100'")
     async def deposit(self, ctx: commands.Context, cantidad: str):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        if not ctx.guild: return
+        await ctx.defer()
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         
         async with self.get_user_lock(ctx.author.id):
             wallet, bank = await db.get_balance(ctx.guild.id, ctx.author.id)
             amount = parse_amount(cantidad, wallet)
             
-            if amount is None or amount <= 0: return await ctx.send("❌ Monto inválido. Puedes usar números o 'all'.", ephemeral=True)
-            if amount > wallet: return await ctx.send(f"❌ No tienes suficiente efectivo. (Tienes **{wallet} {emoji}**)", ephemeral=True)
+            # Fetch language for localization
+            server_settings = await db.get_cached_server_settings(ctx.guild.id)
+            lang = server_settings.get('language', 'es')
+            
+            if amount is None or amount <= 0: return await ctx.send(_t('bot.economy.invalid_amount', lang=lang), ephemeral=True)
+            if amount > wallet: return await ctx.send(_t('bot.economy.not_enough_money', lang=lang, balance=wallet, emoji=emoji), ephemeral=True)
                 
             max_bank = await self.get_max_bank(ctx.guild.id, ctx.author.id)
             if bank + amount > max_bank:
                 amount = max_bank - bank
                 if amount <= 0:
-                    return await ctx.send(f"🏦 Tu banco está rebosando el límite ({max_bank:,} {emoji}). ¡Sube tu nivel de XP en el servidor para ampliarlo!", ephemeral=True)
+                    # Generic error for now, could be localized too
+                    return await ctx.send(f"🏦 Tu banco está rebosando el límite ({max_bank:,} {emoji}).", ephemeral=True)
             
             new_wallet, new_bank = await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-amount, bank_change=amount)
-            await ctx.send(f"🏦 Has depositado **{amount:,} {emoji}** en el banco.\n**Saldo Protegido:** {new_bank:,} / {max_bank:,} {emoji}")
+            await ctx.send(_t('bot.economy.deposit_success', lang=lang, amount=f"{amount:,}", emoji=emoji) + f"\n**Saldo Protegido:** {new_bank:,} / {max_bank:,} {emoji}")
 
     @commands.hybrid_command(name='withdraw', aliases=['with'], description="Saca dinero de tu banco a tu cartera. Uso: 'all' / '100'")
     async def withdraw(self, ctx: commands.Context, cantidad: str):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        if not ctx.guild: return
+        await ctx.defer()
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         
         async with self.get_user_lock(ctx.author.id):
             wallet, bank = await db.get_balance(ctx.guild.id, ctx.author.id)
             amount = parse_amount(cantidad, bank)
             
-            if amount is None or amount <= 0: return await ctx.send("❌ Monto inválido. Puedes usar 'all' o números.", ephemeral=True)
-            if amount > bank: return await ctx.send(f"❌ Intentas sacar más de lo que tienes en el banco. (Saldo: **{bank} {emoji}**)", ephemeral=True)
+            # Fetch language for localization
+            server_settings = await db.get_cached_server_settings(ctx.guild.id)
+            lang = server_settings.get('language', 'es')
+            
+            if amount is None or amount <= 0: return await ctx.send(_t('bot.economy.invalid_amount', lang=lang), ephemeral=True)
+            if amount > bank: return await ctx.send(_t('bot.economy.not_enough_money', lang=lang, balance=bank, emoji=emoji), ephemeral=True)
             
             await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=amount, bank_change=-amount)
-            await ctx.send(f"🏧 Has retirado **{amount:,} {emoji}** de forma líquida. ¡Cuidado en las calles!")
+            await ctx.send(_t('bot.economy.withdraw_success', lang=lang, amount=f"{amount:,}", emoji=emoji))
 
     @commands.hybrid_command(name='give', aliases=['transfer', 'pay'], description="Págale a un usuario (Impuesto gubernamental de 2% para evitar abusos).")
-    async def give(self, ctx: commands.Context, miembro: discord.Member, cantidad: str):
+    async def give(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
+        if not ctx.guild: return
+        await ctx.defer()
         if miembro.bot: return await ctx.send("🤖 La interfaz de las IAs aún no acepta propinas.")
-        if miembro.id == ctx.author.id: return await ctx.send("❌ Acabas de inventar el movimiento perpetuo. No te puedes pagar a ti mismo.")
+        if miembro.id == ctx.author.id: return await ctx.send("❌ No te puedes pagar a ti mismo.")
         
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
 
         async with self.get_user_lock(ctx.author.id):
             wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
-            amount = parse_amount(cantidad, wallet)
             
-            if amount is None or amount <= 0: return await ctx.send("❌ Monto inválido.", ephemeral=True)
-            if amount > wallet: return await ctx.send(f"❌ Te falta efectivo en la cartera.", ephemeral=True)
+            # Fetch language for localization
+            server_settings = await db.get_cached_server_settings(ctx.guild.id)
+            lang = server_settings.get('language', 'es')
             
-            # Anti-Lavado de multicuentas
-            impuesto = int(amount * 0.02)
-            recibe = amount - impuesto
+            if cantidad <= 0: return await ctx.send(_t('bot.economy.invalid_amount', lang=lang), ephemeral=True)
+            if cantidad > wallet: return await ctx.send(_t('bot.economy.not_enough_money', lang=lang, balance=wallet, emoji=emoji), ephemeral=True)
             
-            await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-amount)
-            await db.update_balance(ctx.guild.id, miembro.id, wallet_change=recibe)
-            await ctx.send(f"💸 Le has entregado **{recibe:,} {emoji}** a {miembro.mention} (impuesto estatal: -{impuesto} {emoji}).")
+            tax = int(cantidad * 0.02)
+            real_amount = cantidad - tax
+            
+            await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-cantidad)
+            await db.update_balance(ctx.guild.id, miembro.id, wallet_change=real_amount)
+            
+            await ctx.send(_t('bot.economy.give_success', lang=lang, amount=f"{real_amount:,}", emoji=emoji, target=miembro.mention) + f" (Tax: {tax:,} {emoji})")
 
     # --- INGRESOS ACTIVOS ---
     
     @commands.hybrid_command(name='daily', description="Reclama una buena recompensa que puedes sacar una vez cada día.")
     async def daily(self, ctx: commands.Context):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
-        min_d = settings.get('daily_min', 900)
-        max_d = settings.get('daily_max', 2000)
+        if not ctx.guild: return
+        await ctx.defer()
+        
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         
-        # Cooldown dinámico manejado manualmente para usar el valor de la DB
-        # Nota: discord.py no soporta cooldowns dinámicos nativamente de forma simple sin decoradores complejos.
-        # Mantendremos el decorador pero informamos que el admin puede cambiar los rangos.
-        # Para el cooldown del trabajo/robo sí lo aplicaremos dinámicamente.
-        
-        ganancia = random.randint(min_d, max_d)
-        await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=ganancia)
-        embed = discord.Embed(title="📅 Ingreso Diario", description=f"¡Has reclamado tu asistencia del día!\nDisfruta en tu bolsillo: **+{ganancia} {emoji}**", color=discord.Color.brand_green())
-        await ctx.send(embed=embed)
+        async with self.get_user_lock(ctx.author.id):
+            # Fetch language for localization
+            server_settings = await db.get_cached_server_settings(ctx.guild.id)
+            lang = server_settings.get('language', 'es')
+            
+            last_daily = await db.get_last_daily(ctx.guild.id, ctx.author.id)
+            now = discord.utils.utcnow()
+            
+            if last_daily:
+                delta = now - last_daily
+                if delta.total_seconds() < 86400:
+                    wait_time = 86400 - delta.total_seconds()
+                    hours = int(wait_time // 3600)
+                    minutes = int((wait_time % 3600) // 60)
+                    time_str = f"{hours}h {minutes}m"
+                    return await ctx.send(_t('bot.economy.daily_cooldown', lang=lang, time=time_str), ephemeral=True)
+            
+            eco_conf = await db.get_economy_settings(ctx.guild.id)
+            d_min = eco_conf.get('daily_min', 900)
+            d_max = eco_conf.get('daily_max', 2000)
+            
+            reward = random.randint(d_min, d_max)
+            await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=reward)
+            await db.set_last_daily(ctx.guild.id, ctx.author.id, now)
+            
+            await ctx.send(_t('bot.economy.daily_success', lang=lang, amount=f"{reward:,}", emoji=emoji))
+
 
     @commands.hybrid_command(name='work', description="Ponte a trabajar unas horas para tener efectivo.")
+    @commands.cooldown(1, 3600, commands.BucketType.user)
     async def work(self, ctx: commands.Context):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
-        cooldown = settings.get('work_cooldown', 3600)
+        if not ctx.guild: return
+        await ctx.defer()
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        cooldown_time = settings.get('work_cooldown', 3600)
         
-        # Bucket manual para cooldown dinámico
-        bucket = commands.CooldownMapping.from_cooldown(1, cooldown, commands.BucketType.user).get_bucket(ctx.message)
-        retry_after = bucket.update_rate_limit()
-        if retry_after:
-            return await ctx.send(f"⏳ Estás agotado. Debes descansar un poco más. Intenta de nuevo en **{int(retry_after/60)}m {int(retry_after%60)}s**.", ephemeral=True)
+        now = discord.utils.utcnow().timestamp()
+        last_use = self._last_uses['work'].get((ctx.guild.id, ctx.author.id), 0)
+        
+        # Fetch language for localization
+        server_settings = await db.get_cached_server_settings(ctx.guild.id)
+        lang = server_settings.get('language', 'es')
+
+        if now - last_use < cooldown_time:
+            retry_after = cooldown_time - (now - last_use)
+            hours = int(retry_after // 3600)
+            minutes = int((retry_after % 3600) // 60)
+            seconds = int(retry_after % 60)
+            time_str = ""
+            if hours > 0: time_str += f"{hours}h "
+            if minutes > 0: time_str += f"{minutes}m "
+            time_str += f"{seconds}s"
+            return await ctx.send(_t('bot.economy.work_cooldown', lang=lang, time=time_str.strip()), ephemeral=True)
+
+        # Registrar uso antes de procesar (si falla el procesamiento por algo raro, se queda el cooldown)
+        self._last_uses['work'][(ctx.guild.id, ctx.author.id)] = now
 
         min_w = settings.get('work_min', 100)
+
         max_w = settings.get('work_max', 350)
         emoji = settings.get('currency_emoji', '🪙')
         ganancia = random.randint(min_w, max_w)
@@ -235,10 +327,12 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     @commands.hybrid_command(name='shop', aliases=['tienda'], description="Mira los artículos disponibles para comprar en este servidor.")
     async def shop(self, ctx: commands.Context):
+        if not ctx.guild: return
+        await ctx.defer()
         items = await db.fetchall("SELECT * FROM shop_items WHERE guild_id = ?", (ctx.guild.id,))
         if not items: return await ctx.send("🛒 La tienda está vacía. Vuelve más tarde.", ephemeral=True)
         
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         
         embed = discord.Embed(title="🛒 Tienda del Servidor", description="Usa `/buy <ID>` para comprar un artículo.", color=discord.Color.gold())
@@ -250,11 +344,12 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     @commands.hybrid_command(name='buy', aliases=['comprar'], description="Compra un artículo de la tienda usando su ID.")
     async def buy(self, ctx: commands.Context, item_id: int):
+        if not ctx.guild: return
         await ctx.defer()
         item = await db.fetchone("SELECT * FROM shop_items WHERE item_id = ? AND guild_id = ?", (item_id, ctx.guild.id))
         if not item: return await ctx.send("❌ No existe ningún artículo con esa ID en esta tienda.", ephemeral=True)
         
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         
         async with self.get_user_lock(ctx.author.id):
@@ -284,6 +379,8 @@ class EconomyCog(commands.Cog, name="Economía"):
 
     @commands.hybrid_command(name='inventory', aliases=['inv', 'mochila'], description="Revisa los consumibles y objetos que has comprado.")
     async def inventory(self, ctx: commands.Context):
+        if not ctx.guild: return
+        await ctx.defer()
         query = "SELECT i.quantity, s.name, s.description FROM inventory i JOIN shop_items s ON i.item_id = s.item_id WHERE i.guild_id = ? AND i.user_id = ? AND i.quantity > 0"
         items = await db.fetchall(query, (ctx.guild.id, ctx.author.id))
         
@@ -296,38 +393,44 @@ class EconomyCog(commands.Cog, name="Economía"):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='rob', aliases=['robar'], description="Intenta adueñarte de lo que no es tuyo. Altamente riesgoso.")
+    @commands.cooldown(1, 21600, commands.BucketType.user)
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
-        cooldown = settings.get('rob_cooldown', 21600)
-        
-        # Bucket manual para permitir resets y cooldown dinámico
-        bucket = commands.CooldownMapping.from_cooldown(1, cooldown, commands.BucketType.user).get_bucket(ctx.message)
-        
+        if not ctx.guild: return
+        await ctx.defer()
         if miembro.id == ctx.author.id:
             return await ctx.send("Te quitaste la cartera de tu bolsillo izquierdo para meterla en el derecho. Eres un genio.")
         if miembro.bot:
             return await ctx.send("Robarle a una IA es intentar hackear a la Matrix. Imposible.")
+
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        cooldown_time = settings.get('rob_cooldown', 21600)
         
-        retry_after = bucket.update_rate_limit()
-        if retry_after:
+        now = discord.utils.utcnow().timestamp()
+        last_use = self._last_uses['rob'].get((ctx.guild.id, ctx.author.id), 0)
+        
+        if now - last_use < cooldown_time:
+            retry_after = cooldown_time - (now - last_use)
             return await ctx.send(f"⏳ El último atraco fue demasiado tenso. La policía te busca. Intenta de nuevo en **{int(retry_after/3600)}h {int((retry_after%3600)/60)}m**.", ephemeral=True)
         
         emoji = settings.get('currency_emoji', '🪙')
-
         
         async with self.get_user_lock(ctx.author.id):
+            # Fetch language for localization
+            server_settings = await db.get_cached_server_settings(ctx.guild.id)
+            lang = server_settings.get('language', 'es')
+            
             robador_w, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
             victima_w, _ = await db.get_balance(ctx.guild.id, miembro.id)
             
             # Anti-Exploits Puras Multas
             if robador_w < 500:
-                self.rob.reset_cooldown(ctx)
                 return await ctx.send(f"❌ ¡Eres pobre! Necesitas tener al menos **500 {emoji}** en la cartera como fianza por si te atrapa la patrulla.", ephemeral=True)
                 
             if victima_w < 200:
-                self.rob.reset_cooldown(ctx)
                 return await ctx.send(f"❌ Pobrecito de {miembro.display_name}, no trae ni 200 {emoji} para el bus. Búscate un objetivo más grande.", ephemeral=True)
 
+            # Si pasa las fianza, aplicamos cooldown ANTES de ver si gana o pierde para que no spamee
+            self._last_uses['rob'][(ctx.guild.id, ctx.author.id)] = now
 
             # Revisar si la víctima tiene un consumible protector tipo "escudo" en el inventario
             shield_item = await db.fetchone("""
@@ -347,37 +450,40 @@ class EconomyCog(commands.Cog, name="Economía"):
 
             # Matemáticas regulares: 40% Winrate vs 60% multas
             suerte = random.randint(1, 100)
-            if suerte <= 40: 
-                cantidad_robada = int(victima_w * random.uniform(0.1, 0.45))
-                if cantidad_robada <= 0: cantidad_robada = 1
-                await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad_robada)
-                await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=cantidad_robada)
-                embed = discord.Embed(title="🥷 ¡Robo Exitoso!", description=f"Corriste hacia {miembro.mention}, agarraste todo lo que pudiste y huiste con **{cantidad_robada:,} {emoji}**.\n*Ojalá hubieran guardado su fe en su banco*", color=discord.Color.green())
-                await ctx.send(embed=embed)
-            else: 
-                multa = int(robador_w * 0.25) # 25% de la cartera líquida del ladrón
+            # Matemáticas regulares: 45% Winrate vs 55% multas
+            exito = random.randint(1, 100)
+            if exito <= 45: # 45% probabilidad de éxito
+                cantidad = random.randint(10, int(victima_w * 0.35))
+                await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=cantidad)
+                await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
+                await ctx.send(_t('bot.economy.rob_success', lang=lang, amount=f"{cantidad:,}", emoji=emoji, target=miembro.mention))
+            else:
+                multa = random.randint(10, int(robador_w * 0.20))
                 await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=-multa)
-                embed = discord.Embed(title="🚓 ¡Fuiste Detenido!", description=f"¡Ups! ¡ {miembro.mention} tiene cinturón negro! Trataste de asaltarle pero te inmovilizó hasta que llegó la patrulla.\nLa jueza te quitó **{multa:,} {emoji}**.", color=discord.Color.red())
-                await ctx.send(embed=embed)
+                await db.update_balance(ctx.guild.id, miembro.id, wallet_change=multa)
+                await ctx.send(_t('bot.economy.rob_failed', lang=lang, amount=f"{multa:,}", emoji=emoji, target=miembro.mention))
 
     @commands.hybrid_command(name='leaderboard', aliases=['richest'], description="Observa qué personas tienen más estatus que tú.")
     async def leaderboard(self, ctx: commands.Context):
+        if not ctx.guild: return
         await ctx.defer()
         query = "SELECT user_id, wallet, bank FROM balances WHERE guild_id = ? ORDER BY (wallet + bank) DESC LIMIT 10"
         top_users = await db.fetchall(query, (ctx.guild.id,))
         
-        settings = await db.get_guild_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id)
         emoji = settings.get('currency_emoji', '🪙')
         
         if not top_users: return await ctx.send("Este lugar parece un desierto económico.")
         
-        embed = discord.Embed(title=f"🏆 Los Más Poderosos de {ctx.guild.name} 🏆", color=discord.Color.gold())
+        embed = discord.Embed(title=f"🏆 Los Más Poderosos de {ctx.guild.name} 🏆", color=self.bot.CREAM_COLOR)
         description = ""
         for i, row in enumerate(top_users):
-            try:
-                user = await self.bot.fetch_user(row['user_id'])
-                name = user.display_name
-            except discord.NotFound: name = f"User ({row['user_id']})"
+            user = self.bot.get_user(row['user_id'])
+            if not user:
+                try: user = await self.bot.fetch_user(row['user_id'])
+                except: name = f"Usuario ({row['user_id']})"
+            
+            if user: name = user.display_name
             
             net = row['wallet'] + row['bank']
             rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i+1}.`"

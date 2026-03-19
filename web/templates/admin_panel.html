@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Bot Panel - UmapyoiBot</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=2.8">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: calc(100vh - 100px);
+            padding-top: var(--header-h);
+        }
+        @media (max-width: 1100px) {
+            .dashboard-layout { grid-template-columns: 1fr; }
+            .db-sidebar { 
+                position: fixed; 
+                left: -280px; 
+                top: 0; /* Cover full height on mobile */
+                height: 100vh; 
+                z-index: 10001; 
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                background: #0b0914; /* Match dark theme */
+                width: 280px;
+                box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+            }
+            .db-sidebar.active { left: 0; }
+            .db-content { padding: 20px; }
+            .sidebar-toggle-mobile { display: flex !important; }
+            .sidebar-close-mobile { display: flex !important; }
+        }
+        
+        /* Ensure content doesn't get too wide on giant screens but stays aligned */
+        .db-content-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar Styling Fix */
+        .db-sidebar {
+            background: var(--bg-alt);
+            border-right: 1px solid var(--border-color);
+            padding: 30px;
+        }
+        .db-sidebar .nav-link {
+            padding: 12px 15px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            transition: var(--transition);
+            position: relative;
+            text-decoration: none;
+        }
+        .db-sidebar .nav-link.active::after { display: none; }
+        .db-sidebar .nav-link:hover, .db-sidebar .nav-link.active {
+            background: var(--p-pink-soft);
+            color: var(--p-pink);
+        }
+
+        /* Content Structure */
+        .db-content {
+            padding: 40px;
+        }
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        .admin-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--p-pink-soft);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(255, 107, 158, 0.05);
+        }
+        .stat-huge {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            color: var(--p-pink);
+            margin: 10px 0;
+            line-height: 1;
+        }
+        .meter-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,107,158,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: block; /* Hard fix for unusual browser rendering */
+        }
+        .meter-fill {
+            height: 100%;
+            display: block;
+            background: var(--p-pink);
+            transition: width 0.4s ease;
+            max-width: 100%; /* Prevent line overflow */
+        }
+
+        form .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: white;
+            transition: var(--transition);
+            box-sizing: border-box;
+        }
+        form .form-control:focus {
+            outline: none;
+            border-color: var(--p-pink);
+            box-shadow: 0 0 10px rgba(255,107,158,0.2);
+        }
+        form select.form-control option {
+            background: #1a1b1e;
+            color: white;
+        }
+        form label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Tabs System */
+        .admin-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .tab-btn.active {
+            color: var(--p-pink);
+            background: var(--p-pink-soft);
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+        }
+        tr {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        /* Custom Modal Styles */
+        .uma-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 12, 18, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .uma-modal-overlay.active { display: flex; opacity: 1; }
+        .uma-modal {
+            background: var(--bg-alt);
+            border: 1px solid rgba(255, 107, 158, 0.2);
+            border-radius: 20px;
+            width: 90%; max-width: 450px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(255, 107, 158, 0.1);
+            transform: translateY(20px); transition: transform 0.3s;
+            text-align: center;
+        }
+        .uma-modal-overlay.active .uma-modal { transform: translateY(0); }
+        .uma-modal-icon {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .uma-modal h2 { font-family: 'Outfit'; margin-bottom: 10px; font-size: 1.5rem; }
+        .uma-modal p { color: var(--text-muted); margin-bottom: 25px; line-height: 1.5; }
+        .uma-modal-actions { display: flex; gap: 15px; }
+        .uma-modal-btn { 
+            flex: 1; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .uma-modal-btn-cancel { background: rgba(255,255,255,0.05); color: white; border-color: rgba(255,255,255,0.1); }
+        .uma-modal-btn-cancel:hover { background: rgba(255,255,255,0.1); }
+        .uma-modal-btn-confirm { background: #e74c3c; color: white; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); }
+        .uma-modal-btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4); }
+        .sub-tab-nav {
+            display: flex; gap: 8px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 12px;
+        }
+        .sub-tab-btn {
+            background: transparent; border: none; color: var(--text-muted); 
+            padding: 6px 16px; border-radius: 9px; font-weight: 600; font-size: 0.8rem;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .sub-tab-btn.active { background: var(--p-pink); color: white; }
+        .sub-tab-content { display: none; }
+        .sub-tab-content.active { display: block; }
+
+        /* Server Detail Modal Specifics */
+        .detail-row {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 15px; text-align: left;
+            background: rgba(255,107,158,0.05); padding: 10px; border-radius: 12px;
+        }
+        .detail-avatar { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,107,158,0.3); }
+        .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .detail-value { font-weight: 600; font-size: 0.9rem; }
+    </style>
+</head>
+<body class="dashboard-page">
+    <nav id="navbar" class="scrolled">
+        <div class="container" style="position: relative;">
+            <button class="sidebar-toggle-mobile" onclick="toggleSidebar()" style="display: none; background: transparent; border: none; color: white; margin-right: 15px; cursor: pointer;">
+                <i data-lucide="menu"></i>
+            </button>
+            <a href="/" class="logo">
+                <img src="/static/assets/mascot.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 10px; object-fit: cover; box-shadow: 0 4px 12px rgba(255,107,158,0.3);">
+                Umapyoi<div class="logo-dot"></div>
+            </a>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <a href="/dashboard" class="nav-link hide-mobile">Volver al Panel Simple</a>
+                <div class="profile-dropdown-container">
+                    <div class="profile-trigger" onclick="toggleProfileSlider()">
+                        <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="profile-avatar-sm">
+                        <span style="font-weight: 700; font-size: 0.9rem;">{{ user.username }}</span>
+                        <i data-lucide="chevron-down" style="width: 16px;"></i>
+                    </div>
+                    <div id="profileSlider" class="profile-slider">
+                        <div class="slider-header" style="background: linear-gradient(to bottom, var(--p-pink-soft), transparent); padding: 20px; text-align: center;">
+                            <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" class="profile-avatar-lg">
+                            <h3 style="margin-top: 10px; margin-bottom: 5px;">{{ user.username }}</h3>
+                            <a href="/logout" class="btn btn-primary" style="margin-top: 15px; width: 100%;">Cerrar Sesión</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <!-- Exact Sidebar structure from Dashboard.html to preserve design -->
+        <aside class="db-sidebar" id="sidebar">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                <button class="sidebar-close-mobile" onclick="toggleSidebar()" style="display: none; background: rgba(255,255,255,0.05); border: none; color: white; padding: 5px; border-radius: 5px; cursor: pointer;">
+                    <i data-lucide="x" style="width: 20px;"></i>
+                </button>
+            </div>
+            <div style="display:flex; align-items:center; gap:15px; padding:20px; background:var(--p-pink-soft); border-radius:var(--radius-md); margin-bottom:30px;">
+                <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" style="width:45px; height:45px; border-radius:50%; border: 2px solid var(--p-pink);">
+                <div style="min-width: 0;">
+                    <h4 style="margin:0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;">{{ user.username }}</h4>
+                    <span style="color:var(--text-muted); font-size:0.75rem;">Adminsitrador Dios</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
+                    <li><a href="/dashboard" class="nav-link"><i data-lucide="layout"></i> <span>Mis Servidores</span></a></li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <li style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Recursos</li>
+                <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
+                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>Documentación</span></a></li>
+                    <li><a href="/report" class="nav-link"><i data-lucide="alert-triangle"></i> <span>Reportes</span></a></li>
+                    <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>Sugerencias</span></a></li>
+                    <li><a href="https://discord.gg/umapyoi" target="_blank" class="nav-link"><i data-lucide="help-circle"></i> <span>Soporte</span></a></li>
+                </ul>
+            </div>
+                
+            <div class="sidebar-section">
+                <li style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Administración</li>
+                <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
+                    <li><a href="/dashboard/admin" class="nav-link active"><i data-lucide="shield"></i> <span>Admin Bot (Dueño)</span></a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="db-content">
+            <div class="db-content-inner">
+                <header class="content-header" style="margin-bottom: 30px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+                    <div>
+                        <h1 style="font-size: 2.2rem; font-family: var(--font-display); margin: 0;"><span style="color: var(--p-pink);">Súper</span> Panel Administrativo</h1>
+                        <p style="color: var(--text-muted); margin: 5px 0 0 0;">Herramientas globales exclusivas del creador. Tratar este panel con extrema responsabilidad.</p>
+                    </div>
+                    <button onclick="window.location.reload()" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,107,158,0.2); color: white; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; transition: all 0.3s; border-radius: 12px; white-space: nowrap;">
+                        <i data-lucide="refresh-cw" style="width: 18px;"></i> Actualizar Panel
+                    </button>
+                </div>
+            </header>
+
+            <div class="admin-tabs">
+                <button class="tab-btn active" onclick="switchTab('tab-stats')"><i data-lucide="activity" style="width: 18px; margin-right: 8px;"></i> General</button>
+                <button class="tab-btn" onclick="switchTab('tab-servers')"><i data-lucide="server" style="width: 18px; margin-right: 8px;"></i> Servidores ({{ bot_guilds|length }})</button>
+                <button class="tab-btn" onclick="switchTab('tab-logs')"><i data-lucide="scroll_text" style="width: 18px; margin-right: 8px;"></i> Registros</button>
+                <button class="tab-btn" onclick="switchTab('tab-database')"><i data-lucide="database" style="width: 18px; margin-right: 8px;"></i> Base de Datos</button>
+                <button class="tab-btn" onclick="switchTab('tab-broadcast')"><i data-lucide="radio" style="width: 18px; margin-right: 8px;"></i> Transmisiones</button>
+                <button class="tab-btn" onclick="switchTab('tab-blacklist')"><i data-lucide="user-x" style="width: 18px; margin-right: 8px;"></i> Lista Negra</button>
+            </div>
+
+            <div id="tab-stats" class="tab-content active">
+                <div class="admin-grid">
+                    <!-- Estadísticas Globales -->
+                    <div class="admin-card">
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="globe" style="color:var(--p-pink);"></i> Estadísticas Globales</h3>
+                        <div style="display: flex; gap: 40px; margin-top: 20px;">
+                            <div>
+                                <p class="text-muted" style="margin-bottom:5px;">Servidores</p>
+                                <div class="stat-huge">{{ total_guilds }}</div>
+                            </div>
+                            <div>
+                                <p class="text-muted" style="margin-bottom:5px;">Usuarios Autenticados</p>
+                                <div class="stat-huge">{{ total_users }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitor del Sistema -->
+                    <div class="admin-card">
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="cpu" style="color:var(--p-pink);"></i> Monitor del Sistema</h3>
+                        <div style="margin-top: 20px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Uso de CPU</span>
+                                <span id="cpu-text" style="color: var(--p-pink); font-weight: bold;">{{ cpu_percent }}%</span>
+                            </div>
+                            <div class="meter-container"><div id="cpu-bar" class="meter-fill" style="--width: {{ cpu_percent }}%; width: var(--width);"></div></div>
+                            
+                            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                                <span>Memoria RAM Reservada</span>
+                                <span id="ram-text" style="color: var(--p-pink); font-weight: bold;">{{ ram_percent }}%</span>
+                            </div>
+                            <div class="meter-container"><div id="ram-bar" class="meter-fill" style="--width: {{ ram_percent }}%; width: var(--width);"></div></div>
+                            <p style="margin-top: 15px; font-size: 0.85rem; color: #2ecc71;"><i data-lucide="activity" style="width: 14px; vertical-align: middle;"></i> Sincronización en vivo cada 5s operando...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-servers" class="tab-content">
+                <div class="admin-card" style="grid-column: 1 / -1;">
+                    <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="list" style="color:var(--p-pink);"></i> Lista Detallada de Servidores</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 20px;">Explora todos los gremios donde UmapyoiBot está presente actualmente.</p>
+                    
+                    <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
+                        <table>
+                            <thead style="background: rgba(255,107,158,0.1);">
+                                <tr>
+                                    <th>Icono</th>
+                                    <th>Nombre del Servidor</th>
+                                    <th>ID del Gremio</th>
+                                    <th>Dueño / Creador</th>
+                                    <th>Invitado por</th>
+                                    <th>Miembros</th>
+                                    <th>Gestión</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for guild in bot_guilds %}
+                                <tr>
+                                    <td>
+                                        {% if guild.icon_url %}
+                                            <img src="{{ guild.icon_url }}" style="width: 32px; height: 32px; border-radius: 50%;">
+                                        {% else %}
+                                            <div style="width:32px; height:32px; border-radius:50%; background:var(--p-pink-soft); display:flex; align-items:center; justify-content:center; font-size:0.7rem;">{{ guild.name[0] }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="font-weight: 600;">{{ guild.name }}</td>
+                                    <td style="font-family: monospace; color: var(--text-muted); font-size: 0.8rem;">{{ guild.guild_id }}</td>
+                                    <td>
+                                        <div style="font-size: 0.9rem;">{{ guild.owner_name }}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ guild.owner_id }}</div>
+                                    </td>
+                                    <td>
+                                        {% if guild.inviter_id %}
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                {% if guild.inviter_avatar %}
+                                                    <img src="{{ guild.inviter_avatar }}" style="width: 24px; height: 24px; border-radius: 50%;">
+                                                {% else %}
+                                                    <div style="width:24px; height:24px; border-radius:50%; background:rgba(255,107,158,0.1); display:flex; align-items:center; justify-content:center; font-size:0.6rem;">?</div>
+                                                {% endif %}
+                                                <div>
+                                                    <div style="font-size: 0.85rem;">{{ guild.inviter_name }}</div>
+                                                    <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;">{{ guild.inviter_id }}</div>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span style="color: var(--text-muted); font-size: 0.8rem;">Antiguo / Desconocido</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><i data-lucide="users" style="width: 14px; vertical-align: middle;"></i> {{ guild.member_count }}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 5px;">
+                                            <button type="button" class="btn" 
+                                                    style="background: rgba(255, 107, 158, 0.1); color: var(--p-pink); border: 1px solid var(--p-pink); padding: 4px 8px; font-size: 0.7rem;"
+                                                    onclick="showGuildDetails('{{ guild.guild_id }}', '{{ guild.name }}', '{{ guild.owner_name }}', '{{ guild.owner_id }}', '{{ guild.inviter_name }}', '{{ guild.inviter_id }}', '{{ guild.inviter_avatar }}', '{{ guild.member_count }}', '{{ guild.icon_url }}')">
+                                                Detalles
+                                            </button>
+                                            <button type="button" class="btn" 
+                                                    style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; padding: 4px 8px; font-size: 0.7rem;"
+                                                    onclick="showAbandonModal('{{ guild.guild_id }}', '{{ guild.name }}')">
+                                                Abandonar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-logs" class="tab-content">
+                <div class="admin-card" style="grid-column: 1 / -1;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <h3 style="display:flex; align-items:center; gap:8px; margin-bottom: 5px;"><i data-lucide="scroll_text" style="color:var(--p-pink);"></i> Registros del Bot</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">Monitoreo de actividad de usuarios y salud técnica del sistema.</p>
+                        </div>
+                        <div class="sub-tab-nav">
+                            <button class="sub-tab-btn active" id="btn-sub-commands" onclick="switchSubTab('log-commands')">Actividad</button>
+                            <button class="sub-tab-btn" id="btn-sub-system" onclick="switchSubTab('log-system')">Vida / Sistema</button>
+                            <button class="sub-tab-btn" id="btn-sub-audit" onclick="switchSubTab('log-audit')">Auditoría</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Sub-Tab: Comandos -->
+                    <div id="log-commands" class="sub-tab-content active">
+                        <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
+                            <table style="font-size: 0.9rem;">
+                                <thead style="background: rgba(255,107,158,0.1);">
+                                    <tr>
+                                        <th>Fecha / Hora</th>
+                                        <th>Usuario</th>
+                                        <th>Servidor</th>
+                                        <th>Comando</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in recent_logs %}
+                                    <tr>
+                                        <td style="color: var(--text-muted); font-size: 0.8rem;">{{ log.timestamp }}</td>
+                                        <td>
+                                            <div style="font-weight: 600;">{{ log.user_name }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ log.user_id }}</div>
+                                        </td>
+                                        <td>
+                                            <div>{{ log.guild_name }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ log.guild_id }}</div>
+                                        </td>
+                                        <td>
+                                            <span style="background: rgba(255,107,158,0.2); color: var(--p-pink); padding: 2px 8px; border-radius: 4px; font-weight: 600;">/{{ log.command_name }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sub-Tab: Sistema -->
+                    <div id="log-system" class="sub-tab-content">
+                        <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
+                            <table style="font-size: 0.9rem;">
+                                <thead style="background: rgba(255,107,158,0.1);">
+                                    <tr>
+                                        <th>Fecha / Hora</th>
+                                        <th>Nivel</th>
+                                        <th>Categoría</th>
+                                        <th>Mensaje del Sistema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if not system_logs %}
+                                    <tr><td colspan="4" style="text-align:center; padding: 40px; color:var(--text-muted);">No hay eventos de sistema registrados recientemente.</td></tr>
+                                    {% endif %}
+                                    {% for log in system_logs %}
+                                    <tr>
+                                        <td style="color: var(--text-muted); font-size: 0.8rem;">{{ log.timestamp }}</td>
+                                        <td>
+                                            {% if log.level == 'INFO' %}
+                                                <span style="color: #2ecc71; font-weight: 700;">[INFO]</span>
+                                            {% elif log.level == 'WARNING' %}
+                                                <span style="color: #f1c40f; font-weight: 700;">[WARN]</span>
+                                            {% elif log.level == 'ERROR' %}
+                                                <span style="color: #e74c3c; font-weight: 700;">[ERROR]</span>
+                                            {% else %}
+                                                <span style="color: var(--text-muted);">[{{ log.level }}]</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><span style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">{{ log.category }}</span></td>
+                                        <td style="font-family: 'Inter', sans-serif;">{{ log.message }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sub-Tab: Auditoría de Administración -->
+                    <div id="log-audit" class="sub-tab-content">
+                        <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
+                            <table style="font-size: 0.9rem;">
+                                <thead style="background: rgba(255,107,158,0.1);">
+                                    <tr>
+                                        <th>Fecha / Hora</th>
+                                        <th>Administrador</th>
+                                        <th>Acción</th>
+                                        <th>Objetivo / ID</th>
+                                        <th>Detalles</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if not admin_audit_logs %}
+                                    <tr><td colspan="5" style="text-align:center; padding: 40px; color:var(--text-muted);">No hay acciones administrativas registradas.</td></tr>
+                                    {% endif %}
+                                    {% for log in admin_audit_logs %}
+                                    <tr>
+                                        <td style="color: var(--text-muted); font-size: 0.8rem;">{{ log.timestamp }}</td>
+                                        <td>
+                                            <div style="font-weight: 600;">{{ log.user_name }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ log.user_id }}</div>
+                                        </td>
+                                        <td>
+                                            <span style="background: rgba(255,107,158,0.1); color: var(--p-pink); padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase;">
+                                                {{ log.action }}
+                                            </span>
+                                        </td>
+                                        <td style="font-family: monospace; font-size: 0.85rem;">{{ log.target_id or '-' }}</td>
+                                        <td style="font-size: 0.85rem; color: var(--text-light);">{{ log.details or '-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-database" class="tab-content">
+                <div class="admin-grid">
+                    <!-- Copia de Seguridad -->
+                    <div class="admin-card">
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="database" style="color:var(--p-pink);"></i> Base de Datos (SQLite)</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Descarga un respaldo exacto de toda la base de datos de UmapyoiBot para edición offline.</p>
+                        <a href="/api/admin/backup" class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 10px;">
+                            <i data-lucide="downloadCloud"></i> Extraer bot_data.db
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-broadcast" class="tab-content">
+                <div class="admin-grid">
+                    <!-- Transmisión Global -->
+                    <div class="admin-card">
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="radio" style="color:var(--p-pink);"></i> Transmisión Global</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Envía un aviso a todos los canales de sistema del bot.</p>
+                        <form id="form-broadcast" action="/api/admin/broadcast" method="POST">
+                            <textarea name="message" class="form-control" rows="3" placeholder="Escribe el mensaje global aquí..." required 
+                                      style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,107,158,0.2); border-radius: 10px; color: white; padding: 12px; margin-bottom: 15px; resize: none;"></textarea>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 10px; background: #ff4757;">
+                                <i data-lucide="send"></i> Lanzar Transmisión
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Mensaje Directo por ID -->
+                    <div class="admin-card">
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="message-square" style="color:var(--p-pink);"></i> Enviar DM por ID</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Envía un mensaje privado a cualquier usuario de Discord por su ID.</p>
+                        <form id="form-dm" action="/api/admin/dm/send" method="POST">
+                            <div style="margin-bottom: 15px;">
+                                <input type="text" name="user_id" id="quick-dm-id" class="form-control" placeholder="ID del Usuario (7132...)" required
+                                       style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,107,158,0.2); border-radius: 10px; color: white; padding: 10px;">
+                            </div>
+                            <textarea name="message" class="form-control" rows="2" placeholder="Contenido del mensaje directo..." required 
+                                      style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,107,158,0.2); border-radius: 10px; color: white; padding: 12px; margin-bottom: 15px; resize: none;"></textarea>
+                            <button type="submit" class="btn" style="width: 100%; display: flex; justify-content: center; gap: 10px; background: var(--p-pink); color: white;">
+                                <i data-lucide="mail"></i> Enviar Mensaje Directo
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-blacklist" class="tab-content">
+                <!-- Blacklist -->
+                <div class="admin-card">
+                    <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="user-x" style="color:var(--p-pink);"></i> Lista Negra Global</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 20px;">Las IDs enlistadas aquí perderán inmediata y permanentemente el acceso a todos los comandos.</p>
+                    
+                    <form id="form-blacklist-add" action="/api/admin/blacklist/add" method="POST" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 30px; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 200px; margin: 0;">
+                            <label>ID de Discord</label>
+                            <input type="text" name="discord_id" class="form-control" placeholder="123456789..." required>
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 150px; margin: 0;">
+                            <label>Tipo de Entidad</label>
+                            <select name="entity_type" class="form-control">
+                                <option value="user">Usuario Hostil</option>
+                                <option value="guild">Servidor Prohibido</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 2; min-width: 250px; margin: 0;">
+                            <label>Motivo (Opcional)</label>
+                            <input type="text" name="reason" class="form-control" placeholder="Evasión / Abuso de Bugs / Pruebas">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="background: #34495e; color: white;">Añadir al Veto</button>
+                    </form>
+
+                    <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
+                        <table>
+                            <thead style="background: rgba(255,107,158,0.1);">
+                                <tr>
+                                    <th>ID Bloqueada</th>
+                                    <th>Tipo</th>
+                                    <th>Motivo</th>
+                                    <th>Fecha de Ejecución</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in blacklist %}
+                                <tr>
+                                    <td style="font-family: monospace;">{{ record.discord_id }}</td>
+                                    <td><span style="padding: 4px 8px; background: rgba(0,0,0,0.3); border-radius: 4px; font-size: 0.8rem;">{{ record.entity_type | upper }}</span></td>
+                                    <td>{{ record.reason }}</td>
+                                    <td style="color: var(--text-muted);">{{ record.date_added }}</td>
+                                    <td>
+                                        <form class="form-ajax" action="/api/admin/blacklist/remove/{{ record.discord_id }}" method="POST" style="margin: 0;">
+                                            <button type="submit" style="background: transparent; border: 1px solid var(--p-pink); color: var(--p-pink); padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s;">Perdonar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">No hay ninguna entidad vetada en la base de datos.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Custom Notification Modal -->
+    <div id="uma-modal-overlay" class="uma-modal-overlay">
+        <div class="uma-modal">
+            <div class="uma-modal-icon">
+                <i data-lucide="alert-triangle" style="width: 32px; height: 32px;"></i>
+            </div>
+            <h2 id="modal-title">¿Estás seguro?</h2>
+            <p id="modal-text">Esta acción hará que el bot abandone el servidor permanentemente.</p>
+            <form id="modal-form" action="/api/admin/guild/leave" method="POST">
+                <input type="hidden" name="guild_id" id="modal-guild-id">
+                <div class="uma-modal-actions">
+                    <button type="button" class="uma-modal-btn uma-modal-btn-cancel" onclick="closeUmaModal()">Cancelar</button>
+                    <button type="submit" class="uma-modal-btn uma-modal-btn-confirm">Sí, Abandonar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Extended Guild Details Modal -->
+    <div id="guild-detail-overlay" class="uma-modal-overlay">
+        <div class="uma-modal" style="max-width: 500px;">
+            <div id="detail-guild-icon-container" style="margin-bottom: 15px;">
+                <img id="detail-guild-icon" src="" style="width: 80px; height: 80px; border-radius: 20px; border: 2px solid var(--p-pink); margin: 0 auto; display: none; object-fit: cover;">
+                <div id="detail-guild-icon-placeholder" style="width: 80px; height: 80px; border-radius: 20px; background: var(--p-pink-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto; color: var(--p-pink); font-size: 2rem; font-weight: 800;">?</div>
+            </div>
+            <h2 id="detail-guild-name" style="margin-bottom: 5px;">Detalles del Servidor</h2>
+            <p id="detail-guild-id" style="font-family: monospace; font-size: 0.8rem; margin-bottom: 20px; color: var(--text-muted);"></p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
+                    <span class="detail-label">Dueño / Creador</span>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                        <span id="detail-owner-name" class="detail-value">Cargando...</span>
+                    </div>
+                    <span id="detail-owner-id" style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;"></span>
+                </div>
+                <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
+                    <span class="detail-label">Invitado Por</span>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                        <img id="detail-inviter-avatar" src="" class="detail-avatar" style="width: 24px; height: 24px; display: none;">
+                        <span id="detail-inviter-name" class="detail-value">Desconocido</span>
+                    </div>
+                    <span id="detail-inviter-id" style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;"></span>
+                </div>
+            </div>
+
+            <div class="detail-row" style="justify-content: space-between;">
+                <div>
+                    <span class="detail-label">Miembros Totales</span>
+                    <div id="detail-members" class="detail-value" style="font-size: 1.2rem;">0</div>
+                </div>
+                <i data-lucide="users" style="color: var(--p-pink);"></i>
+            </div>
+
+            <div class="uma-modal-actions">
+                <button type="button" class="uma-modal-btn uma-modal-btn-cancel" onclick="closeDetailModal()">Cerrar</button>
+                <button type="button" id="btn-contact-owner" class="uma-modal-btn" style="background: var(--p-pink); color: white;">Contactar Dueño</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        function showAbandonModal(guildId, guildName) {
+            const overlay = document.getElementById('uma-modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const modalInput = document.getElementById('modal-guild-id');
+            
+            modalTitle.innerText = "Abandonar Servidor";
+            modalText.innerHTML = `¿Estás seguro de que quieres que Umapyoi abandone <strong>${guildName}</strong>?<br><br><span style="color:#e74c3c; font-size:0.8rem;">Esta acción se procesará en unos segundos.</span>`;
+            modalInput.value = guildId;
+            
+            overlay.classList.add('active');
+        }
+
+        function closeUmaModal() {
+            document.getElementById('uma-modal-overlay').classList.remove('active');
+        }
+
+        function showGuildDetails(id, name, ownerName, ownerId, inviterName, inviterId, inviterAvatar, members, iconUrl) {
+            document.getElementById('detail-guild-name').innerText = name;
+            document.getElementById('detail-guild-id').innerText = id;
+            document.getElementById('detail-owner-name').innerText = ownerName || 'Desconocido';
+            document.getElementById('detail-owner-id').innerText = ownerId || 'N/A';
+            document.getElementById('detail-inviter-name').innerText = inviterName || 'Enlace Directo / Antiguo';
+            document.getElementById('detail-inviter-id').innerText = inviterId || '';
+            document.getElementById('detail-members').innerText = members;
+
+            // Guild Icon
+            const iconImg = document.getElementById('detail-guild-icon');
+            const iconPlaceholder = document.getElementById('detail-guild-icon-placeholder');
+            if (iconUrl && iconUrl !== 'None' && iconUrl !== '') {
+                iconImg.src = iconUrl;
+                iconImg.style.display = 'block';
+                iconPlaceholder.style.display = 'none';
+            } else {
+                iconImg.style.display = 'none';
+                iconPlaceholder.style.display = 'flex';
+                iconPlaceholder.innerText = name ? name[0].toUpperCase() : '?';
+            }
+
+            const avatarImg = document.getElementById('detail-inviter-avatar');
+            if (inviterAvatar && inviterAvatar !== 'None') {
+                avatarImg.src = inviterAvatar;
+                avatarImg.style.display = 'block';
+            } else {
+                avatarImg.style.display = 'none';
+            }
+
+            // Configurar botón de contacto
+            const btnContact = document.getElementById('btn-contact-owner');
+            if (ownerId && ownerId !== 'None') {
+                btnContact.style.display = 'block';
+                btnContact.onclick = () => {
+                    closeDetailModal();
+                    switchTab('tab-broadcast');
+                    document.getElementById('quick-dm-id').value = ownerId;
+                    document.getElementById('quick-dm-id').focus();
+                };
+            } else {
+                btnContact.style.display = 'none';
+            }
+
+            document.getElementById('guild-detail-overlay').classList.add('active');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('guild-detail-overlay').classList.remove('active');
+        }
+        
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('uma-modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeUmaModal();
+        });
+        document.getElementById('guild-detail-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeDetailModal();
+        });
+        function toggleProfileSlider() {
+            document.getElementById('profileSlider').classList.toggle('active');
+        }
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+        document.addEventListener('click', (e) => {
+            const dropdown = document.querySelector('.profile-dropdown-container');
+            if (dropdown && !dropdown.contains(e.target)) {
+                const slider = document.getElementById('profileSlider');
+                if(slider) slider.classList.remove('active');
+            }
+        });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+        }
+
+        function switchSubTab(subTabId) {
+            document.querySelectorAll('.sub-tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(subTabId).classList.add('active');
+            
+            // Vincular botón manualmente
+            if (subTabId === 'log-commands') document.getElementById('btn-sub-commands').classList.add('active');
+            else if (subTabId === 'log-system') document.getElementById('btn-sub-system').classList.add('active');
+            else if (subTabId === 'log-audit') document.getElementById('btn-sub-audit').classList.add('active');
+        }
+
+        // Live Telemetry Polling
+        setInterval(() => {
+            fetch('/api/admin/stats')
+                .then(res => res.json())
+                .then(data => {
+                    const cpu = data.cpu[data.cpu.length - 1];
+                    const ram = data.ram[data.ram.length - 1];
+                    if (cpu !== undefined) {
+                        document.getElementById('cpu-text').innerText = cpu + '%';
+                        document.getElementById('cpu-bar').style.width = cpu + '%';
+                    }
+                    if (ram !== undefined) {
+                        document.getElementById('ram-text').innerText = ram + '%';
+                        document.getElementById('ram-bar').style.width = ram + '%';
+                    }
+                }).catch(e => console.error('Error fetching live stats:', e));
+        }, 5000);
+
+        // AJAX Form Handling
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnContent = submitBtn.innerHTML;
+
+            // Bloquear botón
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;"></i> Cargando...';
+            lucide.createIcons();
+
+            try {
+                const response = await fetch(form.action, {
+                    method: form.method,
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: result.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        background: '#1a1b1e',
+                        color: '#fff'
+                    });
+                    if (form.id === 'form-broadcast' || form.id === 'form-dm') {
+                        form.reset();
+                    } else if (form.id === 'form-blacklist-add' || form.classList.contains('form-ajax') || form.id === 'modal-form') {
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: result.message || 'Ocurrió un error inesperado.',
+                        background: '#1a1b1e',
+                        color: '#fff'
+                    });
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Red',
+                    text: 'No se pudo contactar con el servidor.',
+                    background: '#1a1b1e',
+                    color: '#fff'
+                });
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnContent;
+                lucide.createIcons();
+            }
+        }
+
+        // Attach listeners
+        document.querySelectorAll('#form-broadcast, #form-dm, #form-blacklist-add, #modal-form, .form-ajax').forEach(form => {
+            form.addEventListener('submit', handleFormSubmit);
+        });
+    </script>
+</body>
+</html>

@@ -12,17 +12,29 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    async def cog_check(self, ctx: commands.Context):
+        """Check global para este Cog."""
+        if not ctx.guild: return True
+        settings = await db.get_cached_server_settings(ctx.guild.id)
+        if settings and not settings.get('tts_enabled', 1):
+            await ctx.send("❌ El módulo de **Texto a Voz** está desactivado. Un administrador debe habilitarlo en el dashboard.", ephemeral=True)
+            return False
+        return True
+
     # --- Las funciones de base de datos se han eliminado de aquí ---
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot or not message.guild: return
         
-        # Usamos el gestor de DB
-        active_channel_row = await db.fetchone("SELECT text_channel_id FROM tts_active_channels WHERE guild_id = ?", (message.guild.id,))
-        active_channel_id = active_channel_row['text_channel_id'] if active_channel_row else None
+        # USAMOS CACHÉ GLOBAL DE SETTINGS
+        settings = await db.get_cached_server_settings(message.guild.id)
+        if not settings or not settings.get('tts_enabled', 1): return
         
-        if not active_channel_id or message.channel.id != active_channel_id: return
+        if message.channel.id != settings.get('tts_channel_id'): # Asumimos que guardaremos tts_channel_id en server_settings
+            # Fallback legacy check
+            active_channel_row = await db.fetchone("SELECT text_channel_id FROM tts_active_channels WHERE guild_id = ?", (message.guild.id,))
+            if not active_channel_row or message.channel.id != active_channel_row['text_channel_id']: return
         
         music_cog = self.bot.get_cog("Música")
         if not music_cog or (music_cog.get_guild_state(message.guild.id).current_song is not None): return
@@ -31,23 +43,31 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
         if not vc or not vc.is_connected() or vc.is_playing(): return
         if not message.author.voice or message.author.voice.channel != vc.channel: return
         
-        # Usamos el gestor de DB
-        lang_row = await db.fetchone("SELECT lang FROM tts_guild_settings WHERE guild_id = ?", (message.guild.id,))
-        lang_code = lang_row['lang'] if lang_row else 'es'
+        # Idioma desde tabla settings (preferido) o tabla legacy
+        lang_code = settings.get('tts_lang', 'es') if settings else 'es'
+        if not settings or 'tts_lang' not in settings:
+            lang_row = await db.fetchone("SELECT lang FROM tts_guild_settings WHERE guild_id = ?", (message.guild.id,))
+            if lang_row: lang_code = lang_row['lang']
         
         text_to_speak = message.clean_content
         if not text_to_speak: return
         
         try:
-            tts_file = f"tts_{message.guild.id}_{message.author.id}.mp3"
+            # Archivo único por servidor para evitar choques en el mismo canal
+            tts_file = f"tts_{message.guild.id}.mp3"
             
             def save_tts():
                 tts = gTTS(text=text_to_speak, lang=lang_code, slow=False)
                 tts.save(tts_file)
             await self.bot.loop.run_in_executor(None, save_tts)
 
+            def cleanup(error):
+                if os.path.exists(tts_file):
+                    try: os.remove(tts_file)
+                    except: pass
+
             source = discord.FFmpegPCMAudio(tts_file)
-            vc.play(source, after=lambda e: os.remove(tts_file) if os.path.exists(tts_file) else None)
+            vc.play(source, after=cleanup)
         except Exception as e:
             print(f"Error en TTS automático: {e}")
 

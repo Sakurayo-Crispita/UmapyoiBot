@@ -3,6 +3,8 @@ from discord.ext import commands
 from typing import Optional
 import datetime
 import io
+import psutil
+import platform
 from utils import constants
 
 class HelpSelect(discord.ui.Select):
@@ -23,7 +25,8 @@ class HelpSelect(discord.ui.Select):
             "Moderación": "🛡️",
             "Configuración del Servidor": "⚙️",
             "Texto a Voz": "🔊",
-            "Utilidad": "🛠️"
+            "Utilidad": "🛠️",
+            "Tickets": "🎟️"
         }
         
         options = [discord.SelectOption(label="Inicio", description="Vuelve al panel principal de ayuda.", emoji="🏠")]
@@ -65,50 +68,12 @@ class HelpView(discord.ui.View):
         super().__init__(timeout=180)
         self.add_item(HelpSelect(bot, cog_map))
 
-class TicketCloseView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        
-    @discord.ui.button(label="Cerrar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="ticket_close_btn")
-    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Cerrando este ticket en 5 segundos...")
-        import asyncio
-        await asyncio.sleep(5)
-        await interaction.channel.delete()
-
-class TicketOpenView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        
-    @discord.ui.button(label="Abrir Ticket", style=discord.ButtonStyle.primary, emoji="🎟️", custom_id="ticket_open_btn")
-    async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild = interaction.guild
-        category = interaction.channel.category
-        
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
-        }
-        
-        channel = await guild.create_text_channel(
-            name=f"ticket-{interaction.user.name}",
-            category=category,
-            overwrites=overwrites,
-            topic=f"Ticket de {interaction.user.id}"
-        )
-        
-        embed = discord.Embed(title="🎫 Soporte Técnico", description=f"Bienvenido {interaction.user.mention}. Un administrador revisará tu caso en breve.\nPor favor describe tu problema detalladamente.", color=discord.Color.blue())
-        await channel.send(embed=embed, view=TicketCloseView())
-        
-        await interaction.response.send_message(f"✅ Se ha abierto tu ticket aquí: {channel.mention}", ephemeral=True)
+# Las clases TicketCloseView y TicketOpenView han sido movidas a tickets.py
 
 class UtilityCog(commands.Cog, name="Utilidad"):
     """Comandos útiles y de información."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.bot.add_view(TicketOpenView())
-        self.bot.add_view(TicketCloseView())
         
         # --- MAPA DE COGS CORREGIDO ---
         # Este mapa ahora define el orden y los nombres para el autocompletado y el menú
@@ -123,7 +88,8 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             "moderacion": "Moderación",
             "configuracion": "Configuración del Servidor",
             "tts": "Texto a Voz",
-            "utilidad": "Utilidad"
+            "utilidad": "Utilidad",
+            "tickets": "Tickets"
         }
 
     @commands.hybrid_command(name='help', description="Muestra ayuda sobre los comandos del bot.")
@@ -167,7 +133,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             if current.lower() in cmd_name.lower()
         ][:25]
 
-    @commands.hybrid_command(name='announce', description="Envía un anuncio a todos los servidores donde está el bot.")
+    @commands.command(name='announce', hidden=True)
     @commands.is_owner()
     async def announce(self, ctx: commands.Context, *, mensaje: str):
         await ctx.defer(ephemeral=True) # Hacemos la respuesta efímera para no molestar en el canal
@@ -215,28 +181,37 @@ class UtilityCog(commands.Cog, name="Utilidad"):
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):
-        embed = discord.Embed(title="📞 Contacto", description="Puedes contactar a mi creador a través de Discord.", color=self.bot.CREAM_COLOR)
-        embed.add_field(name="Creador", value="👑 sakurayo_crispy")
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="📞 Información de Contacto", icon_url=self.bot.user.display_avatar.url)
+        embed.description = "Puedes contactar a mi creador a través de Discord:\n👑 **sakurayo_crispy**"
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='serverhelp', description="Obtén el enlace al servidor de ayuda oficial.")
     async def serverhelp(self, ctx: commands.Context):
-        embed = discord.Embed(title="💬 Servidor de Ayuda", description="¿Necesitas ayuda? ¡Únete a nuestro servidor oficial!", color=self.bot.CREAM_COLOR)
-        embed.add_field(name="Enlace de Invitación", value="[Haz clic aquí para unirte](https://discord.gg/fwNeZsGkSj)")
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="💬 Servidor de Ayuda", icon_url=self.bot.user.display_avatar.url)
+        embed.description = "¿Necesitas ayuda? ¡Únete a nuestro servidor oficial!\n[**Haz clic aquí para unirte**](https://discord.gg/fwNeZsGkSj)"
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='ping', description="Muestra la latencia del bot.")
     async def ping(self, ctx: commands.Context):
-        await ctx.send(f'🏓 ¡Pong! La latencia es de **{round(self.bot.latency * 1000)}ms**.', ephemeral=True)
+        await ctx.defer(ephemeral=True)
+        latency = round(self.bot.latency * 1000)
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="🏓 Latencia del Sistema", icon_url=self.bot.user.display_avatar.url)
+        embed.description = f"La latencia actual es de **{latency}ms**."
+        await ctx.send(embed=embed, ephemeral=True)
 
-    @commands.hybrid_command(name='avatar', description="Muestra el avatar de un usuario en grande.")
-    async def avatar(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
+    @commands.hybrid_command(name="avatar", description="Muestra el avatar de un usuario.")
+    async def avatar(self, ctx: commands.Context, miembro: discord.Member = None):
+        await ctx.defer()
         target = miembro or ctx.author
         embed = discord.Embed(title=f"Avatar de {target.display_name}", color=target.color).set_image(url=target.display_avatar.url)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='userinfo', description="Muestra información sobre un usuario.")
-    async def userinfo(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
+    @commands.hybrid_command(name="userinfo", aliases=["whois"], description="Muestra información detallada sobre un usuario.")
+    async def userinfo(self, ctx: commands.Context, miembro: discord.Member = None):
+        await ctx.defer()
         target = miembro or ctx.author
         embed = discord.Embed(title=f"Información de {target.display_name}", color=target.color).set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="ID", value=target.id, inline=False)
@@ -247,10 +222,11 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         embed.add_field(name=f"Roles ({len(roles)})", value=roles_str[:1020] + "..." if len(roles_str) > 1024 else roles_str, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='serverinfo', description="Muestra información sobre este servidor.")
+    @commands.hybrid_command(name="serverinfo", aliases=["guildinfo"], description="Muestra información detallada sobre el servidor.")
     async def serverinfo(self, ctx: commands.Context):
+        if not ctx.guild: return
+        await ctx.defer()
         server = ctx.guild
-        if not server: return
         embed = discord.Embed(title=f"Información de {server.name}", color=self.bot.CREAM_COLOR)
         if server.icon: embed.set_thumbnail(url=server.icon.url)
         if server.owner: embed.add_field(name="👑 Propietario", value=server.owner.mention, inline=True)
@@ -258,6 +234,39 @@ class UtilityCog(commands.Cog, name="Utilidad"):
         embed.add_field(name="📅 Creado el", value=f"<t:{int(server.created_at.timestamp())}:D>", inline=True)
         embed.add_field(name="💬 Canales", value=f"{len(server.text_channels)} de texto | {len(server.voice_channels)} de voz", inline=False)
         embed.add_field(name="✨ Nivel de Boost", value=f"Nivel {server.premium_tier} ({server.premium_subscription_count} boosts)", inline=True)
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name='status', description="Muestra el estado técnico del bot y del sistema.")
+    async def status(self, ctx: commands.Context):
+        """Muestra un panel con estadísticas de uso de CPU, RAM, Uptime y versiones."""
+        await ctx.defer()
+        
+        # Cálculo de Uptime
+        now = datetime.datetime.now(datetime.timezone.utc)
+        uptime = now - self.bot.start_time
+        days, remainder = divmod(int(uptime.total_seconds()), 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
+
+        # Uso de sistema
+        process = psutil.Process()
+        ram_usage = process.memory_info().rss / 1024**2 # MB
+        cpu_usage = psutil.cpu_percent()
+        
+        embed = discord.Embed(color=self.bot.CREAM_COLOR)
+        embed.set_author(name="📊 Panel de Estado Técnico", icon_url=self.bot.user.display_avatar.url)
+        
+        status_info = (
+            f"🚀 **Uptime:** `{uptime_str}`\n"
+            f"📡 **Latencia:** `{round(self.bot.latency * 1000)}ms`\n"
+            f"🧠 **RAM:** `{ram_usage:.1f} MB` | **CPU:** `{cpu_usage}%`\n"
+            f"🏠 **Gilds:** `{len(self.bot.guilds):,}` | **Users:** `{sum(g.member_count for g in self.bot.guilds):,}`\n"
+            f"🔧 **Discord.py:** `{discord.__version__}`"
+        )
+        embed.description = status_info
+        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+        embed.set_footer(text=f"ID: {self.bot.user.id}")
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='say', description="Hace que el bot repita tu mensaje.")
@@ -270,17 +279,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             await ctx.message.delete()
             await ctx.send(mensaje)
     
-    @commands.hybrid_group(name="ticket", description="Configura el sistema de soporte automatizado.")
-    @commands.has_permissions(administrator=True)
-    async def ticket(self, ctx: commands.Context):
-        if ctx.invoked_subcommand is None:
-            await ctx.send("Comandos: `/ticket setup`", ephemeral=True)
-
-    @ticket.command(name="setup", description="Genera el panel interactivo de creación de tickets en este canal.")
-    async def ticket_setup(self, ctx: commands.Context):
-        embed = discord.Embed(title="📠 Soporte Técnico", description="¿Necesitas ayuda con algo del servidor o quieres hacer una denuncia?\n\n**Oprime el botón abajo para abrir un ticket de soporte privado.**", color=self.bot.CREAM_COLOR)
-        await ctx.send(embed=embed, view=TicketOpenView())
-        await ctx.message.delete()
+# Los comandos de ticket han sido movidos a tickets.py
         
     @commands.command(name='sync', hidden=True)
     @commands.is_owner()

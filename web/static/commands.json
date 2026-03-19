@@ -1,0 +1,648 @@
+[
+    {
+        "category": "Economía",
+        "icon": "coins",
+        "commands": [
+            {
+                "name": "add-money",
+                "usage": "/add-money <miembro> <cantidad>",
+                "desc": "Añade dinero del servidor a un usuario (Admin)."
+            },
+            {
+                "name": "balance",
+                "usage": "/balance [miembro]",
+                "desc": "Muestra la cartera y el banco de un usuario."
+            },
+            {
+                "name": "buy",
+                "usage": "/buy <item_id>",
+                "desc": "Compra un artículo de la tienda usando su ID."
+            },
+            {
+                "name": "daily",
+                "usage": "/daily",
+                "desc": "Reclama una buena recompensa que puedes sacar una vez cada día."
+            },
+            {
+                "name": "deposit",
+                "usage": "/deposit <cantidad>",
+                "desc": "Mete dinero a la seguridad de tu banco. Uso: 'all' / 'max' / '100'"
+            },
+            {
+                "name": "economy",
+                "usage": "/economy",
+                "desc": "Configura la economía del servidor."
+            },
+            {
+                "name": "economy add-item",
+                "usage": "/economy add-item <nombre> <descripcion> <precio> <tipo> <raw_data>",
+                "desc": "Añade un artículo a la tienda del servidor."
+            },
+            {
+                "name": "economy config-daily",
+                "usage": "/economy config-daily <min_diario> <max_diario>",
+                "desc": "Ajusta ganancias del comando diario."
+            },
+            {
+                "name": "economy config-rob",
+                "usage": "/economy config-rob <segundos_espera>",
+                "desc": "Ajusta el cooldown para robos."
+            },
+            {
+                "name": "economy config-work",
+                "usage": "/economy config-work <min_paga> <max_paga> <segundos_espera>",
+                "desc": "Ajusta ganancias y cooldown del trabajo."
+            },
+            {
+                "name": "economy remove-item",
+                "usage": "/economy remove-item <item_id>",
+                "desc": "Elimina un artículo de la tienda usando su ID."
+            },
+            {
+                "name": "economy set-currency",
+                "usage": "/economy set-currency <nombre> <emoji>",
+                "desc": "Cambia el nombre y emoji de la moneda."
+            },
+            {
+                "name": "give",
+                "usage": "/give <miembro> <cantidad>",
+                "desc": "Págale a un usuario (Impuesto gubernamental de 2% para evitar abusos)."
+            },
+            {
+                "name": "inventory",
+                "usage": "/inventory",
+                "desc": "Revisa los consumibles y objetos que has comprado."
+            },
+            {
+                "name": "leaderboard",
+                "usage": "/leaderboard",
+                "desc": "Observa qué personas tienen más estatus que tú."
+            },
+            {
+                "name": "remove-money",
+                "usage": "/remove-money <miembro> <cantidad>",
+                "desc": "Quita dinero a un usuario. (Paga tus impuestos)"
+            },
+            {
+                "name": "rob",
+                "usage": "/rob <miembro>",
+                "desc": "Intenta adueñarte de lo que no es tuyo. Altamente riesgoso."
+            },
+            {
+                "name": "shop",
+                "usage": "/shop",
+                "desc": "Mira los artículos disponibles para comprar en este servidor."
+            },
+            {
+                "name": "withdraw",
+                "usage": "/withdraw <cantidad>",
+                "desc": "Saca dinero de tu banco a tu cartera. Uso: 'all' / '100'"
+            },
+            {
+                "name": "work",
+                "usage": "/work",
+                "desc": "Ponte a trabajar unas horas para tener efectivo."
+            }
+        ]
+    },
+    {
+        "category": "Juegos e IA",
+        "icon": "bot",
+        "commands": [
+            {
+                "name": "8ball",
+                "usage": "/8ball <pregunta>",
+                "desc": "Pregúntale a la bola 8 mágica sobre tu futuro."
+            },
+            {
+                "name": "anime",
+                "usage": "/anime <nombre>",
+                "desc": "Busca información detallada sobre un anime."
+            },
+            {
+                "name": "gacha",
+                "usage": "/gacha",
+                "desc": "Juega al gacha de personajes de anime."
+            },
+            {
+                "name": "gacha list",
+                "usage": "/gacha list",
+                "desc": "Muestra tu colección de personajes del gacha."
+            },
+            {
+                "name": "gacha pull",
+                "usage": "/gacha pull",
+                "desc": "Tira del gacha por 500 monedas y obtén un personaje aleatorio."
+            },
+            {
+                "name": "ppt",
+                "usage": "/ppt <eleccion>",
+                "desc": "Juega Piedra, Papel o Tijera contra mí."
+            },
+            {
+                "name": "pregunta",
+                "usage": "/pregunta <pregunta>",
+                "desc": "Hazme cualquier pregunta y usaré mi IA para responder."
+            },
+            {
+                "name": "rolldice",
+                "usage": "/rolldice [cantidad] [caras]",
+                "desc": "Lanza uno o más dados."
+            },
+            {
+                "name": "setup_confessions",
+                "usage": "/setup_confessions",
+                "desc": "Coloca el panel interactivo de confesiones anónimas en este canal (Admin)."
+            },
+            {
+                "name": "ship",
+                "usage": "/ship <persona1> [persona2]",
+                "desc": "Mide la compatibilidad entre dos personas."
+            },
+            {
+                "name": "trivia",
+                "usage": "/trivia",
+                "desc": "Responde una pregunta de cultura pop/anime más rápido para ganar un premio de monedas."
+            },
+            {
+                "name": "wanted",
+                "usage": "/wanted [miembro]",
+                "desc": "Crea un cartel de 'Se Busca' para un usuario."
+            }
+        ]
+    },
+    {
+        "category": "Juegos de Azar",
+        "icon": "dice-5",
+        "commands": [
+            {
+                "name": "blackjack",
+                "usage": "/blackjack <apuesta>",
+                "desc": "Juega al blackjack contra la casa."
+            },
+            {
+                "name": "coinflip",
+                "usage": "/coinflip <apuesta> <cara_o_cruz>",
+                "desc": "Apuesta al todo o nada lanzando una moneda al aire."
+            },
+            {
+                "name": "gambling",
+                "usage": "/gambling",
+                "desc": "Configura los canales para los juegos de casino."
+            },
+            {
+                "name": "gambling addchannel",
+                "usage": "/gambling addchannel <canal>",
+                "desc": "Señala este canal como una zona válida para apuestas."
+            },
+            {
+                "name": "gambling removechannel",
+                "usage": "/gambling removechannel <canal>",
+                "desc": "Prohíbe los juegos de casino en este u otro canal."
+            },
+            {
+                "name": "horse_race",
+                "usage": "/horse_race <apuesta> <caballo>",
+                "desc": "Apuesta por un caballo en la competencia profesional de la Umamusume."
+            },
+            {
+                "name": "roulette",
+                "usage": "/roulette <apuesta> <eleccion>",
+                "desc": "Gira la ruleta y apuesta por un color o número."
+            },
+            {
+                "name": "russian_roulette",
+                "usage": "/russian_roulette <apuesta>",
+                "desc": "Un juego mortal por dinero. 1 de 6."
+            },
+            {
+                "name": "slots",
+                "usage": "/slots <apuesta>",
+                "desc": "Prueba suerte en la máquina tragamonedas."
+            }
+        ]
+    },
+    {
+        "category": "Interacción",
+        "icon": "heart",
+        "commands": [
+            {
+                "name": "baka",
+                "usage": "/baka <miembro>",
+                "desc": "Llama 'baka' a alguien."
+            },
+            {
+                "name": "blush",
+                "usage": "/blush [por]",
+                "desc": "Sonrójate por alguien o por algo."
+            },
+            {
+                "name": "bonk",
+                "usage": "/bonk <miembro>",
+                "desc": "Envía a alguien a la cárcel de los hornys."
+            },
+            {
+                "name": "cuddle",
+                "usage": "/cuddle <miembro>",
+                "desc": "Acurrúcate con otro usuario."
+            },
+            {
+                "name": "highfive",
+                "usage": "/highfive <miembro>",
+                "desc": "Choca esos cinco con alguien."
+            },
+            {
+                "name": "hug",
+                "usage": "/hug <miembro>",
+                "desc": "Dale un abrazo a otro usuario."
+            },
+            {
+                "name": "kiss",
+                "usage": "/kiss <miembro>",
+                "desc": "Besa a otro usuario."
+            },
+            {
+                "name": "pat",
+                "usage": "/pat <miembro>",
+                "desc": "Dale una palmadita en la cabeza a alguien."
+            },
+            {
+                "name": "poke",
+                "usage": "/poke <miembro>",
+                "desc": "Pica a alguien para llamar su atención."
+            },
+            {
+                "name": "slap",
+                "usage": "/slap <miembro>",
+                "desc": "Dale una bofetada a alguien."
+            },
+            {
+                "name": "tickle",
+                "usage": "/tickle <miembro>",
+                "desc": "Hazle cosquillas a alguien."
+            }
+        ]
+    },
+    {
+        "category": "Niveles",
+        "icon": "trending-up",
+        "commands": [
+            {
+                "name": "give_xp",
+                "usage": "/give_xp <miembro> <cantidad>",
+                "desc": "Otorga XP a un usuario."
+            },
+            {
+                "name": "levelboard",
+                "usage": "/levelboard",
+                "desc": "Muestra a los usuarios con más nivel."
+            },
+            {
+                "name": "list_level_roles",
+                "usage": "/list_level_roles",
+                "desc": "Muestra todas las recompensas de roles configuradas."
+            },
+            {
+                "name": "rank",
+                "usage": "/rank [miembro]",
+                "desc": "Muestra tu nivel y XP en este servidor."
+            },
+            {
+                "name": "remove_level_role",
+                "usage": "/remove_level_role <nivel>",
+                "desc": "Elimina la recompensa de rol de un nivel."
+            },
+            {
+                "name": "reset_level",
+                "usage": "/reset_level <miembro>",
+                "desc": "Reinicia el nivel de un usuario."
+            },
+            {
+                "name": "set_level_role",
+                "usage": "/set_level_role <nivel> <rol>",
+                "desc": "Asigna un rol como recompensa por alcanzar un nivel."
+            }
+        ]
+    },
+    {
+        "category": "Moderación",
+        "icon": "shield",
+        "commands": [
+            {
+                "name": "automod",
+                "usage": "/automod",
+                "desc": "Configura las opciones de auto-moderación."
+            },
+            {
+                "name": "automod anti_invites",
+                "usage": "/automod anti_invites <estado>",
+                "desc": "Activa o desactiva el borrado de invitaciones de Discord."
+            },
+            {
+                "name": "automod badwords",
+                "usage": "/automod badwords",
+                "desc": "Gestiona la lista de palabras prohibidas."
+            },
+            {
+                "name": "automod badwords add",
+                "usage": "/automod badwords add <palabra>",
+                "desc": "Añade una palabra a la lista de prohibidas."
+            },
+            {
+                "name": "automod badwords list",
+                "usage": "/automod badwords list",
+                "desc": "Muestra la lista de palabras prohibidas."
+            },
+            {
+                "name": "automod badwords remove",
+                "usage": "/automod badwords remove <palabra>",
+                "desc": "Quita una palabra de la lista de prohibidas."
+            },
+            {
+                "name": "ban",
+                "usage": "/ban <miembro> [razon]",
+                "desc": "Banea a un miembro del servidor."
+            },
+            {
+                "name": "clear",
+                "usage": "/clear <cantidad>",
+                "desc": "Borra una cantidad específica de mensajes en el canal."
+            },
+            {
+                "name": "clearwarnings",
+                "usage": "/clearwarnings <miembro>",
+                "desc": "Borra todas las advertencias de un usuario."
+            },
+            {
+                "name": "kick",
+                "usage": "/kick <miembro> [razon]",
+                "desc": "Expulsa a un miembro del servidor."
+            },
+            {
+                "name": "lock",
+                "usage": "/lock [canal]",
+                "desc": "Bloquea el canal actual para que nadie (excepto mods) pueda hablar."
+            },
+            {
+                "name": "modlogs",
+                "usage": "/modlogs <miembro>",
+                "desc": "Muestra el historial de moderación de un usuario."
+            },
+            {
+                "name": "mutelist",
+                "usage": "/mutelist",
+                "desc": "Muestra la lista de usuarios silenciados actualmente."
+            },
+            {
+                "name": "timeout",
+                "usage": "/timeout <miembro> <duracion> [razon]",
+                "desc": "Silencia a un miembro por un tiempo determinado."
+            },
+            {
+                "name": "unban",
+                "usage": "/unban <usuario_id> [razon]",
+                "desc": "Desbanea a un usuario del servidor."
+            },
+            {
+                "name": "unlock",
+                "usage": "/unlock [canal]",
+                "desc": "Desbloquea el canal actual."
+            },
+            {
+                "name": "unmute",
+                "usage": "/unmute <miembro> [razon]",
+                "desc": "Quita el silencio a un miembro."
+            },
+            {
+                "name": "warn",
+                "usage": "/warn <miembro> <razon>",
+                "desc": "Advierte a un usuario."
+            },
+            {
+                "name": "warnings",
+                "usage": "/warnings <miembro>",
+                "desc": "Muestra las advertencias de un usuario."
+            }
+        ]
+    },
+    {
+        "category": "Música",
+        "icon": "music",
+        "commands": [
+            {
+                "name": "join",
+                "usage": "/join",
+                "desc": "Hace que el bot se una a tu canal de voz."
+            },
+            {
+                "name": "leave",
+                "usage": "/leave",
+                "desc": "Desconecta el bot del canal de voz."
+            },
+            {
+                "name": "lyrics",
+                "usage": "/lyrics",
+                "desc": "Busca la letra de la canción actual."
+            },
+            {
+                "name": "nowplaying",
+                "usage": "/nowplaying",
+                "desc": "Muestra la canción que está sonando."
+            },
+            {
+                "name": "pause",
+                "usage": "/pause",
+                "desc": "Pausa o reanuda la canción actual."
+            },
+            {
+                "name": "play",
+                "usage": "/play <search_query>",
+                "desc": "Reproduce una canción o playlist."
+            },
+            {
+                "name": "previous",
+                "usage": "/previous",
+                "desc": "Reproduce la canción anterior del historial."
+            },
+            {
+                "name": "queue",
+                "usage": "/queue",
+                "desc": "Muestra la cola de canciones."
+            },
+            {
+                "name": "shuffle",
+                "usage": "/shuffle",
+                "desc": "Mezcla la cola de canciones actual."
+            },
+            {
+                "name": "skip",
+                "usage": "/skip",
+                "desc": "Salta la canción actual."
+            },
+            {
+                "name": "stop",
+                "usage": "/stop",
+                "desc": "Detiene la reproducción y limpia la cola."
+            },
+            {
+                "name": "volume",
+                "usage": "/volume <new_volume>",
+                "desc": "Ajusta el volumen del reproductor (0-100%)."
+            }
+        ]
+    },
+    {
+        "category": "Configuración del Servidor",
+        "icon": "settings",
+        "commands": [
+            {
+                "name": "configgoodbye",
+                "usage": "/configgoodbye <mensaje> [texto_superior] [banner_url] [color_titulo] [color_subtitulo]",
+                "desc": "Personaliza el mensaje, banner y colores de la despedida."
+            },
+            {
+                "name": "configwelcome",
+                "usage": "/configwelcome <mensaje> [texto_superior] [banner_url] [color_titulo] [color_subtitulo]",
+                "desc": "Personaliza el mensaje, banner y colores de la bienvenida."
+            },
+            {
+                "name": "createreactionrole",
+                "usage": "/createreactionrole <id_del_mensaje> <emoji> <rol>",
+                "desc": "Crea un nuevo rol por reacción."
+            },
+            {
+                "name": "levels",
+                "usage": "/levels <estado>",
+                "desc": "Activa o desactiva el sistema de niveles."
+            },
+            {
+                "name": "module",
+                "usage": "/module <modulo> <estado>",
+                "desc": "Habilita o deshabilita los grandes módulos del bot (economía, apuestas, música, etc)."
+            },
+            {
+                "name": "removecreatorchannel",
+                "usage": "/removecreatorchannel",
+                "desc": "Desactiva la creación de salas temporales."
+            },
+            {
+                "name": "sendmensaje",
+                "usage": "/sendmensaje <canal> <mensaje> [titulo] [imagen_url] [color]",
+                "desc": "Envía un mensaje personalizado con formato a un canal."
+            },
+            {
+                "name": "serverconfig",
+                "usage": "/serverconfig",
+                "desc": "Muestra el panel de configuración completo del servidor."
+            },
+            {
+                "name": "setautorole",
+                "usage": "/setautorole <rol>",
+                "desc": "Establece un rol para asignar a nuevos miembros."
+            },
+            {
+                "name": "setcreatorchannel",
+                "usage": "/setcreatorchannel <canal>",
+                "desc": "Establece el canal para crear salas temporales."
+            },
+            {
+                "name": "setgoodbyechannel",
+                "usage": "/setgoodbyechannel [canal]",
+                "desc": "Establece o desactiva el canal para mensajes de despedida."
+            },
+            {
+                "name": "setlogchannel",
+                "usage": "/setlogchannel <canal>",
+                "desc": "Establece el canal para el registro de moderación."
+            },
+            {
+                "name": "setwelcomechannel",
+                "usage": "/setwelcomechannel [canal]",
+                "desc": "Establece o desactiva el canal para mensajes de bienvenida."
+            }
+        ]
+    },
+    {
+        "category": "Tickets",
+        "icon": "ticket",
+        "commands": [
+            {
+                "name": "ticket",
+                "usage": "/ticket",
+                "desc": "Configura el sistema de soporte automatizado."
+            },
+            {
+                "name": "ticket setup",
+                "usage": "/ticket setup",
+                "desc": "Genera el panel interactivo de creación de tickets en este canal."
+            }
+        ]
+    },
+    {
+        "category": "Texto a Voz",
+        "icon": "mic",
+        "commands": [
+            {
+                "name": "set_language_tts",
+                "usage": "/set_language_tts <idioma>",
+                "desc": "Establece el idioma de TTS para el servidor."
+            },
+            {
+                "name": "setup_tts",
+                "usage": "/setup_tts",
+                "desc": "Configura el bot para leer mensajes en este canal."
+            }
+        ]
+    },
+    {
+        "category": "Utilidad",
+        "icon": "wrench",
+        "commands": [
+            {
+                "name": "avatar",
+                "usage": "/avatar [miembro]",
+                "desc": "Muestra el avatar de un usuario."
+            },
+            {
+                "name": "contacto",
+                "usage": "/contacto",
+                "desc": "Muestra la información de contacto del creador."
+            },
+            {
+                "name": "help",
+                "usage": "/help [categoría]",
+                "desc": "Muestra ayuda sobre los comandos del bot."
+            },
+            {
+                "name": "ping",
+                "usage": "/ping",
+                "desc": "Muestra la latencia del bot."
+            },
+            {
+                "name": "say",
+                "usage": "/say <mensaje>",
+                "desc": "Hace que el bot repita tu mensaje."
+            },
+            {
+                "name": "serverhelp",
+                "usage": "/serverhelp",
+                "desc": "Obtén el enlace al servidor de ayuda oficial."
+            },
+            {
+                "name": "serverinfo",
+                "usage": "/serverinfo",
+                "desc": "Muestra información detallada sobre el servidor."
+            },
+            {
+                "name": "status",
+                "usage": "/status",
+                "desc": "Muestra el estado técnico del bot y del sistema."
+            },
+            {
+                "name": "userinfo",
+                "usage": "/userinfo [miembro]",
+                "desc": "Muestra información detallada sobre un usuario."
+            }
+        ]
+    }
+]

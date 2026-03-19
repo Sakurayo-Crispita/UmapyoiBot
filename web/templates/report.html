@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Reporte - UmapyoiBot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=2.8">
+    <style>
+        body { background: #0f1118; color: white; font-family: 'Inter', sans-serif; }
+        .feedback-container { max-width: 1200px; margin: 80px auto; padding: 20px; }
+        .feedback-header { margin-bottom: 40px; }
+        .feedback-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: start; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 30px; backdrop-filter: blur(10px); }
+        .form-group { margin-bottom: 25px; }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #a0a0c0; margin-bottom: 8px; letter-spacing: 0.8px; }
+        .form-hint { font-size: 0.75rem; color: #6a6a8e; margin-bottom: 8px; display: block; }
+        .form-input, .form-select, .form-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 15px; color: white; font-family: inherit; transition: all 0.3s; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--p-pink); outline: none; background: rgba(255, 255, 255, 0.05); }
+        .form-select option { background: #1a1d26; color: white; }
+        .form-textarea { resize: vertical; min-height: 120px; max-height: 300px; }
+        
+        .priority-options { display: flex; gap: 15px; margin-top: 10px; }
+        .priority-btn { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #a0a0c0; cursor: pointer; text-align: center; font-size: 0.9rem; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .priority-btn i { width: 14px; opacity: 0.5; }
+        .priority-btn.active { border-color: var(--p-pink); color: white; background: rgba(255, 71, 87, 0.1); }
+        .priority-btn.active i { opacity: 1; }
+        
+        .evidence-upload { border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 30px; text-align: center; transition: all 0.3s; cursor: pointer; background: rgba(0,0,0,0.2); }
+        .evidence-upload:hover { border-color: var(--p-pink); background: rgba(255, 71, 87, 0.05); }
+        .evidence-upload i { width: 32px; height: 32px; color: #a0a0c0; margin-bottom: 15px; }
+        
+        .submit-btn { width: 100%; background: var(--p-pink); color: white; border: none; border-radius: 8px; padding: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3); transition: all 0.3s; }
+        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4); }
+        
+        .sidebar-right { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 20px; }
+        .example-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; gap: 6px; }
+        .priority-tag { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+        
+        .success-overlay { position: fixed; inset: 0; background: rgba(15, 17, 24, 0.98); display: flex; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    {% if success %}
+    <div class="success-overlay">
+        <div style="width: 80px; height: 80px; background: #2ed573; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(46, 213, 115, 0.3);"><i data-lucide="check" style="width: 48px; height: 48px; color: white;"></i></div>
+        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Outfit';">Reporte Recibido</h1>
+        <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tu reporte. Nuestro equipo lo revisará detalladamente para seguir mejorando UmapyoiBot.</p>
+        <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
+    </div>
+    {% endif %}
+
+    <div class="feedback-container">
+        <a href="/dashboard" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
+            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Panel
+        </a>
+        <div class="feedback-header">
+            <h1 style="font-size: 3rem; font-family: 'Outfit', sans-serif; margin-bottom: 10px;">Enviar un reporte</h1>
+            <p style="color: #6a6a8e; font-size: 1.1rem;">Usa este formulario para reportar errores técnicos, fallos en comandos o problemas de seguridad.</p>
+        </div>
+
+        <div class="feedback-grid">
+            <form method="POST" class="glass-card" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Reporte</label>
+                    <span class="form-hint">Elige la categoría que mejor se ajuste a tu situación.</span>
+                    <select name="type" class="form-select" required>
+                        <option value="" disabled selected>Selecciona el tipo de reporte</option>
+                        <option value="Error/Bugs">Error / Bugs</option>
+                        <option value="Servicios/Comandos">Servicios / Comandos</option>
+                        <option value="Seguridad/Exploits">Seguridad / Exploits</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Asunto</label>
+                    <span class="form-hint">Describe brevemente el problema (máximo 100 caracteres).</span>
+                    <input type="text" name="subject" class="form-input" placeholder="Describe brevemente el problema..." required maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <span class="form-hint">Explica detalladamente el problema. Incluye toda la información relevante.</span>
+                    <textarea name="description" class="form-textarea" placeholder="Explica detalladamente el problema e incluye pasos para reproducirlo..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Prioridad</label>
+                    <span class="form-hint">Indica qué tan urgente es este reporte.</span>
+                    <div class="priority-options">
+                        <input type="hidden" name="priority" id="priority-input" value="Media">
+                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Baja')"><i data-lucide="circle"></i> Baja</button>
+                        <button type="button" class="priority-btn active" onclick="setPriority(this, 'Media')"><i data-lucide="alert-circle"></i> Media</button>
+                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Alta')"><i data-lucide="alert-triangle"></i> Alta</button>
+                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Crítica')"><i data-lucide="zap"></i> Crítica</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Evidencias (Opcional)</label>
+                    <span class="form-hint">Sube imágenes o videos que ayuden a entender el reporte (URL o archivo).</span>
+                    <div class="evidence-upload" onclick="document.getElementById('file-input').click()">
+                        <i data-lucide="upload-cloud"></i>
+                        <p style="margin:0; font-weight:600;">Haz clic para seleccionar o arrastra archivos</p>
+                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Máximo 8MB por archivo. Formatos sugeridos: PNG, JPG, MP4.</p>
+                        <input type="file" id="file-input" name="evidence_file" style="display:none;" multiple>
+                    </div>
+                    <div style="margin-top:15px;">
+                        <input type="url" name="evidence_url" class="form-input" placeholder="O pega un enlace directo a la imagen/video (opcional)">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ID del Usuario</label>
+                    <span class="form-hint">Tu ID de Discord (no editable).</span>
+                    <input type="text" name="user_discord_id" class="form-input" value="{{ user.id }}" readonly style="cursor: not-allowed; background: rgba(255,255,255,0.02); color: #6a6a8e;">
+                </div>
+
+                <button type="submit" class="submit-btn">Enviar reporte</button>
+            </form>
+
+            <div class="sidebar-right">
+                <!-- STATIC EXAMPLE CARD -->
+                <div class="glass-card" style="border-left: 4px solid #ffa502;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                        <div style="width:32px; height:32px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="info" style="width:16px; color:#ffa502;"></i>
+                        </div>
+                        <span style="font-weight:700; font-size:0.9rem; color:#eee;">Ejemplo de reporte</span>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <span class="example-badge" style="background: rgba(87, 95, 207, 0.2); color: #7d5fff;">Tipo: Bugs</span>
+                        <span class="priority-tag" style="background: rgba(255, 165, 2, 0.15); color: #ffa502;">Prioridad: Media</span>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Asunto</label>
+                        <p style="font-weight:600; margin:0; font-size:1rem;">Error de duplicación en apuestas</p>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Descripción</label>
+                        <p style="font-size:0.85rem; color:#a0a0c0; line-height:1.6; margin:0;">
+                            Al usar el comando /bet y perder la conexión justo antes de que termine, el bot no resta las monedas pero sí da la recompensa si el resultado es ganador.
+                            <br><br>
+                            Pasos que observé:<br>
+                            1. Iniciar apuesta.<br>
+                            2. Desconectar internet.<br>
+                            3. Reconectar.
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(255, 165, 2, 0.05); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #ffa502; display: flex; gap: 10px; align-items: flex-start;">
+                        <i data-lucide="alert-circle" style="width:14px; flex-shrink:0; margin-top:2px;"></i>
+                        <span>Importante: Incluye siempre capturas o videos para agilizar la revisión.</span>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="background:rgba(255,255,255,0.01); border-style: dashed;">
+                    <p style="color:#6a6a8e; font-size:0.85rem; text-align:center; margin:0;">
+                        Tu reporte será enviado directamente al equipo de staff. Gracias por tu colaboración.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function setPriority(btn, val) {
+            document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('priority-input').value = val;
+        }
+
+        // File input hint
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const count = this.files.length;
+            if (count > 0) {
+                const label = this.parentElement.querySelector('p');
+                label.innerText = count === 1 ? '1 archivo seleccionado' : count + ' archivos seleccionados';
+                label.style.color = 'var(--p-pink)';
+            }
+        });
+    </script>
+</body>
+</html>
