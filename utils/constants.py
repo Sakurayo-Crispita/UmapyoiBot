@@ -29,7 +29,7 @@ FFMPEG_OPTIONS = {
     'options': '-vn -ar 48000 -ac 2 -b:a 192k'
 }
 YDL_OPTIONS = {
-    'format': 'bestaudio[ext=webm][acodec=opus]/bestaudio/best',
+    'format': 'bestaudio/best',
     'quiet': True, 
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
