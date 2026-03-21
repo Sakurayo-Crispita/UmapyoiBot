@@ -34,11 +34,6 @@ YDL_OPTIONS = {
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
     'noplaylist': True, 
-    'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['ios'],
-            'skip': ['dash', 'hls']
-        }
-    }
+    'username': 'oauth2',
+    'password': ''
 }
