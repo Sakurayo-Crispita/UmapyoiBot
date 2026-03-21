@@ -1,4 +1,11 @@
 import discord
+# --- PARCHE DE VOZ PARA LINUX (OPUS) ---
+try:
+    if not discord.opus.is_loaded():
+        discord.opus.load_opus("/usr/lib/x86_64-linux-gnu/libopus.so.0")
+except Exception as e:
+    print(f"Aviso Opus: {e}")
+# ---------------------------------------
 from discord.ext import commands, tasks
 import os
 import traceback
