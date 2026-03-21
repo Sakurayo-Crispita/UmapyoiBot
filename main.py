@@ -47,6 +47,7 @@ class UmapyoiBot(commands.Bot):
         self.YDL_OPTIONS = constants.YDL_OPTIONS
         self.http_session = None
         self.start_time = datetime.datetime.now(datetime.timezone.utc)
+        self.first_on_ready = True
 
     async def setup_hook(self):
         ssl_context = ssl.create_default_context(cafile=certifi.where())
@@ -210,6 +211,10 @@ async def get_guild_inviter(guild):
 
 @bot.event
 async def on_ready():
+    if not bot.first_on_ready:
+        return
+    bot.first_on_ready = False
+    
     print(f'¡Umapyoi está en línea! Conectado como {bot.user}')
     await bot.change_presence(activity=discord.Game(name="¡Umapyoi ready! | /help"))
 
