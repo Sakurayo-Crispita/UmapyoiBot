@@ -34,11 +34,10 @@ YDL_OPTIONS = {
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
     'noplaylist': True, 
-    'proxy': 'http://fclhshpm:j8k8nhowb1lt@64.137.96.74:6641',
+    'proxy': 'http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'web'],
-            'visitor_data': 'CgttTFN2MlOkdkxVSjlnXzN0bTJKCjg3RRIEOgAgZg%3D%3D'
+            'player_client': ['android', 'web']
         }
     }
 }
