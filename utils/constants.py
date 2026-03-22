@@ -40,9 +40,9 @@ YDL_OPTIONS = {
     'extractor_args': {
         'youtube': {
             'player_client': ['web', 'mweb', 'tv'],
-            'js_runtimes': 'node'
-        }
-
+            'js_runtimes': 'node',
+            'po_token': 'android.gvs+XXX' # Placeholder por si acaso, pero las cookies mandan
+        },
+        'cookiefile': 'cookies.txt'
     }
 }
-
