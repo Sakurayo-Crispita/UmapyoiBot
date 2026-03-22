@@ -39,9 +39,9 @@ YDL_OPTIONS = {
     'nocheckcertificate': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['web', 'mweb'],
-            'js_runtimes': ['/usr/bin/node']
+            'player_client': ['android_vr', 'web'],
         },
         'cookiefile': 'cookies.txt'
     }
 }
+
