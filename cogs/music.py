@@ -323,7 +323,26 @@ class MusicCog(commands.Cog, name="Música"):
         state = self.get_guild_state(ctx.guild.id)
         try:
             is_url = re.match(r'https?://', search_query)
-            search_term = search_query if is_url else f"ytsearch:{search_query}"
+            
+            # --- SOPORTE PARA SPOTIFY (Redirección a YouTube) ---
+            if is_url and ('open.spotify.com' in search_query or 'spotify:' in search_query):
+                await msg.edit(content=f'🟢 Enlace de Spotify detectado. Extrayendo metadatos...')
+                with yt_dlp.YoutubeDL(self.bot.YDL_OPTIONS) as ydl:
+                    try:
+                        info_sp = await asyncio.to_thread(ydl.extract_info, search_query, download=False)
+                        if info_sp:
+                            title = info_sp.get('title', 'Canción desconocida')
+                            artist = info_sp.get('uploader') or info_sp.get('artist') or ''
+                            search_term = f"ytsearch:{artist} {title}"
+                            is_url = False # Forzamos búsqueda en YT para el paso siguiente
+                            await msg.edit(content=f'🔎 Buscando en YouTube: **{artist} - {title}**...')
+                        else:
+                            return await msg.edit(content="❌ No pude obtener información de Spotify.")
+                    except Exception as e:
+                        return await msg.edit(content=f"❌ Error al procesar Spotify: {e}")
+            else:
+                search_term = search_query if is_url else f"ytsearch:{search_query}"
+
             with yt_dlp.YoutubeDL(self.bot.YDL_OPTIONS) as ydl: info = await asyncio.to_thread(ydl.extract_info, search_term, download=False)
             entries = [info] if is_url and 'entries' not in info else info.get('entries', [])
             if not entries: return await msg.edit(content="❌ No encontré nada con esa búsqueda.")
