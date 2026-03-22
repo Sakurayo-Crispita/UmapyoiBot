@@ -25,9 +25,10 @@ EMOJI_LEAVE = "🚪"
 
 # - Opciones de FFMPEG y YDL para Música -
 FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 0 -probesize 32',
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 0 -probesize 32 -http_proxy http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
     'options': '-vn -b:a 192k'
 }
+
 
 
 
@@ -37,6 +38,8 @@ YDL_OPTIONS = {
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
     'noplaylist': True, 
+    'proxy': 'http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
+    'nocheckcertificate': True,
     'extractor_args': {
         'youtube': {
             'player_client': ['web', 'mweb', 'android'],
@@ -44,5 +47,6 @@ YDL_OPTIONS = {
     },
     'username': 'oauth2'
 }
+
 
 
