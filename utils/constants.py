@@ -40,13 +40,13 @@ YDL_OPTIONS = {
     'noplaylist': True, 
     'proxy': 'http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
     'nocheckcertificate': True,
-    'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'web'],
+            'player_client': ['web'],
         },
         'cookiefile': 'cookies.txt'
     }
 }
+
 
 
 
