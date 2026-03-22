@@ -39,9 +39,8 @@ YDL_OPTIONS = {
     'nocheckcertificate': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['web', 'mweb', 'tv'],
-            'js_runtimes': 'node',
-            'po_token': 'android.gvs+XXX' # Placeholder por si acaso, pero las cookies mandan
+            'player_client': ['web', 'mweb'],
+            'js_runtimes': 'node'
         },
         'cookiefile': 'cookies.txt'
     }
