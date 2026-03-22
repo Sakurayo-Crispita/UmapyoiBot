@@ -35,10 +35,12 @@ YDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'noplaylist': True, 
     'proxy': 'http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
+    'nocheckcertificate': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['web', 'ios'],
+            'player_client': ['android', 'web', 'tv_embedded'],
             'js_runtimes': 'node'
         }
     }
 }
+
