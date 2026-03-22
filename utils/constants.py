@@ -42,11 +42,12 @@ YDL_OPTIONS = {
     'nocheckcertificate': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['web', 'mweb', 'android'],
-        }
-    },
-    'username': 'oauth2'
+            'player_client': ['android', 'web'],
+        },
+        'cookiefile': 'cookies.txt'
+    }
 }
+
 
 
 
