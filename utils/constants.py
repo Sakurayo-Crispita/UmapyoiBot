@@ -39,9 +39,8 @@ YDL_OPTIONS = {
     'nocheckcertificate': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['android_music', 'web'],
+            'player_client': ['web', 'mweb'],
         },
         'cookiefile': 'cookies.txt'
     }
 }
-
