@@ -35,5 +35,10 @@ YDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'noplaylist': True, 
     'proxy': 'http://fclhshpm:j8k8nhowb1lt@64.137.96.74:6641',
-    'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['android', 'web'],
+            'visitor_data': 'CgttTFN2MlOkdkxVSjlnXzN0bTJKCjg3RRIEOgAgZg%3D%3D'
+        }
+    }
 }
