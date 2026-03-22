@@ -34,6 +34,6 @@ YDL_OPTIONS = {
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
     'noplaylist': True, 
-    'proxy': 'http://fclhshpm:j8k8nhowb1lt@198.105.121.200:6462',
+    'proxy': 'http://fclhshpm:j8k8nhowb1lt@64.137.96.74:6641',
     'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
 }
