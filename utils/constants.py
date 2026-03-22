@@ -37,7 +37,8 @@ YDL_OPTIONS = {
     'proxy': 'http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
     'extractor_args': {
         'youtube': {
-            'player_client': ['ios', 'web']
+            'player_client': ['web', 'ios'],
+            'js_runtimes': 'node'
         }
     }
 }
