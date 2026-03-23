@@ -31,12 +31,12 @@ class UmapyoiPlayer(pomice.Player):
 
     async def play(self, track, *args, **kwargs):
         # Resolver tracks de Spotify usando SoundCloud en lugar de YouTube
-        if not track.track_identifier and hasattr(track, 'uri') and track.uri and 'spotify.com' in track.uri:
+        if not getattr(track, 'track_id', getattr(track, 'id', None)) and hasattr(track, 'uri') and track.uri and 'spotify.com' in track.uri:
             query = f"scsearch:{track.title} {track.author}"
             results = await self.get_tracks(query)
             if results and not isinstance(results, pomice.Playlist):
                 sc_track = results[0]
-                track.track_identifier = sc_track.track_identifier
+                track.track_id = getattr(sc_track, 'track_id', getattr(sc_track, 'id', None))
                 
         return await super().play(track, *args, **kwargs)
 
