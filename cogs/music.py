@@ -29,6 +29,17 @@ class UmapyoiPlayer(pomice.Player):
         self.active_panel: discord.Message | None = None
         self.history = []
 
+    async def play(self, track, *args, **kwargs):
+        # Resolver tracks de Spotify usando SoundCloud en lugar de YouTube
+        if not track.track_identifier and hasattr(track, 'uri') and track.uri and 'spotify.com' in track.uri:
+            query = f"scsearch:{track.title} {track.author}"
+            results = await self.get_tracks(query)
+            if results and not isinstance(results, pomice.Playlist):
+                sc_track = results[0]
+                track.track_identifier = sc_track.track_identifier
+                
+        return await super().play(track, *args, **kwargs)
+
 class MusicPanelView(discord.ui.View):
     def __init__(self, music_cog: "MusicCog"):
         super().__init__(timeout=None)
@@ -74,10 +85,10 @@ class MusicPanelView(discord.ui.View):
         ctx.author = interaction.user; ctx.interaction = interaction
         await command.callback(self.music_cog, ctx)
 
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⏮️", row=0, custom_id="previous_button")
+    @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary, emoji="⏮️", row=0, custom_id="previous_button")
     async def previous_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'previous')
     
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
+    @discord.ui.button(label="Pausa", style=discord.ButtonStyle.secondary, emoji="⏸️", row=0, custom_id="pause_resume_button")
     async def pause_resume_button(self, i: discord.Interaction, b: discord.ui.Button):
         player: UmapyoiPlayer = i.guild.voice_client
         if not player or not player.is_playing: return await i.response.send_message("No hay nada reproduciéndose.", ephemeral=True, delete_after=10)
@@ -85,21 +96,23 @@ class MusicPanelView(discord.ui.View):
         if player.is_paused:
             await player.set_pause(False)
             msg = "▶️ Canción reanudada."
+            b.label, b.emoji = "Pausa", "⏸️"
         else:
             await player.set_pause(True)
             msg = "⏸️ Canción pausada."
+            b.label, b.emoji = "Reanudar", "▶️"
             
         self._update_button_styles(i)
         await i.response.edit_message(view=self)
         await i.followup.send(msg, ephemeral=True, delete_after=10)
     
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⏭️", row=0, custom_id="skip_button")
+    @discord.ui.button(label="Siguiente", style=discord.ButtonStyle.secondary, emoji="⏭️", row=0, custom_id="skip_button")
     async def skip_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'skip')
 
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
+    @discord.ui.button(label="Mezclar", style=discord.ButtonStyle.secondary, emoji="🔀", row=1, custom_id="shuffle_button")
     async def shuffle_button(self, i: discord.Interaction, _: discord.ui.Button): await self._execute_command(i, 'shuffle')
     
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
+    @discord.ui.button(label="Bucle", style=discord.ButtonStyle.secondary, emoji="🔁", row=1, custom_id="loop_button")
     async def loop_button(self, i: discord.Interaction, _: discord.ui.Button):
         player: UmapyoiPlayer = i.guild.voice_client
         if not player: return await i.response.send_message("❌ Sin reproductor.", ephemeral=True)
@@ -115,7 +128,7 @@ class MusicPanelView(discord.ui.View):
         await i.response.edit_message(view=self)
         await i.followup.send(f"🔁 {msg}", ephemeral=True, delete_after=5)
     
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
+    @discord.ui.button(label="Mix Auto.", style=discord.ButtonStyle.secondary, emoji="🔄", row=1, custom_id="autoplay_button")
     async def autoplay_button(self, i: discord.Interaction, _: discord.ui.Button):
         player: UmapyoiPlayer = i.guild.voice_client
         if not player: return await i.response.send_message("❌ Sin reproductor.", ephemeral=True)
@@ -159,8 +172,7 @@ class MusicCog(commands.Cog, name="Música"):
                 password='youshallnotpass',
                 identifier='MAIN',
                 spotify_client_id=getattr(constants, 'SPOTIFY_CLIENT_ID', None),
-                spotify_client_secret=getattr(constants, 'SPOTIFY_CLIENT_SECRET', None),
-                fallback="scsearch"
+                spotify_client_secret=getattr(constants, 'SPOTIFY_CLIENT_SECRET', None)
             )
             print("🟢 Nodo Pomice (Lavalink) conectado exitosamente.")
         except Exception as e:
