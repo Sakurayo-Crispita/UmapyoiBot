@@ -30,7 +30,7 @@ FFMPEG_OPTIONS = {
 }
 
 YDL_OPTIONS = {
-    'format': 'bestaudio/best',
+    'format': 'bestaudio[ext=webm]/bestaudio/best',
     'quiet': True, 
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
@@ -40,7 +40,8 @@ YDL_OPTIONS = {
     'cookiefile': 'cookies.txt',
     'extractor_args': {
         'youtube': {
-            'player_client': ['web'],
+            'player_client': ['default', 'web_embedded'],
         }
-    }
+    },
+    'socket_timeout': 30,
 }
