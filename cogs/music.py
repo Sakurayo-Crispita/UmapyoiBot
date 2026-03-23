@@ -157,7 +157,10 @@ class MusicCog(commands.Cog, name="Música"):
                 host='127.0.0.1',
                 port=2333,
                 password='youshallnotpass',
-                identifier='MAIN'
+                identifier='MAIN',
+                spotify_client_id=getattr(constants, 'SPOTIFY_CLIENT_ID', None),
+                spotify_client_secret=getattr(constants, 'SPOTIFY_CLIENT_SECRET', None),
+                fallback="scsearch"
             )
             print("🟢 Nodo Pomice (Lavalink) conectado exitosamente.")
         except Exception as e:
