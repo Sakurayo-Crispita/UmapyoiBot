@@ -31,16 +31,16 @@ FFMPEG_OPTIONS = {
 
 YDL_OPTIONS = {
     'format': 'bestaudio[ext=webm]/bestaudio/best',
-    'quiet': True, 
+    'quiet': True,
+    'no_warnings': True,
     'default_search': 'ytsearch', 
     'source_address': '0.0.0.0',
     'noplaylist': True, 
     'proxy': 'http://f3aadc356489963dafc5:060b354af4eb4134@gw.dataimpulse.com:823',
     'nocheckcertificate': True,
-
     'extractor_args': {
         'youtube': {
-            'player_client': ['default', 'web_embedded'],
+            'player_client': ['web_embedded', 'mediaconnect'],
         }
     },
     'socket_timeout': 30,
