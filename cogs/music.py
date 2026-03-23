@@ -323,7 +323,11 @@ class MusicCog(commands.Cog, name="Música"):
         # Actualizar el canal en caso de que lo hayan invocado en otro diferente
         player.bound_channel = ctx.channel or (ctx.interaction.channel if ctx.interaction else None)
         
-        msg = await ctx.send(f'🔎 Buscando: "**{search_query}**"...')
+        if not search_query.startswith(('http://', 'https://', 'ytsearch:', 'scsearch:', 'spsearch:')):
+            search_query = f"scsearch:{search_query}"
+            
+        display_query = search_query.replace("scsearch:", "").replace("ytsearch:", "").replace("spsearch:", "")
+        msg = await ctx.send(f'🔎 Buscando: "**{display_query}**"...')
         
         try:
             results = await player.get_tracks(query=search_query, ctx=ctx)
@@ -348,7 +352,7 @@ class MusicCog(commands.Cog, name="Música"):
                 duration = format_duration(track.length)
                 
                 if player.is_playing:
-                    embed.set_author(name=f"Añadida a la cola (Posición #{player.queue.qsize()})", icon_url=ctx.author.display_avatar.url)
+                    embed.set_author(name=f"Añadida a la cola (Posición #{len(player.queue)})", icon_url=ctx.author.display_avatar.url)
                 else:
                     embed.set_author(name="Añadido a la cola", icon_url=ctx.author.display_avatar.url)
                     
