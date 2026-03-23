@@ -50,8 +50,7 @@ class UmapyoiBot(commands.Bot):
         self.GENIUS_API_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
         self.CREAM_COLOR = discord.Color(constants.CREAM_COLOR)
-        self.FFMPEG_OPTIONS = constants.FFMPEG_OPTIONS
-        self.YDL_OPTIONS = constants.YDL_OPTIONS
+
         self.http_session = None
         self.start_time = datetime.datetime.now(datetime.timezone.utc)
         self.first_on_ready = True
