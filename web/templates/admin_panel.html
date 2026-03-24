@@ -266,6 +266,21 @@
             overflow-y: auto;
             padding: 15px;
         }
+        .db-browser-sidebar::-webkit-scrollbar, .db-browser-main::-webkit-scrollbar, .db-table-container::-webkit-scrollbar, #edit-fields-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .db-browser-sidebar::-webkit-scrollbar-track, .db-browser-main::-webkit-scrollbar-track, .db-table-container::-webkit-scrollbar-track, #edit-fields-container::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+        .db-browser-sidebar::-webkit-scrollbar-thumb, .db-browser-main::-webkit-scrollbar-thumb, .db-table-container::-webkit-scrollbar-thumb, #edit-fields-container::-webkit-scrollbar-thumb {
+            background: rgba(255,107,158,0.3);
+            border-radius: 4px;
+        }
+        .db-browser-sidebar::-webkit-scrollbar-thumb:hover, .db-browser-main::-webkit-scrollbar-thumb:hover, .db-table-container::-webkit-scrollbar-thumb:hover, #edit-fields-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,107,158,0.5);
+        }
         .db-browser-main {
             padding: 20px;
             overflow-y: auto;
@@ -1023,12 +1038,14 @@
         let currentTableName = '';
         let currentPkCol = '';
 
-        async function loadTableData(tableName, element) {
+        async function loadTableData(tableName, element, page = 1) {
             currentTableName = tableName;
             
             // UI Update
-            document.querySelectorAll('.table-list-item').forEach(i => i.classList.remove('active'));
-            if (element) element.classList.add('active');
+            if (element) {
+                document.querySelectorAll('.table-list-item').forEach(i => i.classList.remove('active'));
+                element.classList.add('active');
+            }
             
             document.getElementById('db-welcome').style.display = 'none';
             document.getElementById('db-table-view').style.display = 'block';
@@ -1036,7 +1053,7 @@
             document.getElementById('current-table-name').innerText = tableName;
             
             try {
-                const response = await fetch(`/api/admin/db/table/${tableName}`);
+                const response = await fetch(`/api/admin/db/table/${tableName}?page=${page}`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -1060,53 +1077,83 @@
             head.innerHTML = '';
             body.innerHTML = '';
             
-            if (result.data.length === 0) {
-                body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:40px;">Esta tabla está vacía.</td></tr>';
-                return;
+            // Always build header if columns are available
+            let cols = result.columns || [];
+            if (cols.length === 0 && result.data.length > 0) {
+                cols = Object.keys(result.data[0]);
             }
             
-            // Build Header
-            const cols = Object.keys(result.data[0]);
-            let headRow = '<tr>';
-            cols.forEach(col => {
-                headRow += `<th>${col}</th>`;
-            });
-            headRow += '<th style="text-align:right;">Acciones</th></tr>';
-            head.innerHTML = headRow;
-            
-            // Build Body
-            result.data.forEach(row => {
-                let bodyRow = '<tr>';
+            if (cols.length > 0) {
+                let headRow = '<tr>';
                 cols.forEach(col => {
-                    const val = row[col];
-                    const displayVal = (val === null) ? '<span style="color:var(--text-muted); font-style:italic;">NULL</span>' : val;
-                    bodyRow += `<td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${val}">${displayVal}</td>`;
+                    headRow += `<th>${col}</th>`;
                 });
-                
-                const pkVal = row[result.pk_col];
-                bodyRow += `
-                    <td style="text-align:right;">
-                        <div style="display: flex; gap: 5px; justify-content: flex-end;">
-                            <button class="btn-db-delete" style="background: rgba(52, 152, 219, 0.1); color: #3498db; border-color: #3498db;" 
-                                    onclick="openEditModal('${result.table}', '${result.pk_col}', '${pkVal}', ${JSON.stringify(row).replace(/"/g, '&quot;')})" title="Editar fila">
-                                <i data-lucide="edit-3" style="width: 14px;"></i>
-                            </button>
-                            <button class="btn-db-delete" onclick="deleteDbRow('${result.table}', '${result.pk_col}', '${pkVal}')" title="Eliminar fila">
-                                <i data-lucide="trash-2" style="width: 14px;"></i>
-                            </button>
-                        </div>
-                    </td>
-                `;
-                bodyRow += '</tr>';
-                body.innerHTML += bodyRow;
-            });
+                headRow += '<th style="text-align:right;">Acciones</th></tr>';
+                head.innerHTML = headRow;
+            }
+            
+            if (result.data.length === 0) {
+                body.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:40px; color: var(--text-muted); font-style: italic;">Esta tabla está vacía.</td></tr>`;
+            } else {
+                // Build Body
+                result.data.forEach(row => {
+                    let bodyRow = '<tr>';
+                    cols.forEach(col => {
+                        const val = row[col];
+                        const displayVal = (val === null) ? '<span style="color:var(--text-muted); font-style:italic;">NULL</span>' : val;
+                        bodyRow += `<td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${val}">${displayVal}</td>`;
+                    });
+                    
+                    const pkVal = row[result.pk_col];
+                    bodyRow += `
+                        <td style="text-align:right;">
+                            <div style="display: flex; gap: 5px; justify-content: flex-end;">
+                                <button class="btn-db-delete" style="background: rgba(52, 152, 219, 0.1); color: #3498db; border-color: #3498db;" 
+                                        onclick='openEditModal("${result.table}", "${result.pk_col}", "${pkVal}", ${JSON.stringify(row).replace(/'/g, "&#39;")})' title="Editar fila">
+                                    <i data-lucide="edit-3" style="width: 14px;"></i>
+                                </button>
+                                <button class="btn-db-delete" onclick="deleteDbRow('${result.table}', '${result.pk_col}', '${pkVal}')" title="Eliminar fila">
+                                    <i data-lucide="trash-2" style="width: 14px;"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    bodyRow += '</tr>';
+                    body.innerHTML += bodyRow;
+                });
+            }
             
             lucide.createIcons();
             
-            // Render Pagination (Simple for now)
-            const totalPages = Math.ceil(result.total / result.per_page);
+            const totalPages = result.total_pages || 1;
+            const prevDisabled = result.page <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+            const nextDisabled = result.page >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+
+            // Build Pagination
             const pagContainer = document.getElementById('db-pagination');
-            pagContainer.innerHTML = `<span style="color:var(--text-muted); font-size: 0.8rem;">Filas totales: ${result.total} | Página ${result.page} de ${totalPages || 1}</span>`;
+            if(pagContainer) {
+                pagContainer.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; flex-wrap: wrap; gap: 10px;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">
+                            Filas totales: <span style="color:white; font-weight:bold;">${result.total || result.data.length}</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="btn" style="padding: 6px 12px; background: rgba(255,255,255,0.05); color: white; font-size: 0.8rem;" 
+                                    onclick="loadTableData('${result.table}', null, ${result.page - 1})" ${prevDisabled}>
+                                <i data-lucide="chevron-left" style="width: 14px; vertical-align: middle;"></i> Anterior
+                            </button>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                                Página <span style="color:white; font-weight:bold;">${result.page}</span> de ${totalPages}
+                            </span>
+                            <button class="btn" style="padding: 6px 12px; background: rgba(255,255,255,0.05); color: white; font-size: 0.8rem;" 
+                                    onclick="loadTableData('${result.table}', null, ${result.page + 1})" ${nextDisabled}>
+                                Siguiente <i data-lucide="chevron-right" style="width: 14px; vertical-align: middle;"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
         }
 
         function openEditModal(table, pkCol, pkVal, rowData) {

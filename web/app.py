@@ -1038,6 +1038,7 @@ async def api_admin_db_table(table_name):
         # Obtener información de columnas y PK
         columns_info = await database_manager.fetchall(f"PRAGMA table_info({table_name})")
         pk_col = next((col['name'] for col in columns_info if col['pk'] == 1), None)
+        columns = [col['name'] for col in columns_info]
         
         # Si no hay PK explícita, usar la primera columna como fallback
         if not pk_col and columns_info:
@@ -1047,13 +1048,19 @@ async def api_admin_db_table(table_name):
         count_row = await database_manager.fetchone(f"SELECT COUNT(*) as c FROM {table_name}")
         total = count_row['c'] if count_row else 0
         
+        # Calcular total de páginas
+        import math
+        total_pages = math.ceil(total / per_page) if total > 0 else 1
+        
         return {
             "success": True,
             "table": table_name,
             "data": data,
+            "columns": columns,
             "total": total,
             "page": page,
             "per_page": per_page,
+            "total_pages": total_pages,
             "pk_col": pk_col
         }
     except Exception as e:
