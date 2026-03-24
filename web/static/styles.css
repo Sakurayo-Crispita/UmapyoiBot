@@ -59,6 +59,15 @@ body {
     transition: background-color 0.4s ease;
 }
 
+/* Anti-flash: hide until theme is applied */
+html:not(.theme-ready) body {
+    opacity: 0;
+}
+html.theme-ready body {
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
 .module-page {
     padding-top: var(--header-h);
 }

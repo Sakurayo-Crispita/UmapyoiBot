@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es">
 <head>
+    <!-- Anti-flash: apply theme before first paint -->
+    <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enviar Sugerencia - UmapyoiBot</title>
@@ -8,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=2.8">
+    <link rel="stylesheet" href="/static/styles.css?v=2.9">
     <style>
         body { background: #0f1118; color: white; font-family: 'Inter', sans-serif; }
         .feedback-container { max-width: 1200px; margin: 80px auto; padding: 20px; }
