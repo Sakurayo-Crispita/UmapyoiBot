@@ -263,7 +263,7 @@ class MusicCog(commands.Cog, name="Música"):
         embed = discord.Embed(title="✨ MESA DE MEZCLAS UMAPYOI", color=self.bot.CREAM_COLOR)
         requester_mention = getattr(track.requester, "mention", "Alguien") if hasattr(track, 'requester') else "Desconocido"
         
-        desc = f"🎵 **Canción:** [{track.title}]({track.uri})\n"
+        desc = f"🎵 **Canción:** [{track.title}]({constants.COMMANDS_PAGE_URL})\n"
         desc += f"👤 **Solicitante:** {requester_mention}\n"
         desc += f"🕒 **Duración:** `{format_duration(track.length)}`\n"
         desc += f"🎤 **Artista:** `{track.author}`\n"
@@ -375,7 +375,7 @@ class MusicCog(commands.Cog, name="Música"):
                 else:
                     embed.set_author(name="Añadido a la cola", icon_url=ctx.author.display_avatar.url)
                     
-                embed.description = f"**[{track.title}]({track.uri})** `[{duration}]`"
+                embed.description = f"**[{track.title}]({constants.COMMANDS_PAGE_URL})** `[{duration}]`"
                 await msg.edit(content=None, embed=embed)
 
             if not player.is_playing:
@@ -435,7 +435,7 @@ class MusicCog(commands.Cog, name="Música"):
             
         embed = discord.Embed(title="🎵 Cola de Música 🎵", color=self.bot.CREAM_COLOR)
         if player.current: 
-            embed.add_field(name="Reproduciendo ahora", value=f"**[{player.current.title}]({player.current.uri})**", inline=False)
+            embed.add_field(name="Reproduciendo ahora", value=f"**[{player.current.title}]({constants.COMMANDS_PAGE_URL})**", inline=False)
             
         if not player.queue.is_empty:
             queue_list = list(player.queue.get_queue())
@@ -452,7 +452,7 @@ class MusicCog(commands.Cog, name="Música"):
         if not player or not player.current: return await self.send_response(ctx, "No hay ninguna canción reproduciéndose.", ephemeral=True)
         
         track = player.current
-        embed = discord.Embed(title="🎵 Sonando Ahora", description=f"**[{track.title}]({track.uri})**", color=self.bot.CREAM_COLOR)
+        embed = discord.Embed(title="🎵 Sonando Ahora", description=f"**[{track.title}]({constants.COMMANDS_PAGE_URL})**", color=self.bot.CREAM_COLOR)
         requester_name = getattr(track.requester, "display_name", "Desconocido") if hasattr(track, 'requester') else "Desconocido"
         embed.set_footer(text=f"Pedida por: {requester_name}")
         
