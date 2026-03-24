@@ -1000,6 +1000,11 @@ async def admin_panel():
     system_logs = await database_manager.get_recent_system_logs(50)
     admin_audit_logs = await database_manager.get_recent_admin_audit_logs(50)
     
+    # Obtener lista de tablas para el explorador
+    tables_query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+    tables_rows = await database_manager.fetchall(tables_query)
+    db_tables = [t['name'] for t in tables_rows]
+    
     return await render_template('admin_panel.html', 
                                  user=user, section='admin',
                                  total_users=total_users, 
@@ -1010,7 +1015,106 @@ async def admin_panel():
                                  bot_guilds=bot_guilds,
                                  recent_logs=recent_logs,
                                  system_logs=system_logs,
-                                 admin_audit_logs=admin_audit_logs)
+                                 admin_audit_logs=admin_audit_logs,
+                                 db_tables=db_tables)
+
+@app.route('/api/admin/db/table/<table_name>')
+@admin_required
+async def api_admin_db_table(table_name):
+    # Validar que el nombre de la tabla sea seguro (solo letras, números y guiones bajos)
+    import re
+    if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+        return {"error": "Nombre de tabla inválido"}, 400
+        
+    try:
+        # Paginación básica
+        page = int(request.args.get('page', 1))
+        per_page = 50
+        offset = (page - 1) * per_page
+        
+        # Obtener datos de la tabla
+        data = await database_manager.fetchall(f"SELECT * FROM {table_name} LIMIT ? OFFSET ?", (per_page, offset))
+        
+        # Obtener información de columnas y PK
+        columns_info = await database_manager.fetchall(f"PRAGMA table_info({table_name})")
+        pk_col = next((col['name'] for col in columns_info if col['pk'] == 1), None)
+        
+        # Si no hay PK explícita, usar la primera columna como fallback
+        if not pk_col and columns_info:
+            pk_col = columns_info[0]['name']
+            
+        # Obtener total de filas
+        count_row = await database_manager.fetchone(f"SELECT COUNT(*) as c FROM {table_name}")
+        total = count_row['c'] if count_row else 0
+        
+        return {
+            "success": True,
+            "table": table_name,
+            "data": data,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "pk_col": pk_col
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}, 500
+
+@app.route('/api/admin/db/delete', methods=['POST'])
+@admin_required
+async def api_admin_db_delete():
+    user = session['user']
+    import re
+    data = await request.form
+    table_name = data.get('table')
+    primary_key_col = data.get('pk_col')
+    primary_key_val = data.get('pk_val')
+    
+    if not table_name or not primary_key_col or not primary_key_val:
+        return {"success": False, "message": "Datos de eliminación incompletos."}, 400
+        
+    if not re.match(r'^[a-zA-Z0-9_]+$', table_name) or not re.match(r'^[a-zA-Z0-9_]+$', primary_key_col):
+        return {"success": False, "message": "Nombre de tabla o columna inválido."}, 400
+        
+    try:
+        await database_manager.execute(f"DELETE FROM {table_name} WHERE {primary_key_col} = ?", (primary_key_val,))
+        await database_manager.log_admin_action(user['id'], user['username'], f"db_delete_row", target_id=f"{table_name}:{primary_key_val}", details=f"Col: {primary_key_col}")
+        return {"success": True, "message": "Fila eliminada correctamente."}
+    except Exception as e:
+        return {"success": False, "message": f"Error al eliminar: {str(e)}"}, 500
+
+@app.route('/api/admin/db/update', methods=['POST'])
+@admin_required
+async def api_admin_db_update():
+    user = session['user']
+    import re
+    data = await request.form
+    table_name = data.get('table')
+    pk_col = data.get('pk_col')
+    pk_val = data.get('pk_val')
+    
+    # Obtener todos los campos a actualizar (excepto los de control)
+    updates = {}
+    for key, value in data.items():
+        if key not in ['table', 'pk_col', 'pk_val']:
+            updates[key] = value
+            
+    if not table_name or not pk_col or not pk_val or not updates:
+        return {"success": False, "message": "Datos de actualización incompletos."}, 400
+        
+    if not re.match(r'^[a-zA-Z0-9_]+$', table_name) or not re.match(r'^[a-zA-Z0-9_]+$', pk_col):
+        return {"success": False, "message": "Nombre de tabla o columna inválido."}, 400
+        
+    try:
+        set_clause = ", ".join([f"{col} = ?" for col in updates.keys()])
+        values = list(updates.values()) + [pk_val]
+        
+        query = f"UPDATE {table_name} SET {set_clause} WHERE {pk_col} = ?"
+        await database_manager.execute(query, tuple(values))
+        
+        await database_manager.log_admin_action(user['id'], user['username'], f"db_update_row", target_id=f"{table_name}:{pk_val}", details=f"Cols: {', '.join(updates.keys())}")
+        return {"success": True, "message": "Fila actualizada correctamente."}
+    except Exception as e:
+        return {"success": False, "message": f"Error al actualizar: {str(e)}"}, 500
 
 @app.route('/api/admin/guild/leave', methods=['POST'])
 @admin_required

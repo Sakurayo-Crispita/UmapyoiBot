@@ -249,6 +249,82 @@
         .detail-avatar { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,107,158,0.3); }
         .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         .detail-value { font-weight: 600; font-size: 0.9rem; }
+        /* Database Browser Layout */
+        .db-browser {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            height: 600px;
+        }
+        .db-browser-sidebar {
+            background: rgba(0,0,0,0.3);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 15px;
+        }
+        .db-browser-main {
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .table-list-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            margin-bottom: 2px;
+        }
+        .table-list-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+        .table-list-item.active {
+            background: var(--p-pink-soft);
+            color: var(--p-pink);
+            font-weight: 600;
+        }
+        .db-table-container {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255,107,158,0.1);
+        }
+        .db-table {
+            font-size: 0.8rem;
+            min-width: 800px;
+        }
+        .btn-db-delete {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+            padding: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-db-delete:hover {
+            background: #e74c3c;
+            color: white;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .loading-overlay.active { display: flex; }
     </style>
 </head>
 <body class="dashboard-page">
@@ -584,14 +660,51 @@
             </div>
 
             <div id="tab-database" class="tab-content">
-                <div class="admin-grid">
-                    <!-- Copia de Seguridad -->
-                    <div class="admin-card">
-                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="database" style="color:var(--p-pink);"></i> Base de Datos (SQLite)</h3>
-                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Descarga un respaldo exacto de toda la base de datos de UmapyoiBot para edición offline.</p>
-                        <a href="/api/admin/backup" class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 10px;">
-                            <i data-lucide="downloadCloud"></i> Extraer bot_data.db
-                        </a>
+                <div class="db-browser">
+                    <div class="db-browser-sidebar">
+                        <h4 style="margin-bottom: 15px; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Tablas de Sistema</h4>
+                        {% for table in db_tables %}
+                        <div class="table-list-item" onclick="loadTableData('{{ table }}', this)">
+                            <i data-lucide="table-2" style="width: 14px;"></i>
+                            <span>{{ table }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="db-browser-main">
+                        <div id="db-loading" class="loading-overlay">
+                            <div class="spinner"></div>
+                        </div>
+                        <div id="db-welcome" style="text-align: center; margin-top: 100px;">
+                            <i data-lucide="database" style="width: 60px; height: 60px; color: var(--p-pink-soft); margin-bottom: 20px;"></i>
+                            <h3>Explorador de Base de Datos</h3>
+                            <p style="color: var(--text-muted);">Selecciona una tabla a la izquierda para ver y gestionar sus datos.</p>
+                        </div>
+                        <div id="db-table-view" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 id="current-table-name">Tabla</h3>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <div style="position: relative;">
+                                        <i data-lucide="search" style="position: absolute; left: 10px; top: 10px; width: 14px; color: var(--text-muted);"></i>
+                                        <input type="text" id="db-search" placeholder="Filtrar en esta tabla..." 
+                                               style="padding: 8px 10px 8px 32px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 0.8rem;"
+                                               oninput="filterLocalTable()">
+                                    </div>
+                                    <button class="btn" style="padding: 6px 15px; font-size: 0.8rem; background: rgba(0,0,0,0.2);" onclick="refreshCurrentTable()">
+                                        <i data-lucide="refresh-cw" style="width: 14px; margin-right: 5px;"></i> Recargar
+                                    </button>
+                                    <a href="/api/admin/backup" class="btn btn-primary" style="padding: 6px 15px; font-size: 0.8rem;">
+                                        <i data-lucide="download" style="width: 14px; margin-right: 5px;"></i> Backup .db
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="db-table-container">
+                                <table class="db-table" id="data-table">
+                                    <thead id="data-table-head"></thead>
+                                    <tbody id="data-table-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="db-pagination" style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -755,6 +868,29 @@
         </div>
     </div>
 
+    <!-- Database Row Edit Modal -->
+    <div id="db-edit-overlay" class="uma-modal-overlay">
+        <div class="uma-modal" style="max-width: 600px;">
+            <div class="uma-modal-icon" style="background: rgba(52, 152, 219, 0.1); color: #3498db;">
+                <i data-lucide="edit" style="width: 32px; height: 32px;"></i>
+            </div>
+            <h2 id="edit-modal-title">Editar Fila</h2>
+            <p id="edit-modal-subtitle" style="font-size: 0.8rem; margin-bottom: 20px; color: var(--text-muted);"></p>
+            
+            <form id="db-edit-form" method="POST" action="/api/admin/db/update" style="text-align: left; max-height: 400px; overflow-y: auto; padding: 10px;">
+                <input type="hidden" name="table" id="edit-table-name">
+                <input type="hidden" name="pk_col" id="edit-pk-col">
+                <input type="hidden" name="pk_val" id="edit-pk-val">
+                <div id="edit-fields-container" style="display: grid; gap: 15px;"></div>
+            </form>
+            
+            <div class="uma-modal-actions" style="margin-top: 25px;">
+                <button type="button" class="uma-modal-btn uma-modal-btn-cancel" onclick="closeEditModal()">Cancelar</button>
+                <button type="submit" form="db-edit-form" class="uma-modal-btn" style="background: #3498db; color: white;">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         lucide.createIcons();
         
@@ -883,6 +1019,182 @@
                 }).catch(e => console.error('Error fetching live stats:', e));
         }, 5000);
 
+        // --- Database Explorer Logic ---
+        let currentTableName = '';
+        let currentPkCol = '';
+
+        async function loadTableData(tableName, element) {
+            currentTableName = tableName;
+            
+            // UI Update
+            document.querySelectorAll('.table-list-item').forEach(i => i.classList.remove('active'));
+            if (element) element.classList.add('active');
+            
+            document.getElementById('db-welcome').style.display = 'none';
+            document.getElementById('db-table-view').style.display = 'block';
+            document.getElementById('db-loading').classList.add('active');
+            document.getElementById('current-table-name').innerText = tableName;
+            
+            try {
+                const response = await fetch(`/api/admin/db/table/${tableName}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentPkCol = result.pk_col;
+                    renderTable(result);
+                } else {
+                    Swal.fire('Error', result.error, 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error', 'No se pudo cargar la tabla', 'error');
+            } finally {
+                document.getElementById('db-loading').classList.remove('active');
+            }
+        }
+
+        function renderTable(result) {
+            const head = document.getElementById('data-table-head');
+            const body = document.getElementById('data-table-body');
+            
+            head.innerHTML = '';
+            body.innerHTML = '';
+            
+            if (result.data.length === 0) {
+                body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:40px;">Esta tabla está vacía.</td></tr>';
+                return;
+            }
+            
+            // Build Header
+            const cols = Object.keys(result.data[0]);
+            let headRow = '<tr>';
+            cols.forEach(col => {
+                headRow += `<th>${col}</th>`;
+            });
+            headRow += '<th style="text-align:right;">Acciones</th></tr>';
+            head.innerHTML = headRow;
+            
+            // Build Body
+            result.data.forEach(row => {
+                let bodyRow = '<tr>';
+                cols.forEach(col => {
+                    const val = row[col];
+                    const displayVal = (val === null) ? '<span style="color:var(--text-muted); font-style:italic;">NULL</span>' : val;
+                    bodyRow += `<td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${val}">${displayVal}</td>`;
+                });
+                
+                const pkVal = row[result.pk_col];
+                bodyRow += `
+                    <td style="text-align:right;">
+                        <div style="display: flex; gap: 5px; justify-content: flex-end;">
+                            <button class="btn-db-delete" style="background: rgba(52, 152, 219, 0.1); color: #3498db; border-color: #3498db;" 
+                                    onclick="openEditModal('${result.table}', '${result.pk_col}', '${pkVal}', ${JSON.stringify(row).replace(/"/g, '&quot;')})" title="Editar fila">
+                                <i data-lucide="edit-3" style="width: 14px;"></i>
+                            </button>
+                            <button class="btn-db-delete" onclick="deleteDbRow('${result.table}', '${result.pk_col}', '${pkVal}')" title="Eliminar fila">
+                                <i data-lucide="trash-2" style="width: 14px;"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                bodyRow += '</tr>';
+                body.innerHTML += bodyRow;
+            });
+            
+            lucide.createIcons();
+            
+            // Render Pagination (Simple for now)
+            const totalPages = Math.ceil(result.total / result.per_page);
+            const pagContainer = document.getElementById('db-pagination');
+            pagContainer.innerHTML = `<span style="color:var(--text-muted); font-size: 0.8rem;">Filas totales: ${result.total} | Página ${result.page} de ${totalPages || 1}</span>`;
+        }
+
+        function openEditModal(table, pkCol, pkVal, rowData) {
+            document.getElementById('edit-table-name').value = table;
+            document.getElementById('edit-pk-col').value = pkCol;
+            document.getElementById('edit-pk-val').value = pkVal;
+            document.getElementById('edit-modal-subtitle').innerText = `Tabla: ${table} | ${pkCol}: ${pkVal}`;
+            
+            const container = document.getElementById('edit-fields-container');
+            container.innerHTML = '';
+            
+            Object.keys(rowData).forEach(key => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label style="display:block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">${key}</label>
+                    <input type="text" name="${key}" value="${rowData[key] === null ? '' : rowData[key]}" 
+                           style="width:100%; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 4px; color:white; font-size: 0.9rem;"
+                           ${key === pkCol ? 'readonly style="opacity:0.6; cursor:not-allowed;"' : ''}>
+                `;
+                container.appendChild(div);
+            });
+            
+            document.getElementById('db-edit-overlay').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('db-edit-overlay').classList.remove('active');
+        }
+
+        async function deleteDbRow(table, pkCol, pkVal) {
+            const result = await Swal.fire({
+                title: '¿Confirmar eliminación?',
+                text: `Vas a borrar la fila con ${pkCol} = ${pkVal} de la tabla ${table}.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e74c3c',
+                confirmButtonText: 'Sí, borrar',
+                cancelButtonText: 'Cancelar',
+                background: '#1a1b1e',
+                color: '#fff'
+            });
+
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('table', table);
+                formData.append('pk_col', pkCol);
+                formData.append('pk_val', pkVal);
+
+                try {
+                    const response = await fetch('/api/admin/db/delete', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'Eliminado',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            background: '#1a1b1e',
+                            color: '#fff'
+                        });
+                        refreshCurrentTable();
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Fallo de red', 'error');
+                }
+            }
+        }
+
+        function refreshCurrentTable() {
+            if (currentTableName) loadTableData(currentTableName);
+        }
+
+        function filterLocalTable() {
+            const query = document.getElementById('db-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#data-table-body tr');
+            
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
         // AJAX Form Handling
         async function handleFormSubmit(e) {
             e.preventDefault();
@@ -917,6 +1229,9 @@
                     });
                     if (form.id === 'form-broadcast' || form.id === 'form-dm') {
                         form.reset();
+                    } else if (form.id === 'db-edit-form') {
+                        closeEditModal();
+                        refreshCurrentTable();
                     } else if (form.id === 'form-blacklist-add' || form.classList.contains('form-ajax') || form.id === 'modal-form') {
                         setTimeout(() => window.location.reload(), 1500);
                     }
@@ -946,7 +1261,7 @@
         }
 
         // Attach listeners
-        document.querySelectorAll('#form-broadcast, #form-dm, #form-blacklist-add, #modal-form, .form-ajax').forEach(form => {
+        document.querySelectorAll('#form-broadcast, #form-dm, #form-blacklist-add, #modal-form, .form-ajax, #db-edit-form').forEach(form => {
             form.addEventListener('submit', handleFormSubmit);
         });
     </script>
