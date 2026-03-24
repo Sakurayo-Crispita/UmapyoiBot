@@ -85,8 +85,33 @@
             margin-bottom: 30px;
         }
 
-        .nav-link.active::after { display: none; }
         .nav-link { position: relative; }
+
+        .toast-success {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(46, 204, 113, 0.15);
+            border: 1px solid rgba(46, 204, 113, 0.4);
+            backdrop-filter: blur(10px);
+            color: #2ecc71;
+            padding: 16px 24px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            z-index: 9999;
+            animation: slideInBottomLeft 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        @keyframes slideInBottomLeft {
+            0% { transform: translateY(50px) scale(0.9); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
 
         @media (max-width: 768px) {
             .guild-header {
@@ -264,9 +289,27 @@
 
             <section>
                 {% if saved %}
-                <div class="cfg-success">
-                    <i data-lucide="check-circle" style="width:18px;height:18px;"></i> {{ t('bot.common.saved_success') }}
+                <div class="toast-success" id="successToast">
+                    <i data-lucide="check-circle" style="width:20px;height:20px;"></i>
+                    <span>Cambios guardados correctamente.</span>
                 </div>
+                <script>
+                    setTimeout(() => {
+                        const toast = document.getElementById('successToast');
+                        if (toast) {
+                            toast.style.opacity = '0';
+                            toast.style.transform = 'translateY(20px)';
+                            setTimeout(() => toast.remove(), 300);
+                            
+                            // Limpiar la URL para que no vuelva a aparecer al recargar
+                            if (window.history.replaceState) {
+                                const url = new URL(window.location);
+                                url.searchParams.delete('saved');
+                                window.history.replaceState({path: url.href}, '', url.href);
+                            }
+                        }
+                    }, 4000);
+                </script>
                 {% endif %}
 
                 {% if section == 'general' %}
