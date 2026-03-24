@@ -46,9 +46,16 @@ class HelpSelect(discord.ui.Select):
         embed = discord.Embed(color=self.bot.CREAM_COLOR)
 
         if selected_cog_name == "Inicio":
-            embed.title = "📜 Ayuda de Umapyoi"
-            embed.description = "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n**🎛️ Categorías de Comandos:**"
+            embed.title = "🌟 Central de Mando Umapyoi"
+            embed.description = (
+                "Bienvenid@ a mi menú de ayuda. Soy tu asistente de nueva generación, diseñada para mejorar tu servidor con la mejor **música, configuración y entretenimiento**.\n\n"
+                "🎶 **Comienza a Escuchar**\n"
+                "Únete a un canal de voz y usa `/play <canción o link>`.\n\n"
+                "🌐 **Explorador de Comandos**\n"
+                f"Navega por el menú de aquí abajo o visita directamente mi [**Página Oficial de Comandos aquí**]({constants.COMMANDS_PAGE_URL})."
+            )
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
             embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
         else:
             cog = self.bot.get_cog(selected_cog_name)
@@ -95,14 +102,17 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     @commands.hybrid_command(name='help', description="Muestra ayuda sobre los comandos del bot.")
     async def help(self, ctx: commands.Context, categoría: Optional[str] = None):
         if categoría is None:
-            embed = discord.Embed(title="📜 Ayuda de Umapyoi", color=self.bot.CREAM_COLOR)
-            # MODIFICADO: El enlace a la página web está integrado en el texto
+            embed = discord.Embed(title="🌟 Central de Mando Umapyoi", color=self.bot.CREAM_COLOR)
+            # MODIFICADO: Rediseño profesional integrado al enlace
             embed.description = (
-                "**🚀 Cómo empezar a escuchar música**\n`/play <nombre de la canción o enlace>`\n\n"
-                "**❓ ¿Qué es Umapyoi?**\nUn bot de nueva generación con música, juegos, economía y mucho más. ¡Todo en uno!\n\n"
-                f"**🎛️ Categorías de Comandos:**\n*Para ver todos los comandos, visita nuestra [página de comandos]({constants.COMMANDS_PAGE_URL}).*"
+                "Bienvenid@ a mi menú de ayuda. Soy tu asistente de nueva generación, diseñada para mejorar tu servidor con la mejor **música, configuración y entretenimiento**.\n\n"
+                "🎶 **Comienza a Escuchar**\n"
+                "Únete a un canal de voz y usa `/play <canción o link>`.\n\n"
+                "🌐 **Explorador de Comandos**\n"
+                f"Navega por mis categorías usando el menú de abajo, o descubre todo mi potencial visitando mi [**Página Oficial de Comandos aquí**]({constants.COMMANDS_PAGE_URL}).\n\n⬇️ **Menú de Categorías:**"
             )
             embed.set_image(url="https://i.imgur.com/WwexK3G.png")
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
             
             view = discord.ui.View(timeout=180)
             view.add_item(HelpSelect(self.bot, self.cog_map))

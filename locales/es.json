@@ -56,8 +56,8 @@
             "success": "✅ Acción completada con éxito."
         },
         "general": {
-            "ping_title": "🥕 ¡Hola, {user}! Soy Umapyoi.",
-            "ping_desc": "¡Lista para la carrera! Mi objetivo es ser tu compañera todo-en-uno.\n\nPara descubrir todo mi potencial, usa el comando `/help` o visita mi página web de comandos.",
+            "ping_title": "¡Hola, {user}! 👋",
+            "ping_desc": "Soy **Umapyoi**, la compañera bot de nueva generación que necesitas.\n\nHe sido diseñada para llevar música de alta calidad, moderación avanzada y entretenimiento sin límites a tu servidor.\n\n🚀 **¿Cómo empezamos?**\nUsa mi comando principal `/help` para abrir mi panel integrado, o explora todos mis comandos detalladamente en mi página oficial usando los botones de abajo.",
             "welcome_public_title": "¡Umapyoi ha llegado para correr!",
             "welcome_public_desc": "¡Hola a todos! Estoy lista para traer la mejor música, juegos y utilidades a su comunidad. ¡Es un placer estar aquí! 🥕\n\nPara empezar, usa `/help` o visita mi página de comandos.",
             "welcome_private_title": "¡Gracias por invitarme a {server}!",
