@@ -12,7 +12,7 @@ if os.environ.get("BOT_TEST_DB"):
 else:
     DB_FILE = os.path.join(PROJECT_ROOT, "bot_data.db")
 
-# --- PERSISTENT CONNECTION AND LOCK ---
+# Conexión persistente y bloqueo para evitar corrupción
 _conn = None
 _db_lock = threading.Lock()
 
@@ -28,7 +28,7 @@ def run_migrations(conn):
     """Añade columnas faltantes a las tablas existentes."""
     cursor = conn.cursor()
     
-    # --- Migración para la tabla economy_settings ---
+    # Migraciones de base de datos para añadir columnas nuevas
     try:
         cursor.execute("PRAGMA table_info(economy_settings)")
         columns = [row[1] for row in cursor.fetchall()]
@@ -198,7 +198,7 @@ def close_database():
         _conn.close()
         _conn = None
 
-# --- SISTEMA DE CACHÉ ---
+# Sistema de caché para configuraciones de servidores
 _settings_cache = {}
 
 def invalidate_cache(guild_id: int):
@@ -228,7 +228,7 @@ async def get_cached_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]
         _settings_cache.setdefault(guild_id, {})['economy'] = settings
     return settings
 
-# --- FUNCIONES ASÍNCRONAS ---
+# Funciones asíncronas para consultas y ejecución
 
 async def fetchone(query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
     def _sync_fetchone():
@@ -271,7 +271,7 @@ async def execute(query: str, params: tuple = ()):
             conn.commit()
     return await asyncio.to_thread(_sync_execute)
 
-# --- ESPECÍFICAS ---
+# Consultas específicas de economía, niveles y logs
 
 async def get_guild_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
     settings = await fetchone("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
@@ -309,7 +309,7 @@ async def update_user_xp(guild_id: int, user_id: int, level: int, xp: int):
 async def add_mod_log(guild_id: int, user_id: int, mod_id: int, action: str, reason: str, duration: Optional[str] = None):
     await execute("INSERT INTO mod_logs (guild_id, user_id, moderator_id, action, reason, duration) VALUES (?, ?, ?, ?, ?, ?)", (guild_id, user_id, mod_id, action, reason, duration))
 
-# --- BLACKLIST SISTEMA ---
+# Sistema de lista negra global (Blacklist)
 async def add_to_blacklist(discord_id: int, entity_type: str, reason: str = ""):
     await execute("INSERT OR REPLACE INTO global_blacklist (discord_id, entity_type, reason) VALUES (?, ?, ?)", (discord_id, entity_type, reason))
 
@@ -360,7 +360,7 @@ async def update_guild_status(guild_id: int, is_active: int, name: str = None, m
 async def get_bot_guilds():
     return await fetchall("SELECT * FROM bot_guilds WHERE is_active = 1 ORDER BY member_count DESC")
 
-# --- COMMAND LOGGING ---
+# Registro de logs de comandos y sistema
 async def log_global_command(guild_id: int, guild_name: str, user_id: int, user_name: str, command_name: str):
     await execute("INSERT INTO global_command_logs (guild_id, guild_name, user_id, user_name, command_name) VALUES (?, ?, ?, ?, ?)",
                  (guild_id, guild_name, user_id, user_name, command_name))
@@ -368,14 +368,14 @@ async def log_global_command(guild_id: int, guild_name: str, user_id: int, user_
 async def get_recent_global_logs(limit: int = 50):
     return await fetchall("SELECT * FROM global_command_logs ORDER BY timestamp DESC LIMIT ?", (limit,))
 
-# --- SYSTEM LOGGING ---
+# Registro de eventos del bot
 async def log_system_event(level: str, category: str, message: str):
     await execute("INSERT INTO bot_logs (level, category, message) VALUES (?, ?, ?)", (level, category, message))
 
 async def get_recent_system_logs(limit: int = 50):
     return await fetchall("SELECT * FROM bot_logs ORDER BY timestamp DESC LIMIT ?", (limit,))
 
-# --- ADMIN AUDIT LOGGING ---
+# Auditoría de acciones administrativas en el dashboard
 async def log_admin_action(user_id: int, user_name: str, action: str, target_id: str = None, details: str = None):
     await execute("INSERT INTO admin_audit_logs (user_id, user_name, action, target_id, details) VALUES (?, ?, ?, ?, ?)",
                  (user_id, user_name, action, target_id, details))

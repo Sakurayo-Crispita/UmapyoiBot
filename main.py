@@ -1,11 +1,10 @@
 import discord
-# --- PARCHE DE VOZ PARA LINUX (OPUS) ---
+# Parche Opus para Linux
 try:
     if not discord.opus.is_loaded():
         discord.opus.load_opus("/usr/lib/x86_64-linux-gnu/libopus.so.0")
 except Exception as e:
     print(f"Aviso Opus: {e}")
-# ---------------------------------------
 from discord.ext import commands, tasks
 import os
 import traceback
@@ -24,7 +23,7 @@ from utils.lang_utils import _t
 from dotenv import load_dotenv
 import asyncio
 from web.app import run_app 
-# --- CONFIGURACIÓN DE APIS Y CONSTANTES ---
+# Configuración de entorno y tokens
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = os.getenv("OWNER_ID")
@@ -77,8 +76,7 @@ class UmapyoiBot(commands.Bot):
                 except Exception as e:
                     print(f"Error al cargar el Cog '{filename[:-3]}': {e}")
         print("Cogs cargados.")
-        print("-----------------------------------------")
-        print("Sincronizando comandos slash...")
+# Sincronización de comandos slash
         await self.tree.sync()
         print("¡Comandos sincronizados!")
 
@@ -277,7 +275,7 @@ async def sync_guilds_background():
     await database_manager.sync_bot_guilds(guilds_data)
     print(f"Sincronización completada: {len(guilds_data)} servidores actualizados.")
 
-# --- EVENTO ON_MESSAGE ---
+# Evento al recibir mensaje
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot or not message.guild:
@@ -305,7 +303,7 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
-# --- EVENTO ON_GUILD_JOIN (RESTAURADO Y MEJORADO) ---
+# Evento al unirse a un servidor
 @bot.event
 async def on_guild_join(guild: discord.Guild):
     await ensure_bot_role(guild)
@@ -512,7 +510,7 @@ async def on_command_error(ctx: commands.Context, error):
     print(f"Error no manejado en '{ctx.command.name if ctx.command else 'Comando desconocido'}':")
     traceback.print_exception(type(error), error, error.__traceback__)
     
-    # --- NUEVO: Notificación de error por MD ---
+    # Notificación de error por MD al dueño
     if bot.owner_id:
         owner = bot.get_user(bot.owner_id)
         if owner:

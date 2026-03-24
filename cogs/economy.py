@@ -63,7 +63,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         # Nivel 1 = 10,000 | Nivel 10 = 55,000 | Nivel 50 = 255,000
         return 5000 + (level * 5000)
 
-    # --- COMANDOS DE ADMINISTRADOR ---
+# Comandos de administrador
     @commands.hybrid_group(name="economy", description="Configura la economía del servidor.")
     @commands.has_permissions(administrator=True)
     async def economy(self, ctx: commands.Context):
@@ -122,7 +122,7 @@ class EconomyCog(commands.Cog, name="Economía"):
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
         await ctx.send(f"🛑 Se han deducido **{cantidad} {emoji}** de la cartera de {miembro.mention}.")
 
-    # --- BANCOS Y TRANSFERENCIAS ---
+    # Bancos y transferencias
     
     @commands.hybrid_command(name='balance', aliases=['bal', 'money', 'atm'], description="Muestra la cartera y el banco de un usuario.")
     async def balance(self, ctx: commands.Context, miembro: Optional[discord.Member] = None):
@@ -227,7 +227,7 @@ class EconomyCog(commands.Cog, name="Economía"):
             
             await ctx.send(_t('bot.economy.give_success', lang=lang, amount=f"{real_amount:,}", emoji=emoji, target=miembro.mention) + f" (Tax: {tax:,} {emoji})")
 
-    # --- INGRESOS ACTIVOS ---
+    # Ingresos activos
     
     @commands.hybrid_command(name='daily', description="Reclama una buena recompensa que puedes sacar una vez cada día.")
     async def daily(self, ctx: commands.Context):

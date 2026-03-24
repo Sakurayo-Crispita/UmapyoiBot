@@ -16,7 +16,7 @@ import aiohttp
 import re
 import urllib.parse
 
-# - FUNCIÓN DE GENERACIÓN DE IMÁGENES -
+# Generación de imágenes para banners de bienvenida/despedida
 async def generate_banner_image(
     session: aiohttp.ClientSession, 
     member: discord.Member, 
@@ -83,7 +83,7 @@ async def generate_banner_image(
         print(f"Error generando el banner: {e}")
         return None
 
-# - COG PRINCIPAL -
+# Módulo de configuración principal del servidor
 class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
     """Comandos para que los administradores configuren el bot en el servidor."""
     def __init__(self, bot: commands.Bot):
@@ -140,7 +140,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
 
-    # --- LISTENERS ---
+    # Eventos de entrada, salida y voz
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         # --- NUEVO: Comprobación para evitar mensajes duplicados ---
@@ -315,7 +315,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
                     except:
                         pass
             
-    # --- COMANDOS ---
+    # Comandos administrativos de configuración
     @commands.hybrid_command(name='setwelcomechannel', description="Establece o desactiva el canal para mensajes de bienvenida.")
     @commands.has_permissions(manage_guild=True)
     async def set_welcome_channel(self, ctx: commands.Context, canal: Optional[discord.TextChannel] = None):

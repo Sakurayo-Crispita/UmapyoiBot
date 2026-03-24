@@ -30,7 +30,7 @@ class UmapyoiPlayer(pomice.Player):
         self.history = []
 
     async def play(self, track, *args, **kwargs):
-        # Resolver tracks de Spotify usando SoundCloud en lugar de YouTube
+        # Resolución de Spotify vía SoundCloud
         if hasattr(track, 'uri') and track.uri and 'spotify.com' in track.uri:
             query = f"scsearch:{track.title} {track.author}"
             try:
@@ -59,7 +59,7 @@ class MusicPanelView(discord.ui.View):
         player: UmapyoiPlayer = interaction.guild.voice_client
         if not player: return
         
-        # Bucle
+        # Estado del bucle
         loop_button = discord.utils.get(self.children, custom_id='loop_button')
         if loop_button:
             if player.loop_state == LoopState.OFF:
@@ -166,6 +166,7 @@ class MusicCog(commands.Cog, name="Música"):
         
         bot.loop.create_task(self.start_nodes())
 
+    # Conexión de nodos Lavalink
     async def start_nodes(self):
         await self.bot.wait_until_ready()
         try:
@@ -196,7 +197,7 @@ class MusicCog(commands.Cog, name="Música"):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        if member.id == self.bot.user.id and before.channel and not after.channel: # Bot desconectado
+        if member.id == self.bot.user.id and before.channel and not after.channel: # Desconexión bot
             player: UmapyoiPlayer = before.channel.guild.voice_client
             if player:
                 if player.active_panel:
@@ -204,7 +205,7 @@ class MusicCog(commands.Cog, name="Música"):
                     except: pass
                 await player.destroy()
         
-        elif before.channel and not after.channel: # Alguien se va
+        elif before.channel and not after.channel: # Salida de miembro
             vc = member.guild.voice_client
             if vc and vc.channel == before.channel and len(before.channel.members) == 1:
                 await asyncio.sleep(30)
@@ -233,14 +234,14 @@ class MusicCog(commands.Cog, name="Música"):
         except pomice.QueueEmpty:
             if player.autoplay and player.history:
                 try:
-                    # Buscar recomendación sencilla basada en el título si es YT
+                    # Recomendación básica si es YouTube
                     results = await player.get_tracks(f"ytsearch:{player.history[-1].title} mix")
                     if results and not isinstance(results, pomice.Playlist):
                         await player.play(results[0])
                         return
                 except: pass
             
-            # Si no hay más, avisar y preparar desconexión
+            # Aviso de fin de cola y desconexión
             if player.active_panel and hasattr(player, 'bound_channel') and player.bound_channel:
                 try:
                     embed = player.active_panel.embeds[0]
@@ -339,7 +340,7 @@ class MusicCog(commands.Cog, name="Música"):
         player = await self.ensure_voice_client(ctx)
         if not player: return await self.send_response(ctx, "❌ No pude conectarme al canal de voz.", ephemeral=True)
         
-        # Actualizar el canal en caso de que lo hayan invocado en otro diferente
+        # Actualizar canal de enlace
         player.bound_channel = ctx.channel or (ctx.interaction.channel if ctx.interaction else None)
         
         if not search_query.startswith(('http://', 'https://', 'ytsearch:', 'scsearch:', 'spsearch:')):

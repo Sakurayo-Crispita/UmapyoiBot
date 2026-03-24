@@ -21,9 +21,9 @@ async def main():
         print("ERROR: DISCORD_TOKEN no encontrado en el archivo .env")
         return
 
-    print("--- Iniciando UmapyoiBot System ---")
+    print("Iniciando UmapyoiBot System...")
     
-    # Ejecutar ambos concurrentemente
+    # Ejecución concurrente de bot y web
     try:
         await asyncio.gather(
             bot.start(DISCORD_TOKEN),

@@ -51,7 +51,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         # Reverting to the original logic for mod_enabled check.
         return True
     
-    # --- LISTENERS PARA LOGS DE MENSAJES (NUEVO DISEÑO) ---
+    # Logs de mensajes
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
@@ -173,7 +173,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
                     print(f"Error en automod on_message: {e}")
                 return # Detener procesamiento
 
-    # --- NUEVOS LISTENERS DE AUDITORÍA AVANZADA ---
+    # Auditoría avanzada de servidor
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -465,7 +465,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
                 try: await log_channel.send(embed=embed)
                 except: pass
 
-    # --- FUNCIÓN AUXILIAR PARA LOGS DE COMANDOS ---
+    # Logs de comandos de moderación
     async def _log_command_action(self, ctx: commands.Context, action: str, member: discord.Member | discord.User, reason: str, **kwargs):
         """Función auxiliar para enviar logs de acciones de moderación por comandos."""
         log_settings = await db.fetchone("SELECT log_channel_id FROM server_settings WHERE guild_id = ?", (ctx.guild.id,))
@@ -493,7 +493,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         except discord.Forbidden:
             pass
 
-    # --- COMANDOS DE MODERACIÓN ---
+    # Comandos de moderación general
 
     @commands.hybrid_command(name="clear", description="Borra una cantidad específica de mensajes en el canal.")
     @commands.has_permissions(manage_messages=True)
@@ -663,7 +663,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
         await self._log_command_action(ctx, "Unlock Channel", ctx.author, f"Canal desbloqueado.", channel=channel)
         await ctx.send(f"🔓 El canal {channel.mention} ha sido desbloqueado.", ephemeral=True)
 
-    # --- COMANDOS INFORMATIVOS (SIN CAMBIOS) ---
+    # Comandos informativos y logs
     # (mutelist, modlogs, warnings, automod)
 
     @commands.hybrid_command(name="mutelist", description="Muestra la lista de usuarios silenciados actualmente.")
@@ -721,7 +721,7 @@ class ModerationCog(commands.Cog, name="Moderación"):
                             inline=False)
         await ctx.send(embed=embed, ephemeral=True)
 
-    # --- COMANDOS DE AUTOMODERACIÓN (SIN CAMBIOS) ---
+    # Comandos de automoderación
     @commands.hybrid_group(name="automod", description="Configura las opciones de auto-moderación.")
     @commands.has_permissions(manage_guild=True)
     async def automod(self, ctx: commands.Context):

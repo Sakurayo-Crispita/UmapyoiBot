@@ -47,11 +47,11 @@ if not CLIENT_ID or not CLIENT_SECRET:
     print(f"Ruta: {os.path.join(PROJECT_ROOT, '.env')}")
     print(f"----------------------------------------")
 
-# --- DEFENSES & COOLDOWNS ---
+# Defensas y tiempos de espera de administración
 ADMIN_COOLDOWNS = {} # {user_id: last_action_timestamp}
 COOLDOWN_SECONDS = 3
 
-# --- UTILS ---
+# Utilidades internas de la web
 async def fetch_user_guilds(access_token):
     headers = {'Authorization': f"Bearer {access_token}"}
     async with aiohttp.ClientSession() as cs:
@@ -204,7 +204,7 @@ async def suggest():
 
     return await render_template('suggest.html', user=session['user'])
 
-# --- AUTH ROUTES ---
+# Rutas de autenticación de Discord OAuth2
 
 @app.route('/login')
 async def login():
@@ -352,7 +352,7 @@ async def dashboard_account():
 
 
 
-# --- Helpers de Configuración ---
+# Ayudantes para la obtención de datos de Discord API
 async def fetch_guild_channels(guild_id):
     """Obtiene los canales del servidor via Bot API."""
     text_channels = []
@@ -617,7 +617,7 @@ async def dashboard_server(guild_id, section):
     if not target_guild:
         return redirect(url_for('dashboard', refresh='true'))
 
-    # --- POST HANDLERS ---
+    # Manejo de formularios POST para configuraciones
     if request.method == 'POST':
         form = await request.form
         await database_manager.execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (int(guild_id),))

@@ -82,8 +82,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         
-        # --- MAPA DE COGS CORREGIDO ---
-        # Este mapa ahora define el orden y los nombres para el autocompletado y el menú
+        # Registro y orden de módulos en el menú de ayuda
         self.cog_map = {
             "música": "Música",
             "niveles": "Niveles",
