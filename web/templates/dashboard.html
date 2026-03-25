@@ -377,6 +377,10 @@
             <div style="display: flex; align-items: center; gap: 20px;">
                 <a href="/" class="nav-link hide-mobile">Volver al Inicio</a>
                 
+                <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema" style="cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--bg-alt); border: 1px solid var(--border-color); transition: background 0.3s;">
+                    <span id="theme-icon-container"><i data-lucide="moon" style="color: var(--text-main);"></i></span>
+                </div>
+
                 <div class="profile-dropdown-container">
                     <div class="profile-trigger" onclick="toggleProfileSlider()">
                         <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="profile-avatar-sm">
@@ -391,13 +395,9 @@
                         </div>
                         
                         <div class="slider-stats">
-                            <div class="stat-box">
+                            <div class="stat-box" style="width: 100%;">
                                 <small>Servidores</small>
                                 <span>{{ servers|length if servers else 0 }}</span>
-                            </div>
-                            <div class="stat-box">
-                                <small>Mutuos</small>
-                                <span>{{ mutual_count or 0 }}</span>
                             </div>
                         </div>
                         
@@ -543,23 +543,14 @@
                 </div>
             </div>
 
-            <div class="stats-grid" style="margin-top: 30px;">
+            <div class="stats-grid" style="margin-top: 30px; grid-template-columns: 1fr;">
                 <div class="stat-card glass" style="padding: 25px; text-align: left; display: flex; align-items: center; gap: 20px;">
                     <div style="background: rgba(255,183,197,0.1); padding: 15px; border-radius: 12px;">
                         <i data-lucide="server" style="color: var(--p-pink);"></i>
                     </div>
                     <div>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Servidores Admin</p>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Servidores Disponibles</p>
                         <h3 style="margin: 0; font-size: 1.5rem;">{{ servers|length if servers else 0 }}</h3>
-                    </div>
-                </div>
-                <div class="stat-card glass" style="padding: 25px; text-align: left; display: flex; align-items: center; gap: 20px;">
-                    <div style="background: rgba(179,153,212,0.1); padding: 15px; border-radius: 12px;">
-                        <i data-lucide="star" style="color: #b399d4;"></i>
-                    </div>
-                    <div>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Servidores Mutuos</p>
-                        <h3 style="margin: 0; font-size: 1.5rem; color: #b399d4;">{{ mutual_count or 0 }}</h3>
                     </div>
                 </div>
             </div>
@@ -794,6 +785,27 @@
                     }
                 }
             });
+        }
+        // Theme Toggle (Dashboard)
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeContainer = document.getElementById('theme-icon-container');
+        
+        if (themeToggle && themeContainer) {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            updateThemeIcon(savedTheme);
+
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+
+            function updateThemeIcon(theme) {
+                themeContainer.innerHTML = `<i data-lucide="${theme === 'light' ? 'moon' : 'sun'}"></i>`;
+                lucide.createIcons();
+            }
         }
     </script>
 </body>

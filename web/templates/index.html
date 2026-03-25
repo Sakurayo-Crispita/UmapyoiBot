@@ -105,7 +105,7 @@
                 {% endif %}
                 <li>
                     <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
-                        <i data-lucide="moon" id="theme-icon"></i>
+                        <span id="theme-icon-container"><i data-lucide="moon"></i></span>
                     </div>
                 </li>
             </ul>
@@ -182,7 +182,7 @@
 
         // Theme Toggle
         const themeToggle = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
+        const themeContainer = document.getElementById('theme-icon-container');
         const html = document.documentElement;
         const savedTheme = localStorage.getItem('theme') || 'light';
         html.setAttribute('data-theme', savedTheme);
@@ -197,7 +197,7 @@
         });
 
         function updateThemeIcon(theme) {
-            themeIcon.setAttribute('data-lucide', theme === 'light' ? 'moon' : 'sun');
+            themeContainer.innerHTML = `<i data-lucide="${theme === 'light' ? 'moon' : 'sun'}"></i>`;
             lucide.createIcons();
         }
 
