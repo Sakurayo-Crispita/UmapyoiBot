@@ -8,8 +8,8 @@ DEFAULT_WELCOME_BANNER = "https://i.postimg.cc/YqsSwMMN/10-jul-2025-04-13-17-p-m
 DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima!"
 # URL del banner de despedida por defecto actualizada para mantener consistencia
 DEFAULT_GOODBYE_BANNER = "https://i.postimg.cc/YqsSwMMN/10-jul-2025-04-13-17-p-m.png"
-# URL de la web de comandos oficial
-COMMANDS_PAGE_URL = "https://sakurayo-crispita.github.io/UmaPage/" 
+# URL de la web oficial del nuevo panel de control
+COMMANDS_PAGE_URL = "http://152.70.220.215:5000/" 
 
 TEMP_CHANNEL_PREFIX = "Sala de "
 
