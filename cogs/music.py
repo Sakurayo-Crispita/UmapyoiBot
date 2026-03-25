@@ -198,12 +198,26 @@ class MusicCog(commands.Cog, name="Música"):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         if member.id == self.bot.user.id and before.channel and not after.channel: # Desconexión bot
-            player: UmapyoiPlayer = before.channel.guild.voice_client
+            player = getattr(before.channel.guild, 'voice_client', None)
+            if not player:
+                try:
+                    node = self.pomice.get_node()
+                    player = node.get_player(member.guild.id)
+                except: pass
+                
             if player:
-                if player.active_panel:
+                if getattr(player, 'active_panel', None):
                     try: await player.active_panel.delete()
                     except: pass
-                await player.destroy()
+                
+                bound_channel = getattr(player, 'bound_channel', None)
+                if getattr(player, '_is_manually_destroyed', False) is False:
+                    if bound_channel:
+                        try: await bound_channel.send("🚪 Fui expulsado del canal de voz. He detenido la música y limpiado la cola.", delete_after=15)
+                        except: pass
+                
+                try: await player.destroy()
+                except: pass
         
         elif before.channel and not after.channel: # Salida de miembro
             vc = member.guild.voice_client
@@ -323,8 +337,11 @@ class MusicCog(commands.Cog, name="Música"):
     async def leave(self, ctx: commands.Context):
         player: UmapyoiPlayer = ctx.guild.voice_client
         if not player: return await self.send_response(ctx, "No estoy en ningún canal de voz.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para desconectarme.", ephemeral=True)
         
-        if player.active_panel:
+        player._is_manually_destroyed = True
+        if getattr(player, 'active_panel', None):
             try: await player.active_panel.delete()
             except: pass
             
@@ -392,6 +409,10 @@ class MusicCog(commands.Cog, name="Música"):
     async def skip(self, ctx: commands.Context):
         await ctx.defer(ephemeral=True)
         player: UmapyoiPlayer = ctx.guild.voice_client
+        if not player: return await self.send_response(ctx, "No estoy en ningún canal de voz.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para usar este comando.", ephemeral=True)
+            
         if player and player.is_playing:
             await player.stop()
             await self.send_response(ctx, "⏭️ Canción saltada.", ephemeral=True)
@@ -402,6 +423,8 @@ class MusicCog(commands.Cog, name="Música"):
         await ctx.defer(ephemeral=True)
         player: UmapyoiPlayer = ctx.guild.voice_client
         if not player: return await self.send_response(ctx, "No estoy conectado.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para usar este comando.", ephemeral=True)
         
         player.queue.clear()
         player.loop_state = LoopState.OFF
@@ -419,6 +442,8 @@ class MusicCog(commands.Cog, name="Música"):
         await ctx.defer(ephemeral=True)
         player: UmapyoiPlayer = ctx.guild.voice_client
         if not player or not player.is_playing: return await self.send_response(ctx, "No hay nada reproduciéndose.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para usar este comando.", ephemeral=True)
         
         if player.is_paused:
             await player.set_pause(False)
@@ -494,6 +519,8 @@ class MusicCog(commands.Cog, name="Música"):
     async def shuffle(self, ctx: commands.Context):
         player: UmapyoiPlayer = ctx.guild.voice_client
         if not player or player.queue.is_empty: return await self.send_response(ctx, "La cola está vacía.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para usar este comando.", ephemeral=True)
         
         player.queue.shuffle()
         await self.send_response(ctx, "🔀 ¡La cola ha sido barajada!", ephemeral=True)
@@ -502,6 +529,8 @@ class MusicCog(commands.Cog, name="Música"):
     async def previous(self, ctx: commands.Context):
         player: UmapyoiPlayer = ctx.guild.voice_client
         if not player or len(player.history) < 2: return await self.send_response(ctx, "No hay historial suficiente.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para usar este comando.", ephemeral=True)
         
         if player.current: player.queue.put_at_front(player.current)
         prev_track = player.history[-2]
@@ -515,6 +544,8 @@ class MusicCog(commands.Cog, name="Música"):
     async def volume(self, ctx: commands.Context, new_volume: commands.Range[int, 0, 150]):
         player: UmapyoiPlayer = ctx.guild.voice_client
         if not player: return await self.send_response(ctx, "No estoy en un canal de voz.", ephemeral=True)
+        if not ctx.author.voice or ctx.author.voice.channel != player.channel:
+            return await self.send_response(ctx, "❌ Debes estar en mi canal de voz para usar este comando.", ephemeral=True)
         
         await player.set_volume(new_volume)
         await self.send_response(ctx, f"🔊 Volumen ajustado a **{new_volume}%**.", ephemeral=True)
