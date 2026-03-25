@@ -7,7 +7,7 @@ DEFAULT_WELCOME_BANNER = "https://umapyoibot.com/static/assets/bot_welcome.png"
 
 DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima!"
 # URL del banner de despedida por defecto actualizada para mantener consistencia
-DEFAULT_GOODBYE_BANNER = "https://umapyoibot.com/static/assets/bot_help.png"
+DEFAULT_GOODBYE_BANNER = "https://umapyoibot.com/static/assets/hero_landing.png"
 # URL de la web oficial del nuevo panel de control
 COMMANDS_PAGE_URL = "https://umapyoibot.com/" 
 
