@@ -569,21 +569,31 @@ nav .container {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
-    background: var(--p-pink-soft);
-    border: 1px solid var(--border-color);
-    border-radius: 50px;
+    padding: 6px 16px;
+    background: rgba(212, 163, 115, 0.08); /* Soft Caramel translucent */
+    border: 1px solid rgba(212, 163, 115, 0.2);
+    border-radius: 100px;
     color: var(--p-pink);
     font-weight: 600;
-    font-size: 0.9rem;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 15px var(--accent-glow);
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    margin-bottom: 28px;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 20px rgba(212, 163, 115, 0.1);
+    transition: var(--transition);
 }
 
 .hero-badge i {
-    width: 16px;
-    height: 16px;
-    animation: glowPulse 2s infinite;
+    width: 14px;
+    height: 14px;
+    color: var(--p-pink-deep);
+    filter: drop-shadow(0 0 5px var(--p-pink));
+}
+
+.hero-badge:hover {
+    background: rgba(212, 163, 115, 0.12);
+    transform: translateY(-2px);
+    border-color: var(--p-pink);
 }
 
 .hero-text h1 {
@@ -815,7 +825,11 @@ footer {
 .search-input:focus {
     border-color: var(--p-pink);
     outline: none;
-    box-shadow: 0 0 10px rgba(255, 143, 163, 0.2);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+.category-link:focus {
+    outline: none;
+    box-shadow: 0 0 10px var(--accent-glow);
 }
 .search-icon {
     position: absolute;
@@ -830,13 +844,19 @@ footer {
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: rgba(255,143,163,0.1);
+    background: var(--p-pink-soft);
     color: var(--p-pink);
-    border: 1px solid rgba(255,143,163,0.3);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     transition: var(--transition);
+}
+tr.active-row {
+    background: var(--p-pink-soft);
+    color: var(--p-pink);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
 }
 .btn-refresh:hover {
     background: var(--p-pink);
@@ -1122,7 +1142,12 @@ footer {
 
 .cfg-btn.primary:hover {
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 30px rgba(255, 143, 163, 0.4);
+    box-shadow: 0 15px 30px var(--accent-glow);
+}
+
+.cfg-btn.guild-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 8px 25px var(--accent-glow);
 }
 
 .cfg-btn.primary:active {
@@ -1254,8 +1279,8 @@ footer {
 
 .sub-tab.active {
     color: #fff;
-    background: linear-gradient(135deg, var(--p-pink), #ff7eb3) !important;
-    box-shadow: 0 4px 15px rgba(255, 122, 180, 0.3);
+    background: linear-gradient(135deg, var(--p-pink), var(--p-pink-deep)) !important;
+    box-shadow: 0 4px 15px var(--accent-glow);
 }
 
 .sub-tab.active i {

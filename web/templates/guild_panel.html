@@ -10,15 +10,15 @@
     <title>Configurar Servidor - UmapyoiBot</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/static/styles.css?v=3.3">
     <style>
         /* Identity Animations & Layout Fixes */
         @keyframes iconPulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 122, 180, 0.4); }
-            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(255, 122, 180, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 122, 180, 0); }
+            0% { transform: scale(1); box-shadow: 0 0 0 0 var(--accent-glow); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 10px var(--accent-glow); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 var(--accent-glow); }
         }
 
         .guild-header {
@@ -51,7 +51,7 @@
         .server-icon:hover {
             transform: scale(1.05) rotate(3deg);
             border-color: var(--p-pink);
-            box-shadow: 0 15px 30px rgba(255, 122, 180, 0.3);
+            box-shadow: 0 15px 30px var(--accent-glow);
         }
 
         .guild-header-content {
@@ -505,7 +505,7 @@
                             <!-- LIVE PREVIEW -->
                             <div style="margin-top: 25px;">
                                 <label class="cfg-label" style="margin-bottom: 10px; display:block;">Vista Previa del Embed</label>
-                                <div id="wc-preview" style="background: #2f3136; border-radius: 8px; overflow: hidden; border-left: 4px solid #57f287; font-family: 'Inter', sans-serif;">
+                                <div id="wc-preview" style="background: #2f3136; border-radius: 8px; overflow: hidden; border-left: 4px solid #57f287; font-family: 'Nunito', sans-serif;">
                                     <div style="padding: 16px 16px 0 16px; display:flex; gap: 12px;">
                                         <div style="flex: 1; min-width: 0;">
                                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -561,7 +561,7 @@
                             <!-- LIVE PREVIEW -->
                             <div style="margin-top: 25px;">
                                 <label class="cfg-label" style="margin-bottom: 10px; display:block;">Vista Previa del Embed</label>
-                                <div id="gb-preview" style="background: #2f3136; border-radius: 8px; overflow: hidden; border-left: 4px solid #ed4245; font-family: 'Inter', sans-serif;">
+                                <div id="gb-preview" style="background: #2f3136; border-radius: 8px; overflow: hidden; border-left: 4px solid #ed4245; font-family: 'Nunito', sans-serif;">
                                     <div style="padding: 16px 16px 0 16px; display:flex; gap: 12px;">
                                         <div style="flex: 1; min-width: 0;">
                                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -802,7 +802,7 @@
                                     <span class="cfg-hint">El bot debe estar un rol superior en Discord para entregarlo.</span>
                                 </div>
                                 <div class="cfg-footer" style="border:none; padding:0; margin-top:15px;">
-                                    <button type="submit" class="cfg-btn primary" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); width: 100%;">
+                                    <button type="submit" class="cfg-btn primary" style="background: linear-gradient(135deg, var(--a-green) 0%, #27ae60 100%); width: 100%;">
                                         <i data-lucide="plus-circle"></i> Añadir Artículo a la Venta
                                     </button>
                                 </div>
@@ -1004,7 +1004,7 @@
                                                     <form action="{{ url_for('dashboard_server', guild_id=server.id, section=section) }}" method="POST" style="display: inline;">
                                                         <input type="hidden" name="action" value="delete_reward">
                                                         <input type="hidden" name="delete_level" value="{{ reward.level }}">
-                                                        <button type="submit" class="btn btn-d" style="padding: 6px 12px; font-size: 0.85rem; background: rgba(255, 71, 87, 0.15); color: #ff6b81; border: 1px solid rgba(255, 71, 87, 0.3);"><i data-lucide="trash-2" style="width:14px; margin-right:4px;"></i> Eliminar</button>
+                                                        <button type="submit" class="btn btn-d" style="padding: 6px 12px; font-size: 0.85rem; background: var(--accent-glow); color: #ff6b81; border: 1px solid var(--accent-glow);"><i data-lucide="trash-2" style="width:14px; margin-right:4px;"></i> Eliminar</button>
                                                     </form>
                                                 </td>
                                             </tr>
@@ -1507,7 +1507,7 @@
                     display: flex; align-items: center; gap: 14px;
                     box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px ${colors[type]}15;
                     animation: toastSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                    max-width: 420px; font-family: 'Inter', sans-serif;
+                    max-width: 420px; font-family: 'Nunito', sans-serif;
                 ">
                     <span style="font-size: 1.5rem;">${icons[type]}</span>
                     <span style="color: #e2e8f0; font-size: 0.9rem; line-height: 1.4;">${message}</span>

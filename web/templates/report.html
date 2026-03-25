@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/static/styles.css?v=2.9">
     <style>
-        body { background: #0f1118; color: white; font-family: 'Inter', sans-serif; }
+        body { background: #0f1118; color: white; font-family: 'Nunito', sans-serif; }
         .feedback-container { max-width: 1200px; margin: 80px auto; padding: 20px; }
         .feedback-header { margin-bottom: 40px; }
         .feedback-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: start; }
@@ -30,15 +30,15 @@
         .priority-options { display: flex; gap: 15px; margin-top: 10px; }
         .priority-btn { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #a0a0c0; cursor: pointer; text-align: center; font-size: 0.9rem; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .priority-btn i { width: 14px; opacity: 0.5; }
-        .priority-btn.active { border-color: var(--p-pink); color: white; background: rgba(255, 71, 87, 0.1); }
+        .priority-btn.active { border-color: var(--p-pink); color: white; background: var(--accent-glow); }
         .priority-btn.active i { opacity: 1; }
         
         .evidence-upload { border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 30px; text-align: center; transition: all 0.3s; cursor: pointer; background: rgba(0,0,0,0.2); }
-        .evidence-upload:hover { border-color: var(--p-pink); background: rgba(255, 71, 87, 0.05); }
+        .evidence-upload:hover { border-color: var(--p-pink); background: var(--accent-glow); }
         .evidence-upload i { width: 32px; height: 32px; color: #a0a0c0; margin-bottom: 15px; }
         
-        .submit-btn { width: 100%; background: var(--p-pink); color: white; border: none; border-radius: 8px; padding: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3); transition: all 0.3s; }
-        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4); }
+        .submit-btn { width: 100%; background: var(--p-pink); color: white; border: none; border-radius: 8px; padding: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 15px var(--accent-glow); transition: all 0.3s; }
+        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px var(--accent-glow); }
         
         .sidebar-right { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 20px; }
         .example-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; gap: 6px; }
@@ -51,7 +51,7 @@
     {% if success %}
     <div class="success-overlay">
         <div style="width: 80px; height: 80px; background: #2ed573; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(46, 213, 115, 0.3);"><i data-lucide="check" style="width: 48px; height: 48px; color: white;"></i></div>
-        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Outfit';">Reporte Recibido</h1>
+        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Quicksand';">Reporte Recibido</h1>
         <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tu reporte. Nuestro equipo lo revisará detalladamente para seguir mejorando UmapyoiBot.</p>
         <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
     </div>
@@ -62,7 +62,7 @@
             <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Vínculo Anterior
         </a>
         <div class="feedback-header">
-            <h1 style="font-size: 3rem; font-family: 'Outfit', sans-serif; margin-bottom: 10px;">Enviar un reporte</h1>
+            <h1 style="font-size: 3rem; font-family: 'Quicksand', sans-serif; margin-bottom: 10px;">Enviar un reporte</h1>
             <p style="color: #6a6a8e; font-size: 1.1rem;">Usa este formulario para reportar errores técnicos, fallos en comandos o problemas de seguridad.</p>
         </div>
 

@@ -12,7 +12,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/static/styles.css?v=2.9">
     <style>
@@ -88,8 +88,8 @@
         }
         .server-card:hover {
             transform: translateY(-8px);
-            border-color: var(--p-pink-soft);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border-color: var(--p-pink);
+            box-shadow: 0 15px 40px var(--accent-glow);
         }
         .card-banner {
             height: 80px;
@@ -185,7 +185,7 @@
         .search-input:focus {
             border-color: var(--p-pink);
             outline: none;
-            box-shadow: 0 0 10px rgba(255, 143, 163, 0.2);
+            box-shadow: 0 0 10px var(--accent-glow);
         }
         .search-icon {
             position: absolute;
@@ -200,9 +200,9 @@
             align-items: center;
             gap: 8px;
             padding: 10px 20px;
-            background: rgba(255,143,163,0.1);
+            background: var(--p-pink-soft);
             color: var(--p-pink);
-            border: 1px solid rgba(255,143,163,0.3);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
             cursor: pointer;
             font-weight: 600;
