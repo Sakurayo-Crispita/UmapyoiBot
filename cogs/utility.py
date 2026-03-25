@@ -54,7 +54,7 @@ class HelpSelect(discord.ui.Select):
                 "🌐 **Explorador de Comandos**\n"
                 f"Navega por el menú de aquí abajo o visita directamente mi [**Página Oficial de Comandos aquí**]({constants.COMMANDS_PAGE_URL})."
             )
-            embed.set_image(url="https://umapyoibot.com/static/assets/hero_landing.png")
+            embed.set_image(url="https://umapyoibot.com/static/assets/hero_landing_web.png")
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
             embed.set_footer(text="Gracias por elegir a Umapyoi ✨")
         else:
@@ -110,7 +110,7 @@ class UtilityCog(commands.Cog, name="Utilidad"):
                 "🌐 **Explorador de Comandos**\n"
                 f"Navega por mis categorías usando el menú de abajo, o descubre todo mi potencial visitando mi [**Página Oficial de Comandos aquí**]({constants.COMMANDS_PAGE_URL}).\n\n⬇️ **Menú de Categorías:**"
             )
-            embed.set_image(url="https://umapyoibot.com/static/assets/hero_landing.png")
+            embed.set_image(url="https://umapyoibot.com/static/assets/hero_landing_web.png")
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
             
             view = discord.ui.View(timeout=180)
