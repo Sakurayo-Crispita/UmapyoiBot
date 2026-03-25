@@ -756,18 +756,21 @@ async def dashboard_server(guild_id, section):
             )
 
         elif section == 'utility':
+            utility_enabled = 1 if form.get('utility_enabled') == 'on' else 0
             temp_ch = form.get('temp_channel_creator_id') or None
             confess_ch = form.get('confessions_channel_id') or None
             confess_title = form.get('confessions_panel_title', '').strip() or None
             confess_desc = form.get('confessions_panel_desc', '').strip() or None
             await database_manager.execute(
                 """UPDATE server_settings SET 
+                    utility_enabled = ?,
                     temp_channel_creator_id = ?,
                     confessions_channel_id = ?,
                     confessions_panel_title = ?,
                     confessions_panel_desc = ?
                 WHERE guild_id = ?""",
-                (int(temp_ch) if temp_ch else None, 
+                (utility_enabled,
+                 int(temp_ch) if temp_ch else None, 
                  int(confess_ch) if confess_ch else None,
                  confess_title, confess_desc,
                  int(guild_id))

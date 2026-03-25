@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
     <!-- Anti-flash: apply theme before first paint -->
     <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
@@ -49,8 +50,8 @@
     {% endif %}
 
     <div class="feedback-container">
-        <a href="/dashboard" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
-            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Panel
+        <a href="javascript:history.back()" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
+            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Vínculo Anterior
         </a>
         <div class="feedback-header">
             <h1 style="font-size: 3rem; font-family: 'Outfit', sans-serif; margin-bottom: 10px;">Enviar una sugerencia</h1>

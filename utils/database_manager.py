@@ -87,7 +87,7 @@ def run_migrations(conn):
             "ticket_panel_title": "TEXT", "ticket_panel_desc": "TEXT",
             "ticket_welcome_title": "TEXT", "ticket_welcome_desc": "TEXT",
             "confessions_panel_title": "TEXT", "confessions_panel_desc": "TEXT",
-            "rr_enabled": "INTEGER DEFAULT 1"
+            "rr_enabled": "INTEGER DEFAULT 1", "utility_enabled": "INTEGER DEFAULT 1"
         }
         
         for col_name, col_definition in new_columns.items():
@@ -122,7 +122,7 @@ def setup_database():
             ticket_panel_title TEXT, ticket_panel_desc TEXT,
             ticket_welcome_title TEXT, ticket_welcome_desc TEXT,
             confessions_panel_title TEXT, confessions_panel_desc TEXT,
-            rr_enabled INTEGER DEFAULT 1
+            rr_enabled INTEGER DEFAULT 1, utility_enabled INTEGER DEFAULT 1
         )''')
         
         cursor.execute('''CREATE TABLE IF NOT EXISTS balances (guild_id INTEGER, user_id INTEGER, wallet INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))''')

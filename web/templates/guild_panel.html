@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
     <!-- Anti-flash: apply theme before first paint -->
     <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
@@ -869,6 +870,16 @@
 
                 {% elif section == 'utility' %}
                 <form method="POST">
+                    <div class="cfg-section" style="border-left: 3px solid var(--p-pink); margin-bottom: 25px;">
+                        <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
+                            <div class="cfg-toggle-info">
+                                <h3 style="margin: 0; color: white;"><i data-lucide="wrench"></i> Módulo de Utilidad</h3>
+                                <p style="margin: 5px 0 0 0;">Activa o desactiva las herramientas de utilidad globalmente</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" name="utility_enabled" {% if settings.utility_enabled %}checked{% endif %}><span class="slider"></span></label>
+                        </div>
+                    </div>
+
                     <div class="cfg-section">
                         <div class="cfg-section-title"><i data-lucide="mic"></i> Canales de Voz Temporales</div>
                         <div class="cfg-section-body">
