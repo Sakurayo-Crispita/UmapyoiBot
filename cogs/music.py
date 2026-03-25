@@ -314,7 +314,7 @@ class MusicCog(commands.Cog, name="Música"):
         
         if player: 
             emoji = getattr(constants, 'EMOJI_CHECK', '✅')
-            await self.send_response(ctx, f"{emoji} ¡Hola! Me he unido a **{ctx.author.voice.channel.name}** utilizando Lavalink.", ephemeral=True)
+            await self.send_response(ctx, f"{emoji} ¡Hola! Me he unido a **{ctx.author.voice.channel.name}** y estoy listo para poner música.", ephemeral=True)
         else: 
             emoji = getattr(constants, 'EMOJI_ERROR', '❌')
             await self.send_response(ctx, f"{emoji} No pude conectarme al canal de voz.", ephemeral=True)
