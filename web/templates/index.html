@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="/static/assets/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UmapyoiBot - Tu CompaÃ±era Todo-en-Uno</title>
+    <title>UmapyoiBot - Tu Compañera Todo-en-Uno</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,19 +36,19 @@
                     <a href="/" class="nav-link active">Inicio</a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">MÃ³dulos <i data-lucide="chevron-down"></i></a>
+                    <a href="#" class="nav-link">Módulos <i data-lucide="chevron-down"></i></a>
                     <div class="dropdown">
                         <a href="/modules/music" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="music"></i></div>
                             <div class="dropdown-content">
-                                <h5>MÃºsica</h5>
+                                <h5>Música</h5>
                                 <p>Alta fidelidad sin lag.</p>
                             </div>
                         </a>
                         <a href="/modules/economy" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="coins"></i></div>
                             <div class="dropdown-content">
-                                <h5>EconomÃ­a Global</h5>
+                                <h5>Economía Global</h5>
                                 <p>Minijuegos y rankings.</p>
                             </div>
                         </a>
@@ -62,15 +62,15 @@
                         <a href="/modules/moderation" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="shield-check"></i></div>
                             <div class="dropdown-content">
-                                <h5>ModeraciÃ³n</h5>
+                                <h5>Moderación</h5>
                                 <p>Seguridad para tu chat.</p>
                             </div>
                         </a>
                         <a href="/modules/serverconfig" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="settings"></i></div>
                             <div class="dropdown-content">
-                                <h5>ConfiguraciÃ³n</h5>
-                                <p>PersonalizaciÃ³n total.</p>
+                                <h5>Configuración</h5>
+                                <p>Personalización total.</p>
                             </div>
                         </a>
                     </div>
@@ -82,7 +82,7 @@
                             <div class="dropdown-icon"><i data-lucide="book-open"></i></div>
                             <div class="dropdown-content">
                                 <h5>Comandos</h5>
-                                <p>DocumentaciÃ³n completa.</p>
+                                <p>Documentación completa.</p>
                             </div>
                         </a>
                         <a href="https://discord.gg/fwNeZsGkSj" target="_blank" class="dropdown-item">
@@ -103,7 +103,7 @@
                 </li>
                 <li><a href="https://discord.com/api/oauth2/authorize?client_id=1389616993098924164&permissions=8&scope=bot%20applications.commands" class="btn btn-p" target="_blank">Invitar Bot</a></li>
                 {% else %}
-                <li><a href="/login" class="btn btn-p">Iniciar SesiÃ³n</a></li>
+                <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
                 {% endif %}
                 <li>
                     <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
@@ -119,15 +119,25 @@
         <div class="container">
             <div class="hero-grid">
                 <div class="hero-text">
-                    <h1>La compaÃ±era dinÃ¡mica que tu <mark>servidor</mark> merece.</h1>
-                    <p>MÃºsica de alta fidelidad, economÃ­a Ã©pica y sistemas de nivelaciÃ³n. Dale a tu comunidad la mejor experiencia con Umapyoi.</p>
+                    <h1>La compañera dinámica que tu <mark>servidor</mark> merece.</h1>
+                    <p>Música de alta fidelidad, economía épica y sistemas de nivelación. Dale a tu comunidad la mejor experiencia con Umapyoi.</p>
                     <div class="hero-actions">
                         <a href="/login" class="btn btn-p">Empezar Ahora</a>
                         <a href="#funciones" class="btn btn-ghost">Explorar Funciones</a>
                     </div>
                 </div>
-                <div class="hero-img">
-                    <img src="/static/assets/hero_landing.png" alt="Umapyoi Avatar" style="border-radius: 50%; box-shadow: 0 10px 40px rgba(255,107,158,0.25); max-width: 85%; border: 4px solid var(--border-color);">
+                <div class="hero-img-container" style="position: relative; display: flex; justify-content: center; align-items: center;">
+                    <!-- Floating Icons -->
+                    <div class="floating-icon icon-1"><i data-lucide="star"></i></div>
+                    <div class="floating-icon icon-2"><i data-lucide="heart"></i></div>
+                    <div class="floating-icon icon-3"><i data-lucide="music"></i></div>
+                    <div class="floating-icon icon-4"><i data-lucide="code"></i></div>
+                    <div class="floating-icon icon-5"><i data-lucide="sparkles"></i></div>
+
+                    <!-- Avatar Image -->
+                    <div class="hero-avatar-wrapper">
+                        <img src="/static/assets/hero_landing.png" alt="Umapyoi Avatar" class="hero-avatar-img">
+                    </div>
                 </div>
             </div>
         </div>
@@ -137,8 +147,8 @@
     <section id="funciones" style="padding: 120px 0; background: var(--bg-alt);">
         <div class="container">
             <div style="text-align: center; margin-bottom: 80px;" data-reveal>
-                <h2 style="font-size: 3rem; margin-bottom: 20px;">Por quÃ© elegir Umapyoi</h2>
-                <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 700px; margin: 0 auto;">DiseÃ±ada para ser la opciÃ³n mÃ¡s completa y visualmente hermosa para tu comunidad de Discord.</p>
+                <h2 style="font-size: 3rem; margin-bottom: 20px;">Por qué elegir Umapyoi</h2>
+                <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 700px; margin: 0 auto;">Diseñada para ser la opción más completa y visualmente hermosa para tu comunidad de Discord.</p>
             </div>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px;">
@@ -146,25 +156,25 @@
                     <div class="feature-icon">
                         <i data-lucide="music"></i>
                     </div>
-                    <h3 style="font-size: 1.5rem; margin-bottom: 20px;">MÃºsica Sin LÃ­mites</h3>
+                    <h3 style="font-size: 1.5rem; margin-bottom: 20px;">Música Sin Límites</h3>
                     <p style="color: var(--text-muted); font-size: 1.05rem;">Calidad de estudio, filtros de audio profesionales y soporte para todas tus plataformas favoritas.</p>
-                    <a href="/modules/music" style="display: inline-flex; align-items:center; gap:8px; color:var(--p-pink); text-decoration:none; margin-top:25px; font-weight:600;">Saber mÃ¡s <i data-lucide="arrow-right" style="width:16px;"></i></a>
+                    <a href="/modules/music" style="display: inline-flex; align-items:center; gap:8px; color:var(--p-pink); text-decoration:none; margin-top:25px; font-weight:600;">Saber más <i data-lucide="arrow-right" style="width:16px;"></i></a>
                 </div>
                 <div class="feature-card glass" data-reveal>
                     <div class="feature-icon">
                         <i data-lucide="coins"></i>
                     </div>
-                    <h3 style="font-size: 1.5rem; margin-bottom: 20px;">EconomÃ­a Adictiva</h3>
+                    <h3 style="font-size: 1.5rem; margin-bottom: 20px;">Economía Adictiva</h3>
                     <p style="color: var(--text-muted); font-size: 1.05rem;">Un sistema robusto con minijuegos, tienda global y rankings competitivos para activar tu chat.</p>
-                    <a href="/modules/economy" style="display: inline-flex; align-items:center; gap:8px; color:var(--p-pink); text-decoration:none; margin-top:25px; font-weight:600;">Saber mÃ¡s <i data-lucide="arrow-right" style="width:16px;"></i></a>
+                    <a href="/modules/economy" style="display: inline-flex; align-items:center; gap:8px; color:var(--p-pink); text-decoration:none; margin-top:25px; font-weight:600;">Saber más <i data-lucide="arrow-right" style="width:16px;"></i></a>
                 </div>
                 <div class="feature-card glass" data-reveal>
                     <div class="feature-icon">
                         <i data-lucide="shield-check"></i>
                     </div>
-                    <h3 style="font-size: 1.5rem; margin-bottom: 20px;">ModeraciÃ³n Inteligente</h3>
-                    <p style="color: var(--text-muted); font-size: 1.05rem;">Filtros automÃ¡ticos y herramientas avanzadas para mantener un ambiente sano y divertido.</p>
-                    <a href="/modules/moderation" style="display: inline-flex; align-items:center; gap:8px; color:var(--p-pink); text-decoration:none; margin-top:25px; font-weight:600;">Saber mÃ¡s <i data-lucide="arrow-right" style="width:16px;"></i></a>
+                    <h3 style="font-size: 1.5rem; margin-bottom: 20px;">Moderación Inteligente</h3>
+                    <p style="color: var(--text-muted); font-size: 1.05rem;">Filtros automáticos y herramientas avanzadas para mantener un ambiente sano y divertido.</p>
+                    <a href="/modules/moderation" style="display: inline-flex; align-items:center; gap:8px; color:var(--p-pink); text-decoration:none; margin-top:25px; font-weight:600;">Saber más <i data-lucide="arrow-right" style="width:16px;"></i></a>
                 </div>
             </div>
         </div>
@@ -231,5 +241,3 @@
     </script>
 </body>
 </html>
-
-

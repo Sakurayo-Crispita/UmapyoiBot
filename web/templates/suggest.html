@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
@@ -44,7 +44,7 @@
     {% if success %}
     <div class="success-overlay">
         <div style="width: 80px; height: 80px; background: var(--p-pink); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(255, 71, 87, 0.3);"><i data-lucide="heart" style="width: 48px; height: 48px; color: white;"></i></div>
-        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Outfit';">Â¡Sugerencia Enviada!</h1>
+        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Outfit';">¡Sugerencia Enviada!</h1>
         <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tus ideas. Nos ayudan a que UmapyoiBot sea cada vez mejor para toda la comunidad.</p>
         <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
     </div>
@@ -52,47 +52,47 @@
 
     <div class="feedback-container">
         <a href="javascript:history.back()" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
-            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al VÃ­nculo Anterior
+            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Vínculo Anterior
         </a>
         <div class="feedback-header">
             <h1 style="font-size: 3rem; font-family: 'Outfit', sans-serif; margin-bottom: 10px;">Enviar una sugerencia</h1>
-            <p style="color: #6a6a8e; font-size: 1.1rem;">Â¿Tienes una idea brillante? CompÃ¡rtela con nosotros para mejorar el bot.</p>
+            <p style="color: #6a6a8e; font-size: 1.1rem;">¿Tienes una idea brillante? Compártela con nosotros para mejorar el bot.</p>
         </div>
 
         <div class="feedback-grid">
             <form method="POST" class="glass-card" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label class="form-label">CategorÃ­a</label>
-                    <span class="form-hint">Â¿A quÃ© Ã¡rea pertenece tu sugerencia?</span>
+                    <label class="form-label">Categoría</label>
+                    <span class="form-hint">¿A qué área pertenece tu sugerencia?</span>
                     <select name="category" class="form-select" required>
-                        <option value="" disabled selected>Selecciona una categorÃ­a</option>
+                        <option value="" disabled selected>Selecciona una categoría</option>
                         <option value="Comandos">Comandos</option>
-                        <option value="MÃºsica">MÃºsica</option>
-                        <option value="EconomÃ­a">EconomÃ­a</option>
+                        <option value="Música">Música</option>
+                        <option value="Economía">Economía</option>
                         <option value="Dashboard">Dashboard</option>
                         <option value="Otro">Otro</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">TÃ­tulo</label>
-                    <span class="form-hint">Escribe un tÃ­tulo breve para tu idea (mÃ¡ximo 100 caracteres).</span>
-                    <input type="text" name="title" class="form-input" placeholder="Escribe un tÃ­tulo breve..." required maxlength="100">
+                    <label class="form-label">Título</label>
+                    <span class="form-hint">Escribe un título breve para tu idea (máximo 100 caracteres).</span>
+                    <input type="text" name="title" class="form-input" placeholder="Escribe un título breve..." required maxlength="100">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">DescripciÃ³n</label>
-                    <span class="form-hint">Explica tu sugerencia con el mayor detalle posible (mÃ¡ximo 2000 caracteres).</span>
-                    <textarea name="description" class="form-textarea" placeholder="Describe tu sugerencia en detalle e indica por quÃ© serÃ­a beneficiosa..." required maxlength="2000"></textarea>
+                    <label class="form-label">Descripción</label>
+                    <span class="form-hint">Explica tu sugerencia con el mayor detalle posible (máximo 2000 caracteres).</span>
+                    <textarea name="description" class="form-textarea" placeholder="Describe tu sugerencia en detalle e indica por qué sería beneficiosa..." required maxlength="2000"></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Adjuntos (Opcional)</label>
-                    <span class="form-hint">Â¿Tienes un boceto o ejemplo visual? SÃºbelo aquÃ­ o pega un enlace.</span>
+                    <span class="form-hint">¿Tienes un boceto o ejemplo visual? Súbelo aquí o pega un enlace.</span>
                     <div class="evidence-upload" onclick="document.getElementById('file-input').click()">
                         <i data-lucide="image"></i>
                         <p style="margin:0; font-weight:600;">Haz clic para seleccionar o arrastra archivos</p>
-                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Opcional: MÃ¡ximo 8MB por archivo.</p>
+                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Opcional: Máximo 8MB por archivo.</p>
                         <input type="file" id="file-input" name="suggest_file" style="display:none;" multiple>
                     </div>
                     <div style="margin-top:15px;">
@@ -120,34 +120,34 @@
                     </div>
                     
                     <div style="margin-bottom:20px;">
-                        <span class="example-badge" style="background: rgba(87, 95, 207, 0.2); color: #7d5fff;">CategorÃ­a: Comandos</span>
+                        <span class="example-badge" style="background: rgba(87, 95, 207, 0.2); color: #7d5fff;">Categoría: Comandos</span>
                     </div>
 
                     <div style="margin-bottom:20px;">
-                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">TÃ­tulo</label>
-                        <p style="font-weight:600; margin:0; font-size:1rem;">AÃ±adir comando para ver estadÃ­sticas de servidor</p>
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Título</label>
+                        <p style="font-weight:600; margin:0; font-size:1rem;">Añadir comando para ver estadísticas de servidor</p>
                     </div>
 
                     <div style="margin-bottom:20px;">
-                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">DescripciÃ³n</label>
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Descripción</label>
                         <p style="font-size:0.85rem; color:#a0a0c0; line-height:1.6; margin:0;">
-                            SerÃ­a genial tener un comando como /serverstats que muestre:<br>
-                            â€¢ Cantidad de miembros activos<br>
-                            â€¢ Mensajes enviados en la Ãºltima semana<br>
-                            â€¢ GrÃ¡fico de actividad por hora<br>
-                            Esto ayudarÃ­a a los administradores a entender mejor la actividad de su servidor.
+                            Sería genial tener un comando como /serverstats que muestre:<br>
+                            • Cantidad de miembros activos<br>
+                            • Mensajes enviados en la última semana<br>
+                            • Gráfico de actividad por hora<br>
+                            Esto ayudaría a los administradores a entender mejor la actividad de su servidor.
                         </p>
                     </div>
 
                     <div style="background: rgba(125, 95, 255, 0.05); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #7d5fff; display: flex; gap: 10px; align-items: flex-start;">
                         <i data-lucide="zap" style="width:14px; flex-shrink:0; margin-top:2px;"></i>
-                        <span>Tip: SÃ© especÃ­fico y explica el beneficio de tu sugerencia.</span>
+                        <span>Tip: Sé específico y explica el beneficio de tu sugerencia.</span>
                     </div>
                 </div>
 
                 <div class="glass-card" style="background:rgba(255,255,255,0.01); border-style: dashed;">
                     <p style="color:#6a6a8e; font-size:0.85rem; text-align:center; margin:0;">
-                        Tu opiniÃ³n es vital para nosotros. Leemos cada sugerencia con atenciÃ³n.
+                        Tu opinión es vital para nosotros. Leemos cada sugerencia con atención.
                     </p>
                 </div>
             </div>
@@ -169,5 +169,3 @@
     </script>
 </body>
 </html>
-
-

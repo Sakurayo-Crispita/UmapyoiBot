@@ -569,23 +569,61 @@ nav .container {
     animation: fadeIn 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.hero-img {
+.hero-img-container {
     position: relative;
-    animation: float 6s ease-in-out infinite;
     display: flex;
     justify-content: center;
-    z-index: 1; /* Ensure it stays below dropdowns but above bg */
+    align-items: center;
+    z-index: 1;
 }
 
-.hero-img img {
-    max-width: 110%;
-    height: auto;
-    filter: drop-shadow(0 25px 50px rgba(0,0,0,0.15));
+.hero-avatar-wrapper {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    border: 4px solid var(--border-color);
+    box-shadow: 0 10px 40px rgba(255,107,158,0.25), 0 0 0 10px rgba(255,107,158,0.05);
+    overflow: hidden;
+    animation: float 6s ease-in-out infinite;
+    background: var(--bg-surface);
+}
+
+.hero-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Floating icons around the avatar */
+.floating-icon {
+    position: absolute;
+    color: var(--p-pink);
+    opacity: 0.8;
+    filter: drop-shadow(0 2px 8px rgba(255,107,158,0.3));
+    z-index: 2;
+    animation: float-icon 4s ease-in-out infinite alternate;
+}
+
+.floating-icon.icon-1 { top: -10px; left: 15%; animation-delay: 0s; }
+.floating-icon.icon-2 { top: 40%; left: -30px; animation-delay: 1s; }
+.floating-icon.icon-3 { bottom: 10%; right: -20px; animation-delay: 2s; }
+.floating-icon.icon-4 { top: 20%; right: -40px; animation-delay: 1.5s; }
+.floating-icon.icon-5 { bottom: -10px; left: 25%; animation-delay: 0.5s; }
+
+.floating-icon i {
+    width: 28px;
+    height: 28px;
 }
 
 @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); } /* Reduced movement to avoid overlap */
+    50% { transform: translateY(-15px); } 
+}
+
+@keyframes float-icon {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(-10px) rotate(10deg); }
 }
 
 /* --- Features & Cards --- */
