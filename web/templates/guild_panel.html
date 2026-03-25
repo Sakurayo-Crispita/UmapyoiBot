@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
     <!-- Anti-flash: apply theme before first paint -->
     <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/assets/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurar Servidor - UmapyoiBot</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -195,7 +196,7 @@
                             </a>
                             <div class="slider-divider" style="height: 1px; background: var(--border-color); margin: 10px 15px;"></div>
                             <a href="/logout" class="slider-item" style="color: #e74c3c; display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem;">
-                                <i data-lucide="log-out" style="width:18px;"></i> Cerrar sesión
+                                <i data-lucide="log-out" style="width:18px;"></i> Cerrar sesiÃ³n
                             </a>
                         </div>
                     </div>
@@ -220,7 +221,7 @@
                     </a>
                     <h1>{{ server.name }}</h1>
                     <p style="color: var(--text-muted); margin-top: 5px; font-size: 1.1rem;">
-                        Configuración avanzada del servidor • 
+                        ConfiguraciÃ³n avanzada del servidor â€¢ 
                         <span style="color: var(--p-pink); font-weight: 600;">
                             <i data-lucide="users" style="width: 16px; vertical-align: middle;"></i> 
                             {{ member_count or "---" }} Miembros
@@ -232,8 +233,8 @@
             {% if not bot_on %}
             <div class="glass" style="margin-top: 20px; padding: 20px; border: 1px dashed var(--p-pink); display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h4 style="color: var(--p-pink); margin-bottom: 5px;"><i data-lucide="alert-circle"></i> El bot no está en este servidor</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Necesitas invitar al bot para que la configuración tenga efecto.</p>
+                    <h4 style="color: var(--p-pink); margin-bottom: 5px;"><i data-lucide="alert-circle"></i> El bot no estÃ¡ en este servidor</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Necesitas invitar al bot para que la configuraciÃ³n tenga efecto.</p>
                 </div>
                 <a href="{{ invite_url }}" class="btn btn-p" target="_blank">Invitar Bot</a>
             </div>
@@ -329,9 +330,9 @@
                                 <div class="cfg-field">
                                     <label class="cfg-label">{{ t('dashboard.general.language_label') }}</label>
                                     <select name="language" class="cfg-select">
-                                        <option value="es" {% if settings.language == 'es' %}selected{% endif %}>🇪🇸 Español</option>
-                                        <option value="en" {% if settings.language == 'en' %}selected{% endif %}>🇬🇧 English</option>
-                                        <option value="jp" {% if settings.language == 'jp' %}selected{% endif %}>🇯🇵 日本語</option>
+                                        <option value="es" {% if settings.language == 'es' %}selected{% endif %}>ðŸ‡ªðŸ‡¸ EspaÃ±ol</option>
+                                        <option value="en" {% if settings.language == 'en' %}selected{% endif %}>ðŸ‡¬ðŸ‡§ English</option>
+                                        <option value="jp" {% if settings.language == 'jp' %}selected{% endif %}>ðŸ‡¯ðŸ‡µ æ—¥æœ¬èªž</option>
                                     </select>
                                 </div>
                             </div>
@@ -411,8 +412,8 @@
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink);">
                         <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                             <div class="cfg-toggle-info">
-                                <h3 style="margin: 0; color: white;"><i data-lucide="shield"></i> Módulo de Moderación</h3>
-                                <p style="margin: 5px 0 0 0;">Activa o desactiva las funciones de moderación y automod</p>
+                                <h3 style="margin: 0; color: white;"><i data-lucide="shield"></i> MÃ³dulo de ModeraciÃ³n</h3>
+                                <p style="margin: 5px 0 0 0;">Activa o desactiva las funciones de moderaciÃ³n y automod</p>
                             </div>
                             <label class="switch"><input type="checkbox" name="mod_enabled" {% if settings.mod_enabled %}checked{% endif %}><span class="slider"></span></label>
                         </div>
@@ -424,12 +425,12 @@
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal de Logs</label>
                                 <select name="log_channel_id" class="cfg-select">
-                                    <option value="">— Desactivado —</option>
+                                    <option value="">â€” Desactivado â€”</option>
                                     {% for ch in text_channels %}
                                     <option value="{{ ch.id }}" {% if settings.log_channel_id and settings.log_channel_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">El bot enviará logs de ediciones, borrados, entradas/salidas y acciones de moderación</span>
+                                <span class="cfg-hint">El bot enviarÃ¡ logs de ediciones, borrados, entradas/salidas y acciones de moderaciÃ³n</span>
                             </div>
                         </div>
                     </div>
@@ -438,32 +439,32 @@
                         <div class="cfg-section-title"><i data-lucide="user-plus"></i> Autorole</div>
                         <div class="cfg-section-body">
                             <div class="cfg-field">
-                                <label class="cfg-label">Rol automático al entrar</label>
+                                <label class="cfg-label">Rol automÃ¡tico al entrar</label>
                                 <select name="autorole_id" class="cfg-select">
-                                    <option value="">— Desactivado —</option>
+                                    <option value="">â€” Desactivado â€”</option>
                                     {% for role in roles %}
                                     <option value="{{ role.id }}" {% if settings.autorole_id and settings.autorole_id|string == role.id|string %}selected{% endif %}>{{ role.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">Se asigna automáticamente cuando un nuevo miembro entra al servidor</span>
+                                <span class="cfg-hint">Se asigna automÃ¡ticamente cuando un nuevo miembro entra al servidor</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="cfg-section">
-                        <div class="cfg-section-title"><i data-lucide="shield-alert"></i> Auto-Moderación</div>
+                        <div class="cfg-section-title"><i data-lucide="shield-alert"></i> Auto-ModeraciÃ³n</div>
                         <div class="cfg-section-body">
                             <div class="cfg-toggle">
                                 <div class="cfg-toggle-info">
-                                    <h4>🔗 Filtro Anti-Invitaciones</h4>
-                                    <p>Borra automáticamente enlaces de invitación a otros servidores</p>
+                                    <h4>ðŸ”— Filtro Anti-Invitaciones</h4>
+                                    <p>Borra automÃ¡ticamente enlaces de invitaciÃ³n a otros servidores</p>
                                 </div>
                                 <label class="switch"><input type="checkbox" name="anti_invite" {% if settings.automod_anti_invite %}checked{% endif %}><span class="slider"></span></label>
                             </div>
                             <div class="cfg-field">
                                 <label class="cfg-label">Palabras Prohibidas</label>
                                 <textarea name="banned_words" class="cfg-textarea" placeholder="palabra1, palabra2, palabra3...">{{ settings.automod_banned_words or '' }}</textarea>
-                                <span class="cfg-hint">Separadas por coma. Los mensajes con estas palabras se borran automáticamente</span>
+                                <span class="cfg-hint">Separadas por coma. Los mensajes con estas palabras se borran automÃ¡ticamente</span>
                             </div>
                         </div>
                     </div>
@@ -480,7 +481,7 @@
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal de Bienvenida</label>
                                 <select name="welcome_channel_id" class="cfg-select">
-                                    <option value="">— Desactivado —</option>
+                                    <option value="">â€” Desactivado â€”</option>
                                     {% for ch in text_channels %}
                                     <option value="{{ ch.id }}" {% if settings.welcome_channel_id and settings.welcome_channel_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
@@ -488,12 +489,12 @@
                             </div>
                             <div class="cfg-field">
                                 <label class="cfg-label">Mensaje de Bienvenida</label>
-                                <textarea name="welcome_message" id="wc-msg" class="cfg-textarea" placeholder="¡Bienvenid@ a {server.name}! Contigo somos {member_count}">{{ settings.welcome_message or '' }}</textarea>
+                                <textarea name="welcome_message" id="wc-msg" class="cfg-textarea" placeholder="Â¡Bienvenid@ a {server.name}! Contigo somos {member_count}">{{ settings.welcome_message or '' }}</textarea>
                                 <span class="cfg-hint">Variables: {user}, {user.name}, {server.name}, {member_count}</span>
                             </div>
                             <div class="cfg-field">
-                                <label class="cfg-label">Título del Embed</label>
-                                <input type="text" name="welcome_top_text" id="wc-top" value="{{ settings.welcome_top_text or '' }}" class="cfg-input" placeholder="¡Bienvenido al servidor!">
+                                <label class="cfg-label">TÃ­tulo del Embed</label>
+                                <input type="text" name="welcome_top_text" id="wc-top" value="{{ settings.welcome_top_text or '' }}" class="cfg-input" placeholder="Â¡Bienvenido al servidor!">
                                 <span class="cfg-hint">Puedes usar emojis personalizados de Discord, ej: <code>&lt;:emoji:ID&gt;</code></span>
                             </div>
                             <div class="cfg-field">
@@ -511,8 +512,8 @@
                                                 <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.png" style="width:24px; height:24px; border-radius:50%;" onerror="this.style.display='none'">
                                                 <span style="color:#dcddde; font-size:0.8rem; font-weight:600;">{{ server.name }}</span>
                                             </div>
-                                            <div id="wc-prev-title" style="color:white; font-weight:700; font-size:1rem; margin-bottom:6px;">{{ settings.welcome_top_text or '¡Bienvenido al servidor!' }}</div>
-                                            <div id="wc-prev-desc" style="color:#dcddde; font-size:0.875rem; line-height:1.4;">{{ settings.welcome_message or '¡Bienvenid@ al servidor!' }}</div>
+                                            <div id="wc-prev-title" style="color:white; font-weight:700; font-size:1rem; margin-bottom:6px;">{{ settings.welcome_top_text or 'Â¡Bienvenido al servidor!' }}</div>
+                                            <div id="wc-prev-desc" style="color:#dcddde; font-size:0.875rem; line-height:1.4;">{{ settings.welcome_message or 'Â¡Bienvenid@ al servidor!' }}</div>
                                         </div>
                                         <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" style="width:80px; height:80px; border-radius:8px; flex-shrink:0; object-fit:cover;">
                                     </div>
@@ -522,7 +523,7 @@
                                         {% endif %}
                                     </div>
                                     <div style="padding: 8px 16px 12px 16px; display:flex; align-items:center; gap:6px; border-top: 1px solid rgba(255,255,255,0.06); margin-top:8px;">
-                                        <span style="color:#72767d; font-size:0.75rem;">Ahora somos {{ member_count }} miembros 🥕</span>
+                                        <span style="color:#72767d; font-size:0.75rem;">Ahora somos {{ member_count }} miembros ðŸ¥•</span>
                                         <span style="color:#72767d; font-size:0.75rem; margin-left:auto;">Hoy a las --:--</span>
                                     </div>
                                 </div>
@@ -536,7 +537,7 @@
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal de Despedida</label>
                                 <select name="goodbye_channel_id" class="cfg-select">
-                                    <option value="">— Desactivado —</option>
+                                    <option value="">â€” Desactivado â€”</option>
                                     {% for ch in text_channels %}
                                     <option value="{{ ch.id }}" {% if settings.goodbye_channel_id and settings.goodbye_channel_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
@@ -544,11 +545,11 @@
                             </div>
                             <div class="cfg-field">
                                 <label class="cfg-label">Mensaje de Despedida</label>
-                                <textarea name="goodbye_message" id="gb-msg" class="cfg-textarea" placeholder="{user.name} ha dejado el nido. ¡Hasta la próxima!">{{ settings.goodbye_message or '' }}</textarea>
+                                <textarea name="goodbye_message" id="gb-msg" class="cfg-textarea" placeholder="{user.name} ha dejado el nido. Â¡Hasta la prÃ³xima!">{{ settings.goodbye_message or '' }}</textarea>
                                 <span class="cfg-hint">Variables: {user}, {user.name}, {server.name}</span>
                             </div>
                             <div class="cfg-field">
-                                <label class="cfg-label">Título del Embed</label>
+                                <label class="cfg-label">TÃ­tulo del Embed</label>
                                 <input type="text" name="goodbye_top_text" id="gb-top" value="{{ settings.goodbye_top_text or '' }}" class="cfg-input" placeholder="Nos deja el servidor...">
                                 <span class="cfg-hint">Puedes usar emojis personalizados de Discord, ej: <code>&lt;:emoji:ID&gt;</code></span>
                             </div>
@@ -578,7 +579,7 @@
                                         {% endif %}
                                     </div>
                                     <div style="padding: 8px 16px 12px 16px; display:flex; align-items:center; gap:6px; border-top: 1px solid rgba(255,255,255,0.06); margin-top:8px;">
-                                        <span style="color:#72767d; font-size:0.75rem;">Ahora somos {{ member_count }} miembros 🥕</span>
+                                        <span style="color:#72767d; font-size:0.75rem;">Ahora somos {{ member_count }} miembros ðŸ¥•</span>
                                         <span style="color:#72767d; font-size:0.75rem; margin-left:auto;">Hoy a las --:--</span>
                                     </div>
                                 </div>
@@ -594,8 +595,8 @@
                 <div class="cfg-section" style="border-left: 3px solid var(--p-pink); margin-bottom: 20px;">
                     <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                         <div class="cfg-toggle-info">
-                            <h3 style="margin: 0; color: white;"><i data-lucide="coins"></i> Módulo de Economía</h3>
-                            <p style="margin: 5px 0 0 0;">Controla el sistema de créditos, trabajos y tienda</p>
+                            <h3 style="margin: 0; color: white;"><i data-lucide="coins"></i> MÃ³dulo de EconomÃ­a</h3>
+                            <p style="margin: 5px 0 0 0;">Controla el sistema de crÃ©ditos, trabajos y tienda</p>
                         </div>
                         <label class="switch"><input type="checkbox" form="eco-form-main" name="eco_enabled" {% if settings.eco_enabled %}checked{% endif %} onchange="document.getElementById('eco-enabled-hidden').value = this.checked ? 'on' : ''"><span class="slider"></span></label>
                     </div>
@@ -619,11 +620,11 @@
                                 <div class="cfg-row">
                                     <div class="cfg-field">
                                         <label class="cfg-label">Nombre de la Moneda</label>
-                                        <input type="text" name="currency_name" value="{{ economy_settings.currency_name or 'créditos' }}" class="cfg-input" placeholder="créditos">
+                                        <input type="text" name="currency_name" value="{{ economy_settings.currency_name or 'crÃ©ditos' }}" class="cfg-input" placeholder="crÃ©ditos">
                                     </div>
                                     <div class="cfg-field">
                                         <label class="cfg-label">Emoji de la Moneda</label>
-                                        <input type="text" name="currency_emoji" value="{{ economy_settings.currency_emoji or '🪙' }}" class="cfg-input" placeholder="🪙" maxlength="10">
+                                        <input type="text" name="currency_emoji" value="{{ economy_settings.currency_emoji or 'ðŸª™' }}" class="cfg-input" placeholder="ðŸª™" maxlength="10">
                                     </div>
                                 </div>
                                 <div class="cfg-field">
@@ -635,11 +636,11 @@
                         </div>
 
                         <div class="cfg-section">
-                            <div class="cfg-section-title"><i data-lucide="hash"></i> Canales de Economía</div>
+                            <div class="cfg-section-title"><i data-lucide="hash"></i> Canales de EconomÃ­a</div>
                             <div class="cfg-section-body">
                                 <div class="cfg-field">
                                     <label class="cfg-label">Canales autorizados</label>
-                                    <span class="cfg-hint">Los comandos de economía solo funcionarán en los canales seleccionados. Déjalo vacío para permitir todos.</span>
+                                    <span class="cfg-hint">Los comandos de economÃ­a solo funcionarÃ¡n en los canales seleccionados. DÃ©jalo vacÃ­o para permitir todos.</span>
                                     <div class="cfg-channel-list">
                                         {% for ch in text_channels %}
                                         <label class="cfg-channel-item {% if ch.id|string in economy_channel_ids %}checked{% endif %}">
@@ -658,11 +659,11 @@
                             <div class="cfg-section-body">
                                 <div class="cfg-row-3">
                                     <div class="cfg-field">
-                                        <label class="cfg-label">Paga Mínima</label>
+                                        <label class="cfg-label">Paga MÃ­nima</label>
                                         <input type="number" name="work_min" value="{{ economy_settings.work_min or 50 }}" class="cfg-input" min="0">
                                     </div>
                                     <div class="cfg-field">
-                                        <label class="cfg-label">Paga Máxima</label>
+                                        <label class="cfg-label">Paga MÃ¡xima</label>
                                         <input type="number" name="work_max" value="{{ economy_settings.work_max or 250 }}" class="cfg-input" min="0">
                                     </div>
                                     <div class="cfg-field">
@@ -679,11 +680,11 @@
                             <div class="cfg-section-body">
                                 <div class="cfg-row">
                                     <div class="cfg-field">
-                                        <label class="cfg-label">Recompensa Mínima</label>
+                                        <label class="cfg-label">Recompensa MÃ­nima</label>
                                         <input type="number" name="daily_min" value="{{ economy_settings.daily_min or 100 }}" class="cfg-input" min="0">
                                     </div>
                                     <div class="cfg-field">
-                                        <label class="cfg-label">Recompensa Máxima</label>
+                                        <label class="cfg-label">Recompensa MÃ¡xima</label>
                                         <input type="number" name="daily_max" value="{{ economy_settings.daily_max or 500 }}" class="cfg-input" min="0">
                                     </div>
                                 </div>
@@ -711,10 +712,10 @@
                         <div>
                             <h3 style="margin: 0 0 5px 0; color: white; display: flex; align-items: center; gap: 8px;">
                                 <i data-lucide="shopping-cart" style="width: 20px; height: 20px; color: var(--p-pink);"></i>
-                                Artículos a la Venta
+                                ArtÃ­culos a la Venta
                             </h3>
                             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-                                Añade objetos consumibles o roles para que los usuarios los compren con su saldo.
+                                AÃ±ade objetos consumibles o roles para que los usuarios los compren con su saldo.
                             </p>
                         </div>
                     </div>
@@ -742,11 +743,11 @@
                                         {{ item.description }}
                                     </div>
                                     <div style="color: #f1c40f; font-size: 0.85rem; font-weight: 600; margin-top: 5px;">
-                                        {{ item.price }} {{ economy_settings.currency_emoji or '🪙' }}
+                                        {{ item.price }} {{ economy_settings.currency_emoji or 'ðŸª™' }}
                                     </div>
                                 </div>
                             </div>
-                            <form method="POST" action="/dashboard/server/{{ server.id }}/economy" style="margin: 0;" onsubmit="return confirm('¿Eliminar objeto de la tienda?');">
+                            <form method="POST" action="/dashboard/server/{{ server.id }}/economy" style="margin: 0;" onsubmit="return confirm('Â¿Eliminar objeto de la tienda?');">
                                 <input type="hidden" name="action" value="delete_item">
                                 <input type="hidden" name="delete_item_id" value="{{ item.item_id }}">
                                 <button type="submit" style="background: rgba(237, 66, 69, 0.1); color: #ed4245; border: 1px solid rgba(237, 66, 69, 0.2); padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(237, 66, 69, 0.2)'" onmouseout="this.style.background='rgba(237, 66, 69, 0.1)'" title="Eliminar Objeto">
@@ -759,27 +760,27 @@
                     {% else %}
                     <div style="padding: 40px 20px; text-align: center; background: rgba(10, 10, 12, 0.3); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1); margin-bottom: 25px;">
                         <i data-lucide="store" style="width: 48px; height: 48px; color: var(--text-muted); opacity: 0.5; margin-bottom: 15px;"></i>
-                        <h4 style="color: white; margin: 0 0 5px 0;">La tienda está vacía</h4>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Los usuarios no tienen en qué gastar sus ahorros. ¡Añade algo abajo!</p>
+                        <h4 style="color: white; margin: 0 0 5px 0;">La tienda estÃ¡ vacÃ­a</h4>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Los usuarios no tienen en quÃ© gastar sus ahorros. Â¡AÃ±ade algo abajo!</p>
                     </div>
                     {% endif %}
 
                     <div class="cfg-section">
-                        <div class="cfg-section-title"><i data-lucide="plus-circle"></i> Nuevo Artículo</div>
+                        <div class="cfg-section-title"><i data-lucide="plus-circle"></i> Nuevo ArtÃ­culo</div>
                         <div class="cfg-section-body">
                             <form method="POST" action="/dashboard/server/{{ server.id }}/economy">
                                 <input type="hidden" name="action" value="add_item">
                                 <div class="cfg-field">
-                                    <label class="cfg-label">Nombre del Artículo</label>
+                                    <label class="cfg-label">Nombre del ArtÃ­culo</label>
                                     <input type="text" name="item_name" class="cfg-input" placeholder="Espada de Diamante" required>
                                 </div>
                                 <div class="cfg-field">
-                                    <label class="cfg-label">Descripción Atractiva</label>
+                                    <label class="cfg-label">DescripciÃ³n Atractiva</label>
                                     <input type="text" name="item_desc" class="cfg-input" placeholder="Te provee un aura amenazante." required>
                                 </div>
                                 <div class="cfg-row">
                                     <div class="cfg-field">
-                                        <label class="cfg-label">Precio ({{ economy_settings.currency_emoji or '🪙' }})</label>
+                                        <label class="cfg-label">Precio ({{ economy_settings.currency_emoji or 'ðŸª™' }})</label>
                                         <input type="number" name="item_price" class="cfg-input" min="1" placeholder="5000" required>
                                     </div>
                                     <div class="cfg-field">
@@ -793,7 +794,7 @@
                                 <div class="cfg-field" id="shop-raw-data-container" style="display: none;">
                                     <label class="cfg-label">Selecciona el Rol a Entregar</label>
                                     <select name="item_raw_data" class="cfg-select" id="shop-role-select">
-                                        <option value="">— Selecciona el Rol —</option>
+                                        <option value="">â€” Selecciona el Rol â€”</option>
                                         {% for role in roles %}
                                         <option value="{{ role.id }}">{{ role.name }}</option>
                                         {% endfor %}
@@ -802,7 +803,7 @@
                                 </div>
                                 <div class="cfg-footer" style="border:none; padding:0; margin-top:15px;">
                                     <button type="submit" class="cfg-btn primary" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); width: 100%;">
-                                        <i data-lucide="plus-circle"></i> Añadir Artículo a la Venta
+                                        <i data-lucide="plus-circle"></i> AÃ±adir ArtÃ­culo a la Venta
                                     </button>
                                 </div>
                             </form>
@@ -831,8 +832,8 @@
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink);">
                         <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                             <div class="cfg-toggle-info">
-                                <h3 style="margin: 0; color: white;"><i data-lucide="dice-5"></i> Módulo de Apuestas</h3>
-                                <p style="margin: 5px 0 0 0;">Habilita el casino y juegos de azar con créditos</p>
+                                <h3 style="margin: 0; color: white;"><i data-lucide="dice-5"></i> MÃ³dulo de Apuestas</h3>
+                                <p style="margin: 5px 0 0 0;">Habilita el casino y juegos de azar con crÃ©ditos</p>
                             </div>
                             <label class="switch"><input type="checkbox" name="gamble_enabled" {% if settings.gamble_enabled %}checked{% endif %}><span class="slider"></span></label>
                         </div>
@@ -843,7 +844,7 @@
                         <div class="cfg-section-body">
                             <div class="cfg-field">
                                 <label class="cfg-label">Canales donde se permite apostar</label>
-                                <span class="cfg-hint">Los juegos de azar (blackjack, slots, ruleta, etc.) solo funcionarán en los canales seleccionados</span>
+                                <span class="cfg-hint">Los juegos de azar (blackjack, slots, ruleta, etc.) solo funcionarÃ¡n en los canales seleccionados</span>
                                 {% if text_channels %}
                                 <div class="cfg-channel-list">
                                     {% for ch in text_channels %}
@@ -873,7 +874,7 @@
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink); margin-bottom: 25px;">
                         <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                             <div class="cfg-toggle-info">
-                                <h3 style="margin: 0; color: white;"><i data-lucide="wrench"></i> Módulo de Utilidad</h3>
+                                <h3 style="margin: 0; color: white;"><i data-lucide="wrench"></i> MÃ³dulo de Utilidad</h3>
                                 <p style="margin: 5px 0 0 0;">Activa o desactiva las herramientas de utilidad globalmente</p>
                             </div>
                             <label class="switch"><input type="checkbox" name="utility_enabled" {% if settings.utility_enabled %}checked{% endif %}><span class="slider"></span></label>
@@ -886,45 +887,45 @@
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal Creador</label>
                                 <select name="temp_channel_creator_id" class="cfg-select">
-                                    <option value="">— Desactivado —</option>
+                                    <option value="">â€” Desactivado â€”</option>
                                     {% for ch in voice_channels %}
                                     <option value="{{ ch.id }}" {% if settings.temp_channel_creator_id and settings.temp_channel_creator_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">Al unirse a este canal de voz, se creará una sala temporal privada para el usuario</span>
+                                <span class="cfg-hint">Al unirse a este canal de voz, se crearÃ¡ una sala temporal privada para el usuario</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink);">
-                        <div class="cfg-section-title"><i data-lucide="messages-square"></i> Buzón de Confesiones</div>
+                        <div class="cfg-section-title"><i data-lucide="messages-square"></i> BuzÃ³n de Confesiones</div>
                         <div class="cfg-section-body">
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal de Confesiones</label>
                                 <select name="confessions_channel_id" class="cfg-select">
-                                    <option value="">— Mismo que el comando —</option>
+                                    <option value="">â€” Mismo que el comando â€”</option>
                                     {% for ch in text_channels %}
                                     <option value="{{ ch.id }}" {% if settings.confessions_channel_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">Las confesiones enviadas por el botón se publicarán en este canal</span>
+                                <span class="cfg-hint">Las confesiones enviadas por el botÃ³n se publicarÃ¡n en este canal</span>
                             </div>
 
                             <div class="cfg-field" style="margin-top: 15px;">
-                                <label class="cfg-label">Título del Panel</label>
-                                <input type="text" name="confessions_panel_title" class="cfg-input" value="{{ settings.confessions_panel_title or '' }}" placeholder="🕵️ Buzón de Confesiones">
-                                <span class="cfg-hint">Deja vacío para usar el título por defecto</span>
+                                <label class="cfg-label">TÃ­tulo del Panel</label>
+                                <input type="text" name="confessions_panel_title" class="cfg-input" value="{{ settings.confessions_panel_title or '' }}" placeholder="ðŸ•µï¸ BuzÃ³n de Confesiones">
+                                <span class="cfg-hint">Deja vacÃ­o para usar el tÃ­tulo por defecto</span>
                             </div>
                             <div class="cfg-field">
-                                <label class="cfg-label">Descripción del Panel</label>
-                                <textarea name="confessions_panel_desc" class="cfg-input" style="height: 80px;" placeholder="Haz clic en el botón de abajo para enviar una confesión de forma totalmente anónima.&#10;&#10;*Nadie sabrá quién envió el mensaje.*">{{ settings.confessions_panel_desc or '' }}</textarea>
+                                <label class="cfg-label">DescripciÃ³n del Panel</label>
+                                <textarea name="confessions_panel_desc" class="cfg-input" style="height: 80px;" placeholder="Haz clic en el botÃ³n de abajo para enviar una confesiÃ³n de forma totalmente anÃ³nima.&#10;&#10;*Nadie sabrÃ¡ quiÃ©n enviÃ³ el mensaje.*">{{ settings.confessions_panel_desc or '' }}</textarea>
                             </div>
 
                             <div style="margin-top: 15px;">
                                 <button type="button" class="cfg-btn-alt" onclick="deployFeature('confessions')" style="width: 100%; border: 1px solid var(--p-pink); color: var(--p-pink); background: rgba(255,122,180,0.05); padding: 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; font-weight: 600;">
-                                    <i data-lucide="send" style="width:16px;"></i> Desplegar Botón en Discord
+                                    <i data-lucide="send" style="width:16px;"></i> Desplegar BotÃ³n en Discord
                                 </button>
-                                <p style="margin: 8px 0 0; font-size: 0.75rem; color: var(--text-muted); text-align: center;">Guarda los cambios antes de desplegar para que se aplique tu personalización.</p>
+                                <p style="margin: 8px 0 0; font-size: 0.75rem; color: var(--text-muted); text-align: center;">Guarda los cambios antes de desplegar para que se aplique tu personalizaciÃ³n.</p>
                             </div>
                         </div>
                     </div>
@@ -937,8 +938,8 @@
                 <div class="cfg-section" style="border-left: 3px solid var(--p-pink); margin-bottom: 20px;">
                     <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                         <div class="cfg-toggle-info">
-                            <h3 style="margin: 0; color: white;"><i data-lucide="trending-up"></i> Módulo de Niveles</h3>
-                            <p style="margin: 5px 0 0 0;">Controla el sistema de experiencia y rangos automáticos</p>
+                            <h3 style="margin: 0; color: white;"><i data-lucide="trending-up"></i> MÃ³dulo de Niveles</h3>
+                            <p style="margin: 5px 0 0 0;">Controla el sistema de experiencia y rangos automÃ¡ticos</p>
                         </div>
                         <label class="switch"><input type="checkbox" form="lv-form-main" name="leveling" {% if settings.leveling_enabled %}checked{% endif %} onchange="document.getElementById('lv-enabled-hidden').value = this.checked ? 'on' : ''"><span class="slider"></span></label>
                     </div>
@@ -957,10 +958,10 @@
                     <form method="POST" id="lv-form-main">
                         <input type="hidden" name="leveling" id="lv-enabled-hidden" value="{% if settings.leveling_enabled %}on{% endif %}">
                         <div class="cfg-section">
-                            <div class="cfg-section-title"><i data-lucide="zap"></i> Configuración de XP</div>
+                            <div class="cfg-section-title"><i data-lucide="zap"></i> ConfiguraciÃ³n de XP</div>
                             <div class="cfg-section-body">
                                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
-                                    Tus usuarios ganarán experiencia por cada mensaje enviado. Puedes configurar canales ignorados y multiplicadores desde Discord.
+                                    Tus usuarios ganarÃ¡n experiencia por cada mensaje enviado. Puedes configurar canales ignorados y multiplicadores desde Discord.
                                 </p>
                                 <div class="cfg-footer" style="border:none; padding:0; margin-top:15px;">
                                     <button type="submit" class="cfg-btn primary"><i data-lucide="save"></i> {{ t('dashboard.general.save_btn') }}</button>
@@ -974,7 +975,7 @@
                     <div class="cfg-section">
                         <div class="cfg-section-title">Recompensas por Nivel</div>
                         <div class="cfg-section-body">
-                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Asigna roles automáticamente cuando los miembros alcancen ciertos niveles en el servidor.</p>
+                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Asigna roles automÃ¡ticamente cuando los miembros alcancen ciertos niveles en el servidor.</p>
                         
                         <!-- Lista de recompensas actuales -->
                         <div class="glass" style="margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; padding: 0;">
@@ -1017,19 +1018,19 @@
                             </table>
                         </div>
 
-                        <!-- Añadir nueva recompensa -->
+                        <!-- AÃ±adir nueva recompensa -->
                         <form action="{{ url_for('dashboard_server', guild_id=server.id, section=section) }}" method="POST" class="glass" style="padding: 20px; background: rgba(0,0,0,0.15); border: 1px dashed rgba(255,255,255,0.1);">
                             <input type="hidden" name="action" value="add_reward">
-                            <h4 style="margin-top: 0; margin-bottom: 15px; color: var(--text-main); font-weight: 500;">Añadir Recompensa</h4>
+                            <h4 style="margin-top: 0; margin-bottom: 15px; color: var(--text-main); font-weight: 500;">AÃ±adir Recompensa</h4>
                             <div style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 15px; align-items: end;">
                                 <div>
                                     <label class="cfg-label" style="font-size: 0.85rem; margin-bottom: 6px;">Al llegar al nivel...</label>
                                     <input type="number" name="level_req" required class="cfg-input" value="1" min="1" style="background: rgba(0,0,0,0.3);">
                                 </div>
                                 <div>
-                                    <label class="cfg-label" style="font-size: 0.85rem; margin-bottom: 6px;">Se asignará el rol...</label>
+                                    <label class="cfg-label" style="font-size: 0.85rem; margin-bottom: 6px;">Se asignarÃ¡ el rol...</label>
                                     <select name="reward_role_id" required class="cfg-select" style="background: rgba(0,0,0,0.3);">
-                                        <option value="">— Selecciona un rol —</option>
+                                        <option value="">â€” Selecciona un rol â€”</option>
                                         {% for role in roles %}
                                             {% if role.name != '@everyone' and not role.managed %}
                                                 {% set opt_color = '#%06x' % role.color if role.color else '#fff' %}
@@ -1054,7 +1055,7 @@
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink);">
                         <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                             <div class="cfg-toggle-info">
-                                <h3 style="margin: 0; color: white;"><i data-lucide="mic"></i> Módulo de Texto a Voz</h3>
+                                <h3 style="margin: 0; color: white;"><i data-lucide="mic"></i> MÃ³dulo de Texto a Voz</h3>
                                 <p style="margin: 5px 0 0 0;">Permite la lectura de mensajes en canales de voz</p>
                             </div>
                             <label class="switch"><input type="checkbox" name="tts_enabled" {% if settings.tts_enabled %}checked{% endif %}><span class="slider"></span></label>
@@ -1065,14 +1066,14 @@
                         <div class="cfg-section-title"><i data-lucide="mic"></i> Texto a Voz (TTS)</div>
                         <div class="cfg-section-body">
                             <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 25px;">
-                                Configura el canal de texto donde los comandos de TTS (<code>!tts [texto]</code> o <code>/tts</code>) serán procesados, y define el idioma por defecto para tu servidor. Si no defines un canal, el módulo estará apagado.
+                                Configura el canal de texto donde los comandos de TTS (<code>!tts [texto]</code> o <code>/tts</code>) serÃ¡n procesados, y define el idioma por defecto para tu servidor. Si no defines un canal, el mÃ³dulo estarÃ¡ apagado.
                             </p>
                             
                             <div class="cfg-row">
                                 <div class="cfg-field">
                                     <label class="cfg-label">Canal Obligatorio de TTS</label>
                                     <select name="tts_channel_id" class="cfg-select">
-                                        <option value="">🚫 Módulo Apagado (Ningún Canal)</option>
+                                        <option value="">ðŸš« MÃ³dulo Apagado (NingÃºn Canal)</option>
                                         {% for ch in text_channels %}
                                             {% set ch_id = ch.id|string %}
                                             <option value="{{ ch_id }}" {% if tts_channel and (tts_channel.text_channel_id|string) == ch_id %}selected{% endif %}>
@@ -1080,16 +1081,16 @@
                                             </option>
                                         {% endfor %}
                                     </select>
-                                    <span class="cfg-hint">Solo en este canal el bot leerá los mensajes de texto a voz.</span>
+                                    <span class="cfg-hint">Solo en este canal el bot leerÃ¡ los mensajes de texto a voz.</span>
                                 </div>
                                 <div class="cfg-field">
                                     <label class="cfg-label">Idioma de la Voz</label>
                                     <select name="tts_lang" class="cfg-select">
                                         {% set current_lang = tts_settings.lang if tts_settings else 'es' %}
-                                        <option value="es" {% if current_lang == 'es' %}selected{% endif %}>🇪🇸 Español</option>
-                                        <option value="es-us" {% if current_lang == 'es-us' %}selected{% endif %}>🇲🇽 Español (México)</option>
-                                        <option value="en" {% if current_lang == 'en' %}selected{% endif %}>🇺🇸 Inglés</option>
-                                        <option value="ja" {% if current_lang == 'ja' %}selected{% endif %}>🇯🇵 Japonés</option>
+                                        <option value="es" {% if current_lang == 'es' %}selected{% endif %}>ðŸ‡ªðŸ‡¸ EspaÃ±ol</option>
+                                        <option value="es-us" {% if current_lang == 'es-us' %}selected{% endif %}>ðŸ‡²ðŸ‡½ EspaÃ±ol (MÃ©xico)</option>
+                                        <option value="en" {% if current_lang == 'en' %}selected{% endif %}>ðŸ‡ºðŸ‡¸ InglÃ©s</option>
+                                        <option value="ja" {% if current_lang == 'ja' %}selected{% endif %}>ðŸ‡¯ðŸ‡µ JaponÃ©s</option>
                                     </select>
                                 </div>
                             </div>
@@ -1105,7 +1106,7 @@
                 <div class="cfg-section" style="border-left: 3px solid var(--p-pink); margin-bottom: 20px;">
                     <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                         <div class="cfg-toggle-info">
-                            <h3 style="margin: 0; color: white;"><i data-lucide="mouse-pointer-click"></i> Módulo de Reaction Roles</h3>
+                            <h3 style="margin: 0; color: white;"><i data-lucide="mouse-pointer-click"></i> MÃ³dulo de Reaction Roles</h3>
                             <p style="margin: 5px 0 0 0;">Permite a los usuarios auto-asignarse roles reaccionando</p>
                         </div>
                         <label class="switch"><input type="checkbox" form="rr-form-master" name="rr_enabled" {% if settings.rr_enabled %}checked{% endif %} onchange="document.getElementById('rr-enabled-hidden').value = this.checked ? 'on' : ''"><span class="slider"></span></label>
@@ -1121,7 +1122,7 @@
                     <div class="cfg-section-title"><i data-lucide="mouse-pointer-click"></i> Gestor de Reaction Roles</div>
                     <div class="cfg-section-body">
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 25px;">
-                            Crea mensajes interactivos desde el panel. Al reaccionar, los usuarios obtendrán los roles que configures.
+                            Crea mensajes interactivos desde el panel. Al reaccionar, los usuarios obtendrÃ¡n los roles que configures.
                         </p>
                         
                         <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 30px;">
@@ -1147,7 +1148,7 @@
                                 {% endfor %}
                                 </div>
                             {% else %}
-                                <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">No hay reaction roles configurados aún.</p>
+                                <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">No hay reaction roles configurados aÃºn.</p>
                             {% endif %}
                         </div>
 
@@ -1174,24 +1175,24 @@
                             </div>
                             
                             <div class="cfg-field">
-                                <label class="cfg-label">Título del Mensaje</label>
+                                <label class="cfg-label">TÃ­tulo del Mensaje</label>
                                 <input type="text" name="rr_title" class="cfg-input" placeholder="Ej: Selecciona tus roles" required>
                             </div>
                             
                             <div class="cfg-field">
-                                <label class="cfg-label">Descripción</label>
-                                <textarea name="rr_desc" class="cfg-input" style="height: 80px;" placeholder="Ej: Haz clic en la 🍎 para el rol Rojo..."></textarea>
+                                <label class="cfg-label">DescripciÃ³n</label>
+                                <textarea name="rr_desc" class="cfg-input" style="height: 80px;" placeholder="Ej: Haz clic en la ðŸŽ para el rol Rojo..."></textarea>
                             </div>
                             
-                            <h5 style="color:var(--p-pink); margin: 20px 0 10px; font-size:0.95rem;">Emparejamiento (Añade hasta 5):</h5>
+                            <h5 style="color:var(--p-pink); margin: 20px 0 10px; font-size:0.95rem;">Emparejamiento (AÃ±ade hasta 5):</h5>
                             <div style="display: flex; flex-direction: column; gap: 15px;">
                                 {% for i in range(1, 6) %}
                                 <div style="display: flex; gap: 15px; align-items: center;">
                                     <span style="color: var(--text-muted); font-size:0.8rem; font-weight:600; width: 25px;">#{{ i }}</span>
-                                    <input type="text" name="rr_emoji_{{ i }}" class="cfg-input" style="width: 150px;" placeholder="Emoji (Ej: 🍎)">
+                                    <input type="text" name="rr_emoji_{{ i }}" class="cfg-input" style="width: 150px;" placeholder="Emoji (Ej: ðŸŽ)">
                                     <i data-lucide="arrow-right" style="color: var(--text-muted);"></i>
                                     <select name="rr_role_{{ i }}" class="cfg-select" style="flex:1;">
-                                        <option value="">Ningún rol...</option>
+                                        <option value="">NingÃºn rol...</option>
                                         {% for r in roles %}
                                             {% if r.name != "@everyone" and not r.managed %}
                                                 <option value="{{ r.id }}">@{{ r.name }}</option>
@@ -1214,8 +1215,8 @@
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink);">
                         <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                             <div class="cfg-toggle-info">
-                                <h3 style="margin: 0; color: white;"><i data-lucide="music"></i> Módulo de Música</h3>
-                                <p style="margin: 5px 0 0 0;">Reproducción de canciones desde YouTube/Spotify</p>
+                                <h3 style="margin: 0; color: white;"><i data-lucide="music"></i> MÃ³dulo de MÃºsica</h3>
+                                <p style="margin: 5px 0 0 0;">ReproducciÃ³n de canciones desde YouTube/Spotify</p>
                             </div>
                             <label class="switch"><input type="checkbox" name="music_enabled" {% if settings.music_enabled %}checked{% endif %}><span class="slider"></span></label>
                         </div>
@@ -1226,13 +1227,13 @@
                             <div style="background: rgba(255,183,197,0.1); width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
                                 <i data-lucide="music" style="width: 44px; height: 44px; color: var(--p-pink);"></i>
                             </div>
-                            <h2 style="margin-bottom: 12px;">Panel de Música</h2>
+                            <h2 style="margin-bottom: 12px;">Panel de MÃºsica</h2>
                             <p style="color: var(--text-muted); max-width: 450px; margin: 0 auto 30px; line-height: 1.6;">
-                                Configura el volumen por defecto, canales de música y restricciones de DJ para tu servidor.
+                                Configura el volumen por defecto, canales de mÃºsica y restricciones de DJ para tu servidor.
                             </p>
                             <div style="background: var(--bg-main); padding: 18px 24px; border-radius: 14px; border-left: 4px solid var(--p-pink); display: inline-block; text-align: left;">
-                                <p style="margin:0; font-size: 0.88rem; color: var(--p-pink); font-weight: 700;">🚧 PRÓXIMAMENTE</p>
-                                <p style="margin:6px 0 0; font-size: 0.82rem; color: var(--text-muted);">Estamos integrando controles de reproducción en tiempo real.</p>
+                                <p style="margin:0; font-size: 0.88rem; color: var(--p-pink); font-weight: 700;">ðŸš§ PRÃ“XIMAMENTE</p>
+                                <p style="margin:6px 0 0; font-size: 0.82rem; color: var(--text-muted);">Estamos integrando controles de reproducciÃ³n en tiempo real.</p>
                             </div>
                             <div class="cfg-footer" style="border:none; padding:0; margin-top:30px;">
                                 <button type="submit" class="cfg-btn primary"><i data-lucide="save"></i> {{ t('dashboard.general.save_btn') }}</button>
@@ -1246,36 +1247,36 @@
                     <div class="cfg-section" style="border-left: 3px solid var(--p-pink);">
                         <div class="cfg-toggle" style="padding: 0; margin-bottom: 0; border: none; background: transparent;">
                             <div class="cfg-toggle-info">
-                                <h3 style="margin: 0; color: white;"><i data-lucide="ticket"></i> Módulo de Tickets</h3>
-                                <p style="margin: 5px 0 0 0;">Sistema de soporte técnico por canales privados</p>
+                                <h3 style="margin: 0; color: white;"><i data-lucide="ticket"></i> MÃ³dulo de Tickets</h3>
+                                <p style="margin: 5px 0 0 0;">Sistema de soporte tÃ©cnico por canales privados</p>
                             </div>
                             <label class="switch"><input type="checkbox" name="tickets_enabled" {% if settings.tickets_enabled %}checked{% endif %}><span class="slider"></span></label>
                         </div>
                     </div>
 
                     <div class="cfg-section">
-                        <div class="cfg-section-title"><i data-lucide="folder"></i> Organización</div>
+                        <div class="cfg-section-title"><i data-lucide="folder"></i> OrganizaciÃ³n</div>
                         <div class="cfg-section-body">
                             <div class="cfg-field">
-                                <label class="cfg-label">Categoría de Tickets</label>
+                                <label class="cfg-label">CategorÃ­a de Tickets</label>
                                 <select name="ticket_category_id" class="cfg-select">
-                                    <option value="">— Mismo que el comando —</option>
+                                    <option value="">â€” Mismo que el comando â€”</option>
                                     {% for cat in categories %}
                                     <option value="{{ cat.id }}" {% if settings.ticket_category_id|string == cat.id|string %}selected{% endif %}>{{ cat.icon }} {{ cat.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">Los nuevos tickets se crearán dentro de esta categoría</span>
+                                <span class="cfg-hint">Los nuevos tickets se crearÃ¡n dentro de esta categorÃ­a</span>
                             </div>
 
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal de Logs de Tickets</label>
                                 <select name="ticket_log_channel_id" class="cfg-select">
-                                    <option value="">— Desactivado —</option>
+                                    <option value="">â€” Desactivado â€”</option>
                                     {% for ch in text_channels %}
                                     <option value="{{ ch.id }}" {% if settings.ticket_log_channel_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">Se enviará una copia del transcript al cerrar un ticket</span>
+                                <span class="cfg-hint">Se enviarÃ¡ una copia del transcript al cerrar un ticket</span>
                             </div>
                         </div>
                     </div>
@@ -1284,13 +1285,13 @@
                         <div class="cfg-section-title"><i data-lucide="pen-line"></i> Personalizar Mensaje del Panel</div>
                         <div class="cfg-section-body">
                             <div class="cfg-field">
-                                <label class="cfg-label">Título del Embed</label>
-                                <input type="text" name="ticket_panel_title" class="cfg-input" value="{{ settings.ticket_panel_title or '' }}" placeholder="📠 Soporte Técnico">
-                                <span class="cfg-hint">Deja vacío para usar el título por defecto</span>
+                                <label class="cfg-label">TÃ­tulo del Embed</label>
+                                <input type="text" name="ticket_panel_title" class="cfg-input" value="{{ settings.ticket_panel_title or '' }}" placeholder="ðŸ“  Soporte TÃ©cnico">
+                                <span class="cfg-hint">Deja vacÃ­o para usar el tÃ­tulo por defecto</span>
                             </div>
                             <div class="cfg-field">
-                                <label class="cfg-label">Descripción del Embed</label>
-                                <textarea name="ticket_panel_desc" class="cfg-input" style="height: 80px;" placeholder="¿Necesitas ayuda con algo del servidor o quieres hacer una denuncia?&#10;&#10;**Oprime el botón abajo para abrir un ticket de soporte privado.**">{{ settings.ticket_panel_desc or '' }}</textarea>
+                                <label class="cfg-label">DescripciÃ³n del Embed</label>
+                                <textarea name="ticket_panel_desc" class="cfg-input" style="height: 80px;" placeholder="Â¿Necesitas ayuda con algo del servidor o quieres hacer una denuncia?&#10;&#10;**Oprime el botÃ³n abajo para abrir un ticket de soporte privado.**">{{ settings.ticket_panel_desc or '' }}</textarea>
                                 <span class="cfg-hint">Soporta formato de Discord (negrita con **, cursiva con *, etc.)</span>
                             </div>
                         </div>
@@ -1300,13 +1301,13 @@
                         <div class="cfg-section-title"><i data-lucide="message-square-plus"></i> Mensaje de Bienvenida del Ticket</div>
                         <div class="cfg-section-body">
                             <div class="cfg-field">
-                                <label class="cfg-label">Título al abrir ticket</label>
-                                <input type="text" name="ticket_welcome_title" class="cfg-input" value="{{ settings.ticket_welcome_title or '' }}" placeholder="🎟️ Ticket de {user}">
-                                <span class="cfg-hint">Usa {user} para el nombre del usuario. Deja vacío para el por defecto</span>
+                                <label class="cfg-label">TÃ­tulo al abrir ticket</label>
+                                <input type="text" name="ticket_welcome_title" class="cfg-input" value="{{ settings.ticket_welcome_title or '' }}" placeholder="ðŸŽŸï¸ Ticket de {user}">
+                                <span class="cfg-hint">Usa {user} para el nombre del usuario. Deja vacÃ­o para el por defecto</span>
                             </div>
                             <div class="cfg-field">
-                                <label class="cfg-label">Descripción al abrir ticket</label>
-                                <textarea name="ticket_welcome_desc" class="cfg-input" style="height: 80px;" placeholder="Gracias por contactarnos.&#10;Un moderador te atenderá pronto.&#10;Mientras, describe tu problema.">{{ settings.ticket_welcome_desc or '' }}</textarea>
+                                <label class="cfg-label">DescripciÃ³n al abrir ticket</label>
+                                <textarea name="ticket_welcome_desc" class="cfg-input" style="height: 80px;" placeholder="Gracias por contactarnos.&#10;Un moderador te atenderÃ¡ pronto.&#10;Mientras, describe tu problema.">{{ settings.ticket_welcome_desc or '' }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -1317,18 +1318,18 @@
                             <div class="cfg-field">
                                 <label class="cfg-label">Canal del Panel</label>
                                 <select name="ticket_panel_channel_id" class="cfg-select">
-                                    <option value="">— Seleccionar Canal —</option>
+                                    <option value="">â€” Seleccionar Canal â€”</option>
                                     {% for ch in text_channels %}
                                     <option value="{{ ch.id }}" {% if settings.ticket_panel_channel_id and settings.ticket_panel_channel_id|string == ch.id|string %}selected{% endif %}>{{ ch.icon }} {{ ch.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <span class="cfg-hint">Canal donde se enviará el mensaje interactivo para abrir tickets</span>
+                                <span class="cfg-hint">Canal donde se enviarÃ¡ el mensaje interactivo para abrir tickets</span>
                             </div>
                             
                             <button type="button" class="cfg-btn-alt" onclick="deployFeature('tickets')" style="width: 100%; border: 1px solid var(--p-pink); color: var(--p-pink); background: rgba(255,122,180,0.05); padding: 14px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; transition: all 0.2s; font-weight: 600;">
                                 <i data-lucide="send" style="width:18px;"></i> Desplegar Panel de Soporte
                             </button>
-                            <p style="margin: 10px 0 0; font-size: 0.8rem; color: var(--text-muted); text-align: center;">Nota: Guarda los cambios antes de desplegar para que se aplique tu personalización.</p>
+                            <p style="margin: 10px 0 0; font-size: 0.8rem; color: var(--text-muted); text-align: center;">Nota: Guarda los cambios antes de desplegar para que se aplique tu personalizaciÃ³n.</p>
                         </div>
                     </div>
                     
@@ -1343,7 +1344,7 @@
                         <i data-lucide="construction" style="width: 50px; height: 50px; color: var(--p-pink); margin-bottom: 15px;"></i>
                         <h2>Panel de {{ section|capitalize }}</h2>
                         <p style="color: var(--text-muted); margin-top: 12px; max-width: 450px; margin-inline: auto;">
-                            Estamos construyendo esta sección. Pronto podrás configurar todo desde aquí.
+                            Estamos construyendo esta secciÃ³n. Pronto podrÃ¡s configurar todo desde aquÃ­.
                         </p>
                         <a href="/dashboard/server/{{ server.id }}/general" class="btn btn-ghost" style="margin-top: 30px; display: inline-block;">Volver a General</a>
                     </div>
@@ -1356,7 +1357,7 @@
     <footer>
         <div class="container">
             <div class="footer-bottom">
-                &copy; 2026 Umapyoi Bot. Configuración de Servidor.
+                &copy; 2026 Umapyoi Bot. ConfiguraciÃ³n de Servidor.
             </div>
         </div>
     </footer>
@@ -1438,7 +1439,7 @@
             if (!topEl || !msgEl) return;
 
             function updateTitle() {
-                const val = topEl.value.trim() || (prefix === 'wc' ? '¡Bienvenido al servidor!' : 'Nos deja el servidor...');
+                const val = topEl.value.trim() || (prefix === 'wc' ? 'Â¡Bienvenido al servidor!' : 'Nos deja el servidor...');
                 prevTitle.textContent = val;
             }
             function updateDesc() {
@@ -1450,7 +1451,7 @@
                     .replace(/\{user\.name\}/g, userName)
                     .replace(/\{server\.name\}/g, serverName)
                     .replace(/\{member_count\}/g, '{{ member_count }}');
-                prevDesc.textContent = display || (prefix === 'wc' ? '¡Bienvenid@ al servidor!' : 'Se nos fue del servidor...');
+                prevDesc.textContent = display || (prefix === 'wc' ? 'Â¡Bienvenid@ al servidor!' : 'Se nos fue del servidor...');
             }
             function updateBanner() {
                 const url = bannerEl.value.trim();
@@ -1495,7 +1496,7 @@
 
             const toast = document.createElement('div');
             toast.className = 'umapyoi-toast';
-            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+            const icons = { success: 'âœ…', error: 'âŒ', info: 'â„¹ï¸' };
             const colors = { success: '#34d399', error: '#f87171', info: '#60a5fa' };
             toast.innerHTML = `
                 <div style="
@@ -1550,7 +1551,7 @@
                 });
                 
                 if (response.ok) {
-                    showToast('¡Panel desplegado con éxito en Discord!', 'success');
+                    showToast('Â¡Panel desplegado con Ã©xito en Discord!', 'success');
                 } else {
                     const text = await response.text();
                     showToast('Error al desplegar: ' + text, 'error');
@@ -1566,3 +1567,5 @@
     </script>
 </body>
 </html>
+
+

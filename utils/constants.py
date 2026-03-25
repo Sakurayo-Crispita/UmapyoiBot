@@ -3,11 +3,11 @@ CREAM_COLOR = 0xF0EAD6 # Usamos el valor hexadecimal directamente
 # Mensajes y banners por defecto
 DEFAULT_WELCOME_MESSAGE = "¡Bienvenid@ a {server.name}! Contigo somos {member_count}"
 # URL del banner de bienvenida por defecto actualizada
-DEFAULT_WELCOME_BANNER = "https://i.postimg.cc/YqsSwMMN/10-jul-2025-04-13-17-p-m.png" 
+DEFAULT_WELCOME_BANNER = "https://umapyoibot.com/static/assets/bot_welcome.png" 
 
 DEFAULT_GOODBYE_MESSAGE = "{user.name} ha dejado el nido. ¡Hasta la próxima!"
 # URL del banner de despedida por defecto actualizada para mantener consistencia
-DEFAULT_GOODBYE_BANNER = "https://i.postimg.cc/YqsSwMMN/10-jul-2025-04-13-17-p-m.png"
+DEFAULT_GOODBYE_BANNER = "https://umapyoibot.com/static/assets/bot_help.png"
 # URL de la web oficial del nuevo panel de control
 COMMANDS_PAGE_URL = "https://umapyoibot.com/" 
 

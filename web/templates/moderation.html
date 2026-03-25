@@ -1,12 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
     <!-- Anti-flash: apply theme before first paint -->
     <script>!function(){var t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/assets/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moderación Avanzada - UmapyoiBot</title>
+    <title>ModeraciÃ³n Avanzada - UmapyoiBot</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,19 +31,19 @@
                     <a href="/" class="nav-link">Inicio</a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link active">Módulos <i data-lucide="chevron-down"></i></a>
+                    <a href="#" class="nav-link active">MÃ³dulos <i data-lucide="chevron-down"></i></a>
                     <div class="dropdown">
                         <a href="/modules/music" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="music"></i></div>
                             <div class="dropdown-content">
-                                <h5>Música</h5>
+                                <h5>MÃºsica</h5>
                                 <p>Alta fidelidad sin lag.</p>
                             </div>
                         </a>
                         <a href="/modules/economy" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="coins"></i></div>
                             <div class="dropdown-content">
-                                <h5>Economía Global</h5>
+                                <h5>EconomÃ­a Global</h5>
                                 <p>Minijuegos y rankings.</p>
                             </div>
                         </a>
@@ -56,15 +57,15 @@
                         <a href="/modules/moderation" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="shield-check"></i></div>
                             <div class="dropdown-content">
-                                <h5>Moderación</h5>
+                                <h5>ModeraciÃ³n</h5>
                                 <p>Seguridad para tu chat.</p>
                             </div>
                         </a>
                         <a href="/modules/serverconfig" class="dropdown-item">
                             <div class="dropdown-icon"><i data-lucide="settings"></i></div>
                             <div class="dropdown-content">
-                                <h5>Configuración</h5>
-                                <p>Personalización total.</p>
+                                <h5>ConfiguraciÃ³n</h5>
+                                <p>PersonalizaciÃ³n total.</p>
                             </div>
                         </a>
                     </div>
@@ -76,7 +77,7 @@
                             <div class="dropdown-icon"><i data-lucide="book-open"></i></div>
                             <div class="dropdown-content">
                                 <h5>Comandos</h5>
-                                <p>Documentación completa.</p>
+                                <p>DocumentaciÃ³n completa.</p>
                             </div>
                         </a>
                         <a href="https://discord.gg/fwNeZsGkSj" target="_blank" class="dropdown-item">
@@ -97,7 +98,7 @@
                 </li>
                 <li><a href="https://discord.com/api/oauth2/authorize?client_id=1389616993098924164&permissions=8&scope=bot%20applications.commands" class="btn btn-p" target="_blank">Invitar Bot</a></li>
                 {% else %}
-                <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
+                <li><a href="/login" class="btn btn-p">Iniciar SesiÃ³n</a></li>
                 {% endif %}
                 <li>
                     <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
@@ -110,8 +111,8 @@
 
     <header class="module-hero">
         <div class="container">
-            <h1>Moderación <span>Inteligente</span></h1>
-            <p>Mantén tu comunidad segura con potentes herramientas de auto-moderación, logs detallados y comandos de gestión rápidos y efectivos.</p>
+            <h1>ModeraciÃ³n <span>Inteligente</span></h1>
+            <p>MantÃ©n tu comunidad segura con potentes herramientas de auto-moderaciÃ³n, logs detallados y comandos de gestiÃ³n rÃ¡pidos y efectivos.</p>
             <div class="hero-actions">
                 <a href="/login" class="btn btn-p">Proteger mi Servidor</a>
                 <a href="/docs#moderation" class="btn btn-ghost">Ver Comandos</a>
@@ -124,12 +125,12 @@
             <div class="feature-card glass" data-reveal>
                 <div class="feature-icon"><i data-lucide="zap"></i></div>
                 <h3>Auto-Mod</h3>
-                <p>Filtros automáticos para enlaces, palabras prohibidas y spam para que no tengas que estar 24/7.</p>
+                <p>Filtros automÃ¡ticos para enlaces, palabras prohibidas y spam para que no tengas que estar 24/7.</p>
             </div>
             <div class="feature-card glass" data-reveal>
                 <div class="feature-icon"><i data-lucide="file-text"></i></div>
                 <h3>Logs Detallados</h3>
-                <p>Registro completo de acciones de moderación para tener un control total de lo que sucede.</p>
+                <p>Registro completo de acciones de moderaciÃ³n para tener un control total de lo que sucede.</p>
             </div>
             <div class="feature-card glass" data-reveal>
                 <div class="feature-icon"><i data-lucide="user-minus"></i></div>
@@ -188,3 +189,5 @@
     </script>
 </body>
 </html>
+
+

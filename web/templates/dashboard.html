@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
     <!-- Anti-flash: apply theme before first paint -->
     <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/assets/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Control - UmapyoiBot</title>
     
@@ -391,7 +392,7 @@
                     
                     <div id="profileSlider" class="profile-slider">
                         <div class="slider-header">
-                            <h4 style="margin:0;">¡Hola {{ user.username }}!</h4>
+                            <h4 style="margin:0;">Â¡Hola {{ user.username }}!</h4>
                             <p style="color:var(--text-muted); font-size:0.75rem; margin:5px 0 0 0;">ID: {{ user.id }}</p>
                         </div>
                         
@@ -408,7 +409,7 @@
                             </a>
                             <div class="slider-divider"></div>
                             <a href="/logout" class="slider-item" style="color: #e74c3c;">
-                                <i data-lucide="log-out"></i> Cerrar sesión
+                                <i data-lucide="log-out"></i> Cerrar sesiÃ³n
                             </a>
                         </div>
                     </div>
@@ -436,7 +437,7 @@
             <div class="sidebar-section" id="section-resources">
                 <li class="sidebar-heading" style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Recursos</li>
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
-                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>Documentación</span></a></li>
+                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>DocumentaciÃ³n</span></a></li>
                     <li><a href="/report" class="nav-link"><i data-lucide="alert-triangle"></i> <span>Reportes</span></a></li>
                     <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>Sugerencias</span></a></li>
                     <li><a href="https://discord.gg/umapyoi" target="_blank" class="nav-link"><i data-lucide="help-circle"></i> <span>Soporte</span></a></li>
@@ -445,7 +446,7 @@
                 
             {% if is_owner %}
             <div class="sidebar-section" id="section-admin">
-                <li class="sidebar-heading" style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Administración</li>
+                <li class="sidebar-heading" style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">AdministraciÃ³n</li>
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
                     <li><a href="/dashboard/admin" class="nav-link {% if section == 'admin' %}active{% endif %}"><i data-lucide="shield"></i> <span>Admin Bot</span></a></li>
                 </ul>
@@ -490,7 +491,7 @@
                                     <h3 style="font-size: 1.05rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ server.name }}</h3>
                                     <div class="role-badge">
                                         {% if server.owner %}
-                                            Dueño/a
+                                            DueÃ±o/a
                                         {% else %}
                                             Admin
                                         {% endif %}
@@ -558,12 +559,12 @@
 
             {% elif section == 'admin' %}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                <h2 style="margin:0;">Panel de Administración (Global)</h2>
+                <h2 style="margin:0;">Panel de AdministraciÃ³n (Global)</h2>
                 <div class="glass" style="padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; border: 1px solid var(--border-color);">
                     {% if bot_running %}
                         <span class="status-dot status-online"></span> <span style="color: #2ecc71; font-weight: 600;">SISTEMA ACTIVO</span>
                     {% else %}
-                        <span class="status-dot status-offline"></span> <span style="color: #e74c3c; font-weight: 600;">SISTEMA FUERA DE LÍNEA</span>
+                        <span class="status-dot status-offline"></span> <span style="color: #e74c3c; font-weight: 600;">SISTEMA FUERA DE LÃNEA</span>
                     {% endif %}
                 </div>
             </div>
@@ -600,7 +601,7 @@
                 </div>
             </div>
 
-            <!-- Gráficas en Tiempo Real -->
+            <!-- GrÃ¡ficas en Tiempo Real -->
             <div class="config-card glass" style="margin-top: 30px; padding: 30px; border-radius: var(--radius-lg);">
                 <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
                     <i data-lucide="line-chart"></i> Rendimiento en Tiempo Real
@@ -613,7 +614,7 @@
             <div class="config-card glass" style="margin-top: 30px; padding: 20px; border-left: 4px solid var(--p-pink); background: rgba(255,183,197,0.05);">
                 <p style="color:var(--text-muted); font-size: 0.85rem; margin: 0;">
                     <i data-lucide="info" style="width: 16px; display: inline; vertical-align: middle;"></i> 
-                    <strong>Nota de Privacidad:</strong> Este panel solo es visible para el dueño. Los datos se actualizan automáticamente cada 5 segundos.
+                    <strong>Nota de Privacidad:</strong> Este panel solo es visible para el dueÃ±o. Los datos se actualizan automÃ¡ticamente cada 5 segundos.
                 </p>
             </div>
             {% endif %}
@@ -628,7 +629,7 @@
         </div>
     </footer>
 
-    <!-- Chart.js para las gráficas -->
+    <!-- Chart.js para las grÃ¡ficas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Sidebar Section Toggling
@@ -682,7 +683,7 @@
 
         lucide.createIcons();
 
-        // Verificamos si existe el canvas de stats para inicializar la gráfica
+        // Verificamos si existe el canvas de stats para inicializar la grÃ¡fica
         const statsCanvas = document.getElementById('statsChart');
         if (statsCanvas) {
             const ctx = statsCanvas.getContext('2d');
@@ -811,3 +812,5 @@
     </script>
 </body>
 </html>
+
+

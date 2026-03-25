@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
     <!-- Anti-flash: apply theme before first paint -->
     <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/assets/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Bot Panel - UmapyoiBot</title>
     
@@ -365,7 +366,7 @@
                         <div class="slider-header" style="background: linear-gradient(to bottom, var(--p-pink-soft), transparent); padding: 20px; text-align: center;">
                             <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" class="profile-avatar-lg">
                             <h3 style="margin-top: 10px; margin-bottom: 5px;">{{ user.username }}</h3>
-                            <a href="/logout" class="btn btn-primary" style="margin-top: 15px; width: 100%;">Cerrar Sesión</a>
+                            <a href="/logout" class="btn btn-primary" style="margin-top: 15px; width: 100%;">Cerrar SesiÃ³n</a>
                         </div>
                     </div>
                 </div>
@@ -398,7 +399,7 @@
             <div class="sidebar-section">
                 <li style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Recursos</li>
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
-                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>Documentación</span></a></li>
+                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>DocumentaciÃ³n</span></a></li>
                     <li><a href="/report" class="nav-link"><i data-lucide="alert-triangle"></i> <span>Reportes</span></a></li>
                     <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>Sugerencias</span></a></li>
                     <li><a href="https://discord.gg/umapyoi" target="_blank" class="nav-link"><i data-lucide="help-circle"></i> <span>Soporte</span></a></li>
@@ -406,9 +407,9 @@
             </div>
                 
             <div class="sidebar-section">
-                <li style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Administración</li>
+                <li style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">AdministraciÃ³n</li>
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
-                    <li><a href="/dashboard/admin" class="nav-link active"><i data-lucide="shield"></i> <span>Administración Global</span></a></li>
+                    <li><a href="/dashboard/admin" class="nav-link active"><i data-lucide="shield"></i> <span>AdministraciÃ³n Global</span></a></li>
                 </ul>
             </div>
         </aside>
@@ -418,7 +419,7 @@
                 <header class="content-header" style="margin-bottom: 30px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
                     <div>
-                        <h1 style="font-size: 2.2rem; font-family: var(--font-display); margin: 0;"><span style="color: var(--p-pink);">Súper</span> Panel Administrativo</h1>
+                        <h1 style="font-size: 2.2rem; font-family: var(--font-display); margin: 0;"><span style="color: var(--p-pink);">SÃºper</span> Panel Administrativo</h1>
                         <p style="color: var(--text-muted); margin: 5px 0 0 0;">Herramientas globales exclusivas del creador. Tratar este panel con extrema responsabilidad.</p>
                     </div>
                     <button onclick="window.location.reload()" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,107,158,0.2); color: white; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; transition: all 0.3s; border-radius: 12px; white-space: nowrap;">
@@ -438,9 +439,9 @@
 
             <div id="tab-stats" class="tab-content active">
                 <div class="admin-grid">
-                    <!-- Estadísticas Globales -->
+                    <!-- EstadÃ­sticas Globales -->
                     <div class="admin-card">
-                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="globe" style="color:var(--p-pink);"></i> Estadísticas Globales</h3>
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="globe" style="color:var(--p-pink);"></i> EstadÃ­sticas Globales</h3>
                         <div style="display: flex; gap: 40px; margin-top: 20px;">
                             <div>
                                 <p class="text-muted" style="margin-bottom:5px;">Servidores</p>
@@ -468,7 +469,7 @@
                                 <span id="ram-text" style="color: var(--p-pink); font-weight: bold;">{{ ram_percent }}%</span>
                             </div>
                             <div class="meter-container"><div id="ram-bar" class="meter-fill" style="--width: {{ ram_percent }}%; width: var(--width);"></div></div>
-                            <p style="margin-top: 15px; font-size: 0.85rem; color: #2ecc71;"><i data-lucide="activity" style="width: 14px; vertical-align: middle;"></i> Sincronización en vivo cada 5s operando...</p>
+                            <p style="margin-top: 15px; font-size: 0.85rem; color: #2ecc71;"><i data-lucide="activity" style="width: 14px; vertical-align: middle;"></i> SincronizaciÃ³n en vivo cada 5s operando...</p>
                         </div>
                     </div>
                 </div>
@@ -477,7 +478,7 @@
             <div id="tab-servers" class="tab-content">
                 <div class="admin-card" style="grid-column: 1 / -1;">
                     <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="list" style="color:var(--p-pink);"></i> Lista Detallada de Servidores</h3>
-                    <p style="color: var(--text-muted); margin-bottom: 20px;">Explora todos los gremios donde UmapyoiBot está presente actualmente.</p>
+                    <p style="color: var(--text-muted); margin-bottom: 20px;">Explora todos los gremios donde UmapyoiBot estÃ¡ presente actualmente.</p>
                     
                     <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
                         <table>
@@ -486,10 +487,10 @@
                                     <th>Icono</th>
                                     <th>Nombre del Servidor</th>
                                     <th>ID del Gremio</th>
-                                    <th>Dueño / Creador</th>
+                                    <th>DueÃ±o / Creador</th>
                                     <th>Invitado por</th>
                                     <th>Miembros</th>
-                                    <th>Gestión</th>
+                                    <th>GestiÃ³n</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -553,12 +554,12 @@
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
                         <div>
                             <h3 style="display:flex; align-items:center; gap:8px; margin-bottom: 5px;"><i data-lucide="scroll_text" style="color:var(--p-pink);"></i> Registros del Bot</h3>
-                            <p style="color: var(--text-muted); font-size: 0.9rem;">Monitoreo de actividad de usuarios y salud técnica del sistema.</p>
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">Monitoreo de actividad de usuarios y salud tÃ©cnica del sistema.</p>
                         </div>
                         <div class="sub-tab-nav">
                             <button class="sub-tab-btn active" id="btn-sub-commands" onclick="switchSubTab('log-commands')">Actividad</button>
                             <button class="sub-tab-btn" id="btn-sub-system" onclick="switchSubTab('log-system')">Vida / Sistema</button>
-                            <button class="sub-tab-btn" id="btn-sub-audit" onclick="switchSubTab('log-audit')">Auditoría</button>
+                            <button class="sub-tab-btn" id="btn-sub-audit" onclick="switchSubTab('log-audit')">AuditorÃ­a</button>
                         </div>
                     </div>
                     
@@ -604,7 +605,7 @@
                                     <tr>
                                         <th>Fecha / Hora</th>
                                         <th>Nivel</th>
-                                        <th>Categoría</th>
+                                        <th>CategorÃ­a</th>
                                         <th>Mensaje del Sistema</th>
                                     </tr>
                                 </thead>
@@ -635,7 +636,7 @@
                         </div>
                     </div>
 
-                    <!-- Sub-Tab: Auditoría de Administración -->
+                    <!-- Sub-Tab: AuditorÃ­a de AdministraciÃ³n -->
                     <div id="log-audit" class="sub-tab-content">
                         <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
                             <table style="font-size: 0.9rem;">
@@ -643,7 +644,7 @@
                                     <tr>
                                         <th>Fecha / Hora</th>
                                         <th>Administrador</th>
-                                        <th>Acción</th>
+                                        <th>AcciÃ³n</th>
                                         <th>Objetivo / ID</th>
                                         <th>Detalles</th>
                                     </tr>
@@ -727,15 +728,15 @@
 
             <div id="tab-broadcast" class="tab-content">
                 <div class="admin-grid">
-                    <!-- Transmisión Global -->
+                    <!-- TransmisiÃ³n Global -->
                     <div class="admin-card">
-                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="radio" style="color:var(--p-pink);"></i> Transmisión Global</h3>
-                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Envía un aviso a todos los canales de sistema del bot.</p>
+                        <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="radio" style="color:var(--p-pink);"></i> TransmisiÃ³n Global</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">EnvÃ­a un aviso a todos los canales de sistema del bot.</p>
                         <form id="form-broadcast" action="/api/admin/broadcast" method="POST">
-                            <textarea name="message" class="form-control" rows="3" placeholder="Escribe el mensaje global aquí..." required 
+                            <textarea name="message" class="form-control" rows="3" placeholder="Escribe el mensaje global aquÃ­..." required 
                                       style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,107,158,0.2); border-radius: 10px; color: white; padding: 12px; margin-bottom: 15px; resize: none;"></textarea>
                             <button type="submit" class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 10px; background: #ff4757;">
-                                <i data-lucide="send"></i> Lanzar Transmisión
+                                <i data-lucide="send"></i> Lanzar TransmisiÃ³n
                             </button>
                         </form>
                     </div>
@@ -743,7 +744,7 @@
                     <!-- Mensaje Directo por ID -->
                     <div class="admin-card">
                         <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="message-square" style="color:var(--p-pink);"></i> Enviar DM por ID</h3>
-                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">Envía un mensaje privado a cualquier usuario de Discord por su ID.</p>
+                        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">EnvÃ­a un mensaje privado a cualquier usuario de Discord por su ID.</p>
                         <form id="form-dm" action="/api/admin/dm/send" method="POST">
                             <div style="margin-bottom: 15px;">
                                 <input type="text" name="user_id" id="quick-dm-id" class="form-control" placeholder="ID del Usuario (7132...)" required
@@ -763,7 +764,7 @@
                 <!-- Blacklist -->
                 <div class="admin-card">
                     <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="user-x" style="color:var(--p-pink);"></i> Lista Negra Global</h3>
-                    <p style="color: var(--text-muted); margin-bottom: 20px;">Las IDs enlistadas aquí perderán inmediata y permanentemente el acceso a todos los comandos.</p>
+                    <p style="color: var(--text-muted); margin-bottom: 20px;">Las IDs enlistadas aquÃ­ perderÃ¡n inmediata y permanentemente el acceso a todos los comandos.</p>
                     
                     <form id="form-blacklist-add" action="/api/admin/blacklist/add" method="POST" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 30px; flex-wrap: wrap;">
                         <div class="form-group" style="flex: 1; min-width: 200px; margin: 0;">
@@ -779,9 +780,9 @@
                         </div>
                         <div class="form-group" style="flex: 2; min-width: 250px; margin: 0;">
                             <label>Motivo (Opcional)</label>
-                            <input type="text" name="reason" class="form-control" placeholder="Evasión / Abuso de Bugs / Pruebas">
+                            <input type="text" name="reason" class="form-control" placeholder="EvasiÃ³n / Abuso de Bugs / Pruebas">
                         </div>
-                        <button type="submit" class="btn btn-primary" style="background: #34495e; color: white;">Añadir al Veto</button>
+                        <button type="submit" class="btn btn-primary" style="background: #34495e; color: white;">AÃ±adir al Veto</button>
                     </form>
 
                     <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
@@ -791,8 +792,8 @@
                                     <th>ID Bloqueada</th>
                                     <th>Tipo</th>
                                     <th>Motivo</th>
-                                    <th>Fecha de Ejecución</th>
-                                    <th>Acción</th>
+                                    <th>Fecha de EjecuciÃ³n</th>
+                                    <th>AcciÃ³n</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -829,13 +830,13 @@
             <div class="uma-modal-icon">
                 <i data-lucide="alert-triangle" style="width: 32px; height: 32px;"></i>
             </div>
-            <h2 id="modal-title">¿Estás seguro?</h2>
-            <p id="modal-text">Esta acción hará que el bot abandone el servidor permanentemente.</p>
+            <h2 id="modal-title">Â¿EstÃ¡s seguro?</h2>
+            <p id="modal-text">Esta acciÃ³n harÃ¡ que el bot abandone el servidor permanentemente.</p>
             <form id="modal-form" action="/api/admin/guild/leave" method="POST">
                 <input type="hidden" name="guild_id" id="modal-guild-id">
                 <div class="uma-modal-actions">
                     <button type="button" class="uma-modal-btn uma-modal-btn-cancel" onclick="closeUmaModal()">Cancelar</button>
-                    <button type="submit" class="uma-modal-btn uma-modal-btn-confirm">Sí, Abandonar</button>
+                    <button type="submit" class="uma-modal-btn uma-modal-btn-confirm">SÃ­, Abandonar</button>
                 </div>
             </form>
         </div>
@@ -853,7 +854,7 @@
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
                 <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
-                    <span class="detail-label">Dueño / Creador</span>
+                    <span class="detail-label">DueÃ±o / Creador</span>
                     <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
                         <span id="detail-owner-name" class="detail-value">Cargando...</span>
                     </div>
@@ -879,7 +880,7 @@
 
             <div class="uma-modal-actions">
                 <button type="button" class="uma-modal-btn uma-modal-btn-cancel" onclick="closeDetailModal()">Cerrar</button>
-                <button type="button" id="btn-contact-owner" class="uma-modal-btn" style="background: var(--p-pink); color: white;">Contactar Dueño</button>
+                <button type="button" id="btn-contact-owner" class="uma-modal-btn" style="background: var(--p-pink); color: white;">Contactar DueÃ±o</button>
             </div>
         </div>
     </div>
@@ -917,7 +918,7 @@
             const modalInput = document.getElementById('modal-guild-id');
             
             modalTitle.innerText = "Abandonar Servidor";
-            modalText.innerHTML = `¿Estás seguro de que quieres que Umapyoi abandone <strong>${guildName}</strong>?<br><br><span style="color:#e74c3c; font-size:0.8rem;">Esta acción se procesará en unos segundos.</span>`;
+            modalText.innerHTML = `Â¿EstÃ¡s seguro de que quieres que Umapyoi abandone <strong>${guildName}</strong>?<br><br><span style="color:#e74c3c; font-size:0.8rem;">Esta acciÃ³n se procesarÃ¡ en unos segundos.</span>`;
             modalInput.value = guildId;
             
             overlay.classList.add('active');
@@ -957,7 +958,7 @@
                 avatarImg.style.display = 'none';
             }
 
-            // Configurar botón de contacto
+            // Configurar botÃ³n de contacto
             const btnContact = document.getElementById('btn-contact-owner');
             if (ownerId && ownerId !== 'None') {
                 btnContact.style.display = 'block';
@@ -1011,7 +1012,7 @@
             document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(subTabId).classList.add('active');
             
-            // Vincular botón manualmente
+            // Vincular botÃ³n manualmente
             if (subTabId === 'log-commands') document.getElementById('btn-sub-commands').classList.add('active');
             else if (subTabId === 'log-system') document.getElementById('btn-sub-system').classList.add('active');
             else if (subTabId === 'log-audit') document.getElementById('btn-sub-audit').classList.add('active');
@@ -1094,7 +1095,7 @@
             }
             
             if (result.data.length === 0) {
-                body.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:40px; color: var(--text-muted); font-style: italic;">Esta tabla está vacía.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:40px; color: var(--text-muted); font-style: italic;">Esta tabla estÃ¡ vacÃ­a.</td></tr>`;
             } else {
                 // Build Body
                 result.data.forEach(row => {
@@ -1144,7 +1145,7 @@
                                 <i data-lucide="chevron-left" style="width: 14px; vertical-align: middle;"></i> Anterior
                             </button>
                             <span style="font-size: 0.8rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                                Página <span style="color:white; font-weight:bold;">${result.page}</span> de ${totalPages}
+                                PÃ¡gina <span style="color:white; font-weight:bold;">${result.page}</span> de ${totalPages}
                             </span>
                             <button class="btn" style="padding: 6px 12px; background: rgba(255,255,255,0.05); color: white; font-size: 0.8rem;" 
                                     onclick="loadTableData('${result.table}', null, ${result.page + 1})" ${nextDisabled}>
@@ -1186,12 +1187,12 @@
 
         async function deleteDbRow(table, pkCol, pkVal) {
             const result = await Swal.fire({
-                title: '¿Confirmar eliminación?',
+                title: 'Â¿Confirmar eliminaciÃ³n?',
                 text: `Vas a borrar la fila con ${pkCol} = ${pkVal} de la tabla ${table}.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#e74c3c',
-                confirmButtonText: 'Sí, borrar',
+                confirmButtonText: 'SÃ­, borrar',
                 cancelButtonText: 'Cancelar',
                 background: '#1a1b1e',
                 color: '#fff'
@@ -1251,7 +1252,7 @@
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalBtnContent = submitBtn.innerHTML;
 
-            // Bloquear botón
+            // Bloquear botÃ³n
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;"></i> Cargando...';
             lucide.createIcons();
@@ -1266,7 +1267,7 @@
                 if (result.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Éxito!',
+                        title: 'Â¡Ã‰xito!',
                         text: result.message,
                         toast: true,
                         position: 'top-end',
@@ -1287,7 +1288,7 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: result.message || 'Ocurrió un error inesperado.',
+                        text: result.message || 'OcurriÃ³ un error inesperado.',
                         background: '#1a1b1e',
                         color: '#fff'
                     });
@@ -1315,3 +1316,5 @@
     </script>
 </body>
 </html>
+
+
