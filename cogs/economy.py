@@ -26,12 +26,7 @@ class EconomyCog(commands.Cog, name="Economía"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.user_locks = {}
-        # Diccionario para persistir cooldowns dinámicos en RAM
-        self._last_uses = {
-            'work': {}, # (guild_id, user_id) -> timestamp
-            'rob': {},  # (guild_id, user_id) -> timestamp
-            'daily': {} # (guild_id, user_id) -> timestamp
-        }
+        self.user_locks = {}
 
     async def cog_check(self, ctx: commands.Context):
         """Check global para este Cog."""
@@ -266,22 +261,22 @@ class EconomyCog(commands.Cog, name="Economía"):
 
 
     @commands.hybrid_command(name='work', description="Ponte a trabajar unas horas para tener efectivo.")
-    @commands.cooldown(1, 3600, commands.BucketType.user)
     async def work(self, ctx: commands.Context):
         if not ctx.guild: return
         await ctx.defer()
         settings = await db.get_cached_economy_settings(ctx.guild.id)
         cooldown_time = settings.get('work_cooldown', 3600)
         
-        now = discord.utils.utcnow().timestamp()
-        last_use = self._last_uses['work'].get((ctx.guild.id, ctx.author.id), 0)
+        now_dt = discord.utils.utcnow()
+        last_use_dt = await db.get_cooldown(ctx.guild.id, ctx.author.id, 'work')
+        last_use = last_use_dt.timestamp() if last_use_dt else 0
         
         # Fetch language for localization
         server_settings = await db.get_cached_server_settings(ctx.guild.id)
         lang = server_settings.get('language', 'es')
 
-        if now - last_use < cooldown_time:
-            retry_after = cooldown_time - (now - last_use)
+        if now_dt.timestamp() - last_use < cooldown_time:
+            retry_after = cooldown_time - (now_dt.timestamp() - last_use)
             hours = int(retry_after // 3600)
             minutes = int((retry_after % 3600) // 60)
             seconds = int(retry_after % 60)
@@ -291,8 +286,8 @@ class EconomyCog(commands.Cog, name="Economía"):
             time_str += f"{seconds}s"
             return await ctx.send(_t('bot.economy.work_cooldown', lang=lang, time=time_str.strip()), ephemeral=True)
 
-        # Registrar uso antes de procesar (si falla el procesamiento por algo raro, se queda el cooldown)
-        self._last_uses['work'][(ctx.guild.id, ctx.author.id)] = now
+        # Registrar uso en la DB
+        await db.set_cooldown(ctx.guild.id, ctx.author.id, 'work', now_dt)
 
         min_w = settings.get('work_min', 100)
 
@@ -393,7 +388,6 @@ class EconomyCog(commands.Cog, name="Economía"):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='rob', aliases=['robar'], description="Intenta adueñarte de lo que no es tuyo. Altamente riesgoso.")
-    @commands.cooldown(1, 21600, commands.BucketType.user)
     async def rob(self, ctx: commands.Context, miembro: discord.Member):
         if not ctx.guild: return
         await ctx.defer()
@@ -405,11 +399,12 @@ class EconomyCog(commands.Cog, name="Economía"):
         settings = await db.get_cached_economy_settings(ctx.guild.id)
         cooldown_time = settings.get('rob_cooldown', 21600)
         
-        now = discord.utils.utcnow().timestamp()
-        last_use = self._last_uses['rob'].get((ctx.guild.id, ctx.author.id), 0)
+        now_dt = discord.utils.utcnow()
+        last_use_dt = await db.get_cooldown(ctx.guild.id, ctx.author.id, 'rob')
+        last_use = last_use_dt.timestamp() if last_use_dt else 0
         
-        if now - last_use < cooldown_time:
-            retry_after = cooldown_time - (now - last_use)
+        if now_dt.timestamp() - last_use < cooldown_time:
+            retry_after = cooldown_time - (now_dt.timestamp() - last_use)
             return await ctx.send(f"⏳ El último atraco fue demasiado tenso. La policía te busca. Intenta de nuevo en **{int(retry_after/3600)}h {int((retry_after%3600)/60)}m**.", ephemeral=True)
         
         emoji = settings.get('currency_emoji', '🪙')
@@ -430,7 +425,7 @@ class EconomyCog(commands.Cog, name="Economía"):
                 return await ctx.send(f"❌ Pobrecito de {miembro.display_name}, no trae ni 200 {emoji} para el bus. Búscate un objetivo más grande.", ephemeral=True)
 
             # Si pasa las fianza, aplicamos cooldown ANTES de ver si gana o pierde para que no spamee
-            self._last_uses['rob'][(ctx.guild.id, ctx.author.id)] = now
+            await db.set_cooldown(ctx.guild.id, ctx.author.id, 'rob', now_dt)
 
             # Revisar si la víctima tiene un consumible protector tipo "escudo" en el inventario
             shield_item = await db.fetchone("""

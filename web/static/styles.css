@@ -222,6 +222,7 @@ nav .container {
     gap: 12px;
     font-size: 1.7rem;
     font-weight: 850;
+    font-family: 'Quicksand', 'Outfit', sans-serif;
     color: var(--text-main);
     text-decoration: none;
     z-index: 1001;
@@ -248,6 +249,7 @@ nav .container {
     text-decoration: none;
     color: var(--text-main);
     font-weight: 600;
+    font-family: 'Nunito', 'Quicksand', sans-serif;
     font-size: 0.95rem;
     transition: var(--transition);
     display: flex;
@@ -506,10 +508,11 @@ nav .container {
 .logo-dot {
     width: 8px;
     height: 8px;
-    background: var(--a-purple);
-    border-radius: 2px;
-    margin-left: 5px;
-    box-shadow: 0 0 10px var(--a-purple);
+    background: var(--p-pink);
+    border-radius: 50%;
+    margin-left: 2px;
+    display: inline-block;
+    box-shadow: 0 0 10px var(--accent-glow);
     animation: glowPulse 2s infinite;
 }
 
@@ -579,7 +582,7 @@ nav .container {
     letter-spacing: 0.02em;
     margin-bottom: 28px;
     backdrop-filter: blur(4px);
-    box-shadow: 0 4px 20px rgba(212, 163, 115, 0.1);
+    box-shadow: 0 8px 25px var(--accent-glow);
     transition: var(--transition);
 }
 
@@ -1103,7 +1106,7 @@ tr.active-row {
 }
 .cfg-save-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 77, 109, 0.35);
+    box-shadow: 0 8px 25px var(--accent-glow);
 }
 .cfg-save-btn:active {
     transform: translateY(0);
@@ -1137,7 +1140,7 @@ tr.active-row {
 
 .cfg-btn.primary {
     background: linear-gradient(135deg, var(--p-pink), var(--p-pink-deep));
-    box-shadow: 0 10px 20px rgba(255, 143, 163, 0.25);
+    box-shadow: 0 10px 20px var(--accent-glow);
 }
 
 .cfg-btn.primary:hover {

@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=2.9">
+    <link rel="stylesheet" href="/static/styles.css?v=6.0">
     <style>
         .dashboard-layout {
             display: grid;
@@ -372,8 +372,8 @@
     <nav id="navbar" class="scrolled">
         <div class="container">
             <a href="/" class="logo">
-                <img src="/static/assets/mascot.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 10px; object-fit: cover; box-shadow: 0 4px 12px rgba(255,107,158,0.3);">
-                Umapyoi<div class="logo-dot"></div>
+                <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
+                Umapyoi<span style="color: var(--p-pink);">.</span>
             </a>
             
             <div style="display: flex; align-items: center; gap: 20px;">
@@ -581,7 +581,7 @@
                 </div>
                 <div class="status-card">
                     <div style="background: rgba(179,153,212,0.1); padding: 15px; border-radius: 15px;">
-                        <i data-lucide="database" style="color: #b399d4; width: 30px; height: 30px;"></i>
+                        <i data-lucide="database" style="color: var(--p-pink-soft); width: 30px; height: 30px;"></i>
                     </div>
                     <div class="bot-metric" style="text-align: left;">
                         <h4>Memoria RAM</h4>
@@ -693,15 +693,15 @@
                     labels: [],
                     datasets: [{
                         label: 'CPU %',
-                        borderColor: '#ffb7c5',
-                        backgroundColor: 'rgba(255, 183, 197, 0.1)',
+                        borderColor: 'var(--p-pink-soft)',
+                        backgroundColor: 'rgba(212, 163, 115, 0.1)',
                         data: [],
                         fill: true,
                         tension: 0.4
                     }, {
                         label: 'RAM %',
-                        borderColor: '#b399d4',
-                        backgroundColor: 'rgba(179, 153, 212, 0.1)',
+                        borderColor: 'var(--p-pink-soft)',
+                        backgroundColor: 'rgba(212, 163, 115, 0.1)',
                         data: [],
                         fill: true,
                         tension: 0.4

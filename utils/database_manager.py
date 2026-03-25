@@ -1,6 +1,7 @@
 import sqlite3
 import asyncio
 import threading
+import datetime
 from typing import Optional, Any, List, Dict
 
 import os
@@ -180,11 +181,12 @@ def setup_database():
             details TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS dashboard_users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            avatar TEXT,
-            last_login DATETIME DEFAULT CURRENT_TIMESTAMP
+        cursor.execute('''CREATE TABLE IF NOT EXISTS user_cooldowns (
+            guild_id INTEGER,
+            user_id INTEGER,
+            command_name TEXT,
+            last_use TEXT,
+            PRIMARY KEY (guild_id, user_id, command_name)
         )''')
 
         run_migrations(conn)
@@ -279,6 +281,29 @@ async def get_guild_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
         await execute("INSERT OR IGNORE INTO economy_settings (guild_id) VALUES (?)", (guild_id,))
         settings = await fetchone("SELECT * FROM economy_settings WHERE guild_id = ?", (guild_id,))
     return settings
+
+# Alias para compatibilidad con llamadas en economy.py
+async def get_economy_settings(guild_id: int):
+    return await get_guild_economy_settings(guild_id)
+
+async def get_cooldown(guild_id: int, user_id: int, command: str) -> Optional[datetime.datetime]:
+    res = await fetchone("SELECT last_use FROM user_cooldowns WHERE guild_id = ? AND user_id = ? AND command_name = ?", (guild_id, user_id, command))
+    if res and res['last_use']:
+        try:
+            return datetime.datetime.fromisoformat(res['last_use'])
+        except ValueError:
+            return None
+    return None
+
+async def set_cooldown(guild_id: int, user_id: int, command: str, timestamp: datetime.datetime):
+    await execute("INSERT OR REPLACE INTO user_cooldowns (guild_id, user_id, command_name, last_use) VALUES (?, ?, ?, ?)", 
+                  (guild_id, user_id, command, timestamp.isoformat()))
+
+async def get_last_daily(guild_id: int, user_id: int):
+    return await get_cooldown(guild_id, user_id, 'daily')
+
+async def set_last_daily(guild_id: int, user_id: int, timestamp: datetime.datetime):
+    await set_cooldown(guild_id, user_id, 'daily', timestamp)
 
 async def get_balance(guild_id: int, user_id: int) -> tuple[int, int]:
     res = await fetchone("SELECT wallet, bank FROM balances WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))

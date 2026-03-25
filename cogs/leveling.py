@@ -12,7 +12,6 @@ class LevelingCog(commands.Cog, name="Niveles"):
     """Comandos para ver tu nivel y competir en el ranking de XP."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.xp_cooldowns = {} # user_id -> datetime
 
     # --- Las funciones de base de datos se han eliminado de aquí ---
 
@@ -43,14 +42,14 @@ class LevelingCog(commands.Cog, name="Niveles"):
         import datetime
         guild_id, user_id = message.guild.id, message.author.id
         
-        # --- NUEVO: Comprobación de Cooldown (Anti-Spam de XP) ---
-        now = datetime.datetime.now(datetime.timezone.utc)
-        if user_id in self.xp_cooldowns:
-            time_since_last_xp = (now - self.xp_cooldowns[user_id]).total_seconds()
+        # --- NUEVO: Comprobación de Cooldown Persistente (Anti-Spam de XP) ---
+        last_use = await db.get_cooldown(guild_id, user_id, 'xp_gain')
+        if last_use:
+            time_since_last_xp = (now - last_use).total_seconds()
             if time_since_last_xp < 60:
                 return # Ignora si pasaron menos de 60 segundos
                 
-        self.xp_cooldowns[user_id] = now
+        await db.set_cooldown(guild_id, user_id, 'xp_gain', now)
         # --- FIN DE Comprobación ---
 
         level, xp = await db.get_user_level(guild_id, user_id)
