@@ -1,20 +1,20 @@
 :root {
-    /* Color Palette - Light Theme (Umapyoi Original) */
-    --p-pink: #ff8fa3; /* More vibrant coral-pink */
-    --p-pink-soft: #fff0f3;
-    --p-pink-deep: #ff4d6d;
-    --s-cream: #fdfaf1;
-    --a-purple: #7209b7; /* Deeper violet */
-    --a-green: #2ecc71;
+    /* Color Palette - Light Theme (Mocca/Caramel) */
+    --p-pink: #d4a373; /* Primary: Caramel */
+    --p-pink-soft: #faedcd; /* Light Beige */
+    --p-pink-deep: #bc6c25; /* Mocha */
+    --s-cream: #fefae0;
+    --a-purple: #dda15e; /* Gold/Bronze Accent */
+    --a-green: #606c38;
     
     /* Functional Colors - Light */
     --bg-main: #ffffff;
-    --bg-alt: #fdfafb; /* Tinted light alt */
+    --bg-alt: #fdfafb; 
     --text-main: #1a1a1a;
     --text-muted: #5f5f5f;
     --nav-bg: rgba(255, 255, 255, 0.9);
-    --border-color: rgba(255, 143, 163, 0.15);
-    --accent-glow: rgba(255, 143, 163, 0.3);
+    --border-color: rgba(212, 163, 115, 0.15);
+    --accent-glow: rgba(212, 163, 115, 0.3);
     
     /* Design Tokens */
     --header-h: 85px;
@@ -29,14 +29,14 @@
 }
 
 [data-theme="dark"] {
-    --bg-main: #0b0914; /* Deeper dark */
-    --bg-alt: #120e24;
-    --text-main: #f8f9fa;
-    --text-muted: #8e9aaf;
-    --nav-bg: rgba(11, 9, 20, 0.95);
-    --border-color: rgba(255, 143, 163, 0.2);
-    --p-pink-soft: rgba(255, 143, 163, 0.1);
-    --accent-glow: rgba(255, 143, 163, 0.25);
+    --bg-main: #151312; /* Deep Espresso */
+    --bg-alt: #1e1b1a; /* Soft Espresso */
+    --text-main: #f8f8f8;
+    --text-muted: #a69c97;
+    --nav-bg: rgba(21, 19, 18, 0.95);
+    --border-color: rgba(212, 163, 115, 0.2);
+    --p-pink-soft: rgba(212, 163, 115, 0.1);
+    --accent-glow: rgba(212, 163, 115, 0.25);
     --shadow-md: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
@@ -51,7 +51,7 @@ html {
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Nunito', 'Quicksand', 'Inter', sans-serif;
     background-color: var(--bg-main);
     color: var(--text-main);
     line-height: 1.6;
@@ -73,8 +73,9 @@ html.theme-ready body {
 }
 
 h1, h2, h3, h4 {
-    font-family: 'Outfit', sans-serif;
-    letter-spacing: -0.02em;
+    font-family: 'Quicksand', 'Outfit', sans-serif;
+    letter-spacing: -0.01em;
+    font-weight: 700;
 }
 
 /* --- Global Animations --- */
@@ -523,6 +524,21 @@ nav .container {
     overflow: hidden;
 }
 
+.hero-bg-particles {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: radial-gradient(var(--border-color) 2px, transparent 2px);
+    background-size: 40px 40px;
+    z-index: 0;
+    opacity: 0.4;
+    animation: panBackground 30s linear infinite;
+}
+
+@keyframes panBackground {
+    from { background-position: 0 0; }
+    to { background-position: 100% 100%; }
+}
+
 .hero::before {
     content: 'UMAPYOYI';
     position: absolute;
@@ -543,9 +559,36 @@ nav .container {
     gap: 60px;
 }
 
+.hero-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--p-pink-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    color: var(--p-pink);
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.hero-badge i {
+    width: 16px;
+    height: 16px;
+    animation: glowPulse 2s infinite;
+}
+
 .hero-text h1 {
-    font-size: 3.5rem;
-    line-height: 1.1;
+    font-size: 3.8rem;
+    line-height: 1.15;
     margin-bottom: 20px;
     animation: fadeIn 1s cubic-bezier(0.2, 0.8, 0.2, 1);
 }

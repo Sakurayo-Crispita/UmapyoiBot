@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
@@ -52,25 +52,25 @@
     <div class="success-overlay">
         <div style="width: 80px; height: 80px; background: #2ed573; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(46, 213, 115, 0.3);"><i data-lucide="check" style="width: 48px; height: 48px; color: white;"></i></div>
         <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Outfit';">Reporte Recibido</h1>
-        <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tu reporte. Nuestro equipo lo revisarÃ¡ detalladamente para seguir mejorando UmapyoiBot.</p>
+        <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tu reporte. Nuestro equipo lo revisará detalladamente para seguir mejorando UmapyoiBot.</p>
         <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
     </div>
     {% endif %}
 
     <div class="feedback-container">
         <a href="javascript:history.back()" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
-            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al VÃ­nculo Anterior
+            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Vínculo Anterior
         </a>
         <div class="feedback-header">
             <h1 style="font-size: 3rem; font-family: 'Outfit', sans-serif; margin-bottom: 10px;">Enviar un reporte</h1>
-            <p style="color: #6a6a8e; font-size: 1.1rem;">Usa este formulario para reportar errores tÃ©cnicos, fallos en comandos o problemas de seguridad.</p>
+            <p style="color: #6a6a8e; font-size: 1.1rem;">Usa este formulario para reportar errores técnicos, fallos en comandos o problemas de seguridad.</p>
         </div>
 
         <div class="feedback-grid">
             <form method="POST" class="glass-card" enctype="multipart/form-data">
                 <div class="form-group">
                     <label class="form-label">Tipo de Reporte</label>
-                    <span class="form-hint">Elige la categorÃ­a que mejor se ajuste a tu situaciÃ³n.</span>
+                    <span class="form-hint">Elige la categoría que mejor se ajuste a tu situación.</span>
                     <select name="type" class="form-select" required>
                         <option value="" disabled selected>Selecciona el tipo de reporte</option>
                         <option value="Error/Bugs">Error / Bugs</option>
@@ -82,35 +82,35 @@
 
                 <div class="form-group">
                     <label class="form-label">Asunto</label>
-                    <span class="form-hint">Describe brevemente el problema (mÃ¡ximo 100 caracteres).</span>
+                    <span class="form-hint">Describe brevemente el problema (máximo 100 caracteres).</span>
                     <input type="text" name="subject" class="form-input" placeholder="Describe brevemente el problema..." required maxlength="100">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">DescripciÃ³n</label>
-                    <span class="form-hint">Explica detalladamente el problema. Incluye toda la informaciÃ³n relevante.</span>
+                    <label class="form-label">Descripción</label>
+                    <span class="form-hint">Explica detalladamente el problema. Incluye toda la información relevante.</span>
                     <textarea name="description" class="form-textarea" placeholder="Explica detalladamente el problema e incluye pasos para reproducirlo..." required></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Prioridad</label>
-                    <span class="form-hint">Indica quÃ© tan urgente es este reporte.</span>
+                    <span class="form-hint">Indica qué tan urgente es este reporte.</span>
                     <div class="priority-options">
                         <input type="hidden" name="priority" id="priority-input" value="Media">
                         <button type="button" class="priority-btn" onclick="setPriority(this, 'Baja')"><i data-lucide="circle"></i> Baja</button>
                         <button type="button" class="priority-btn active" onclick="setPriority(this, 'Media')"><i data-lucide="alert-circle"></i> Media</button>
                         <button type="button" class="priority-btn" onclick="setPriority(this, 'Alta')"><i data-lucide="alert-triangle"></i> Alta</button>
-                        <button type="button" class="priority-btn" onclick="setPriority(this, 'CrÃ­tica')"><i data-lucide="zap"></i> CrÃ­tica</button>
+                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Crítica')"><i data-lucide="zap"></i> Crítica</button>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Evidencias (Opcional)</label>
-                    <span class="form-hint">Sube imÃ¡genes o videos que ayuden a entender el reporte (URL o archivo).</span>
+                    <span class="form-hint">Sube imágenes o videos que ayuden a entender el reporte (URL o archivo).</span>
                     <div class="evidence-upload" onclick="document.getElementById('file-input').click()">
                         <i data-lucide="upload-cloud"></i>
                         <p style="margin:0; font-weight:600;">Haz clic para seleccionar o arrastra archivos</p>
-                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">MÃ¡ximo 8MB por archivo. Formatos sugeridos: PNG, JPG, MP4.</p>
+                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Máximo 8MB por archivo. Formatos sugeridos: PNG, JPG, MP4.</p>
                         <input type="file" id="file-input" name="evidence_file" style="display:none;" multiple>
                     </div>
                     <div style="margin-top:15px;">
@@ -144,15 +144,15 @@
 
                     <div style="margin-bottom:20px;">
                         <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Asunto</label>
-                        <p style="font-weight:600; margin:0; font-size:1rem;">Error de duplicaciÃ³n en apuestas</p>
+                        <p style="font-weight:600; margin:0; font-size:1rem;">Error de duplicación en apuestas</p>
                     </div>
 
                     <div style="margin-bottom:20px;">
-                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">DescripciÃ³n</label>
+                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Descripción</label>
                         <p style="font-size:0.85rem; color:#a0a0c0; line-height:1.6; margin:0;">
-                            Al usar el comando /bet y perder la conexiÃ³n justo antes de que termine, el bot no resta las monedas pero sÃ­ da la recompensa si el resultado es ganador.
+                            Al usar el comando /bet y perder la conexión justo antes de que termine, el bot no resta las monedas pero sí da la recompensa si el resultado es ganador.
                             <br><br>
-                            Pasos que observÃ©:<br>
+                            Pasos que observé:<br>
                             1. Iniciar apuesta.<br>
                             2. Desconectar internet.<br>
                             3. Reconectar.
@@ -161,13 +161,13 @@
 
                     <div style="background: rgba(255, 165, 2, 0.05); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #ffa502; display: flex; gap: 10px; align-items: flex-start;">
                         <i data-lucide="alert-circle" style="width:14px; flex-shrink:0; margin-top:2px;"></i>
-                        <span>Importante: Incluye siempre capturas o videos para agilizar la revisiÃ³n.</span>
+                        <span>Importante: Incluye siempre capturas o videos para agilizar la revisión.</span>
                     </div>
                 </div>
 
                 <div class="glass-card" style="background:rgba(255,255,255,0.01); border-style: dashed;">
                     <p style="color:#6a6a8e; font-size:0.85rem; text-align:center; margin:0;">
-                        Tu reporte serÃ¡ enviado directamente al equipo de staff. Gracias por tu colaboraciÃ³n.
+                        Tu reporte será enviado directamente al equipo de staff. Gracias por tu colaboración.
                     </p>
                 </div>
             </div>
@@ -195,4 +195,3 @@
     </script>
 </body>
 </html>
-
