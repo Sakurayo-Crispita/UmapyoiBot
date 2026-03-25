@@ -105,7 +105,7 @@
             background-image: var(--banner-url);
             background-size: cover;
             background-position: center;
-            filter: blur(10px) brightness(0.5);
+            filter: blur(10px) brightness(0.8);
             transform: scale(1.2);
         }
         .card-body {
@@ -476,12 +476,12 @@
             <div class="server-grid">
                 {% if servers %}
                     {% for server in servers %}
-                    <div class="server-card" style="--banner-url: url('{% if server.icon %}https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.png{% else %}https://i.imgur.com/8fK2q3E.png{% endif %}');">
+                    <div class="server-card" style="--banner-url: url('{% if server.icon %}https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}{% else %}https://i.imgur.com/8fK2q3E.png{% endif %}');">
                         <div class="card-banner"></div>
                         <div class="card-body">
                             <div class="server-icon-overlay">
                                 {% if server.icon %}
-                                    <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.png" alt="Icon">
+                                    <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}" alt="Icon">
                                 {% else %}
                                     <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:var(--p-pink-soft); color:var(--p-pink); font-weight:800; font-size:1.5rem;">{{ server.name[0] }}</div>
                                 {% endif %}
