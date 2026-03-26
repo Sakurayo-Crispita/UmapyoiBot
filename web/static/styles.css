@@ -530,10 +530,10 @@ nav .container {
 .hero-bg-particles {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-image: radial-gradient(var(--border-color) 2px, transparent 2px);
-    background-size: 40px 40px;
+    background-image: radial-gradient(rgba(212, 163, 115, 0.6) 2.2px, transparent 2.2px);
+    background-size: 48px 48px;
     z-index: 0;
-    opacity: 0.4;
+    opacity: 1;
     animation: panBackground 30s linear infinite;
 }
 
@@ -675,16 +675,24 @@ nav .container {
     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     white-space: nowrap;
     border: 1px solid rgba(212, 163, 115, 0.2);
-    animation: tag-appear 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, orbit-float 12s ease-in-out infinite;
-    animation-delay: var(--delay, 0s), 0.8s;
+    animation: spiral-entrance 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards, orbit-float 8s ease-in-out infinite;
+    animation-delay: var(--delay, 0s), 1.5s;
     opacity: 0;
     pointer-events: auto;
     transition: var(--transition);
 }
 
-@keyframes tag-appear {
-    from { opacity: 0; transform: scale(0.5) translate(0, 40px); }
-    to { opacity: 1; transform: scale(1) translate(0, 0); }
+@keyframes spiral-entrance {
+    from { 
+        opacity: 0; 
+        transform: translate(var(--start-x), var(--start-y)) scale(0) rotate(-540deg); 
+        filter: blur(8px);
+    }
+    to { 
+        opacity: 1; 
+        transform: translate(0, 0) scale(1) rotate(0deg); 
+        filter: blur(0);
+    }
 }
 
 .floating-tag:hover {
@@ -701,18 +709,18 @@ nav .container {
     filter: drop-shadow(0 0 5px var(--p-pink-soft));
 }
 
-/* Orbits Positioning & Timings - Closer to the center circle */
-.tag-1 { top: 18%; left: 2%; --delay: 0.1s; }
-.tag-2 { top: 68%; left: -5%; --delay: 0.3s; }
-.tag-3 { top: 12%; right: 5%; --delay: 0.2s; }
-.tag-4 { top: 72%; right: 0%; --delay: 0.5s; }
-.tag-5 { top: 42%; right: -12%; --delay: 0.4s; }
+/* Orbits Positioning - Closer to images but avoiding coverage */
+.tag-1 { top: 6%;   left: -8%;   --delay: 0.1s; --start-x: 58%; --start-y: 48%; }
+.tag-2 { top: 76%;  left: -12%;  --delay: 0.3s; --start-x: 62%; --start-y: -26%; }
+.tag-3 { top: 4%;   right: -2%;  --delay: 0.2s; --start-x: -52%; --start-y: 50%; }
+.tag-4 { top: 82%;  right: -8%;  --delay: 0.5s; --start-x: -58%; --start-y: -32%; }
+.tag-5 { top: 45%;  right: -35%; --delay: 0.4s; --start-x: -85%; --start-y: 5%; }
 
 @keyframes orbit-float {
     0%, 100% { transform: translate(0, 0); }
-    25% { transform: translate(8px, -8px); }
-    50% { transform: translate(-5px, 10px); }
-    75% { transform: translate(-10px, -3px); }
+    25% { transform: translate(4px, -4px); }
+    50% { transform: translate(-3px, 5px); }
+    75% { transform: translate(-5px, -2px); }
 }
 
 /* Mobile Adjustments for Floating Tags */
