@@ -955,7 +955,7 @@ footer {
     background: var(--bg-alt);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    color: white;
+    color: var(--text-main);
     transition: var(--transition);
 }
 .search-input:focus {
@@ -1586,13 +1586,15 @@ input:checked + .slider:before { transform: translateX(26px); }
 .social-link {
     width: 65px;
     height: 65px;
-    background: #5865F2; /* Discord Color */
+    background: var(--bg-alt);
+    border: 1px solid var(--border-color);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    box-shadow: 0 10px 30px rgba(88, 101, 242, 0.4);
+    color: var(--p-pink);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
     transition: var(--transition);
     text-decoration: none;
     animation: float 5s ease-in-out infinite;
@@ -1600,7 +1602,10 @@ input:checked + .slider:before { transform: translateX(26px); }
 
 .social-link:hover {
     transform: scale(1.15) rotate(10deg);
-    box-shadow: 0 15px 45px rgba(88, 101, 242, 0.6);
+    background: var(--p-pink-soft);
+    color: var(--p-pink);
+    border-color: var(--p-pink);
+    box-shadow: 0 15px 45px var(--accent-glow);
 }
 
 .social-link i { width: 32px; height: 32px; }

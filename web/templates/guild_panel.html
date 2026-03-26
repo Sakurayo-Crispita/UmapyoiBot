@@ -54,13 +54,23 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: var(--banner-url);
+            background-image: var(--banner-url, none);
             background-size: cover;
             background-position: center;
-            filter: blur(20px) brightness(1.2);
+            filter: blur(4px) brightness(1.2);
             opacity: 0.85;
             z-index: 0;
             transform: scale(1.1);
+        }
+
+        .no-banner-bg .guild-banner-bg {
+            background: #000 !important;
+            filter: none !important;
+            opacity: 1 !important;
+        }
+
+        .no-banner-bg {
+            background: #000 !important;
         }
 
         .server-icon {
@@ -163,60 +173,146 @@
             }
         }
 
-        @media (max-width: 768px) {
-            .guild-header {
-                padding: 100px 0 40px 0;
-            }
+        /* New Module Grid & Card System */
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-            .guild-header-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 20px;
-            }
+        .module-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
 
-            .guild-config-grid {
-                display: block;
-                padding-left: 60px;
-            }
+        .module-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--p-pink-soft);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
 
-            .db-sidebar {
-                position: fixed;
-                top: var(--header-h-scrolled);
-                left: 0;
-                height: calc(100vh - var(--header-h-scrolled));
-                width: 60px;
-                z-index: 1000;
-                transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                background: var(--bg-alt);
-                border-right: 1px solid var(--border-color);
-                border-top: none;
-                padding: 15px 5px;
-                cursor: pointer;
-                overflow-x: hidden;
-                overflow-y: auto;
-                border-radius: 0;
-            }
+        .module-card.active {
+            border-color: var(--p-pink);
+        }
 
-            .guild-config-grid.expanded .db-sidebar {
-                width: 280px;
-                padding: 30px;
-                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
-            }
+        .module-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-            .guild-config-grid:not(.expanded) .db-sidebar .nav-link span,
-            .guild-config-grid:not(.expanded) .db-sidebar .sidebar-heading {
-                display: none;
-            }
+        .module-icon-box {
+            width: 45px;
+            height: 45px;
+            background: var(--p-pink-soft);
+            color: var(--p-pink);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
 
-            .guild-config-grid:not(.expanded) .db-sidebar .nav-link {
-                justify-content: center;
-                padding: 12px 0;
-            }
+        .module-card-body h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.15rem;
+            color: var(--text-main);
+        }
 
-            section {
-                padding: 20px 0;
-                width: 100%;
-            }
+        .module-card-body p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .module-card-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+
+        /* Quick Start Banner */
+        .quick-start-banner {
+            background: linear-gradient(135deg, var(--p-pink-soft) 0%, rgba(0,0,0,0.3) 100%);
+            border: 1px solid var(--p-pink-soft);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-start-content h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.8rem;
+        }
+
+        .quick-start-content p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .quick-actions-list {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 100px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .quick-action-btn:hover {
+            background: white;
+            color: var(--p-pink);
+            transform: scale(1.05);
+        }
+
+        .category-header {
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .category-header i {
+            color: var(--p-pink);
         }
     </style>
 </head>
@@ -265,7 +361,8 @@
         </div>
     </nav>
 
-    <header class="guild-header" style="--banner-url: url('https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon and server.icon.startswith('a_') else 'png' if server.icon else 'png' }}');">
+    <header class="guild-header {% if not server.icon %}no-banner-bg{% endif %}" 
+            {% if server.icon %}style="--banner-url: url('https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}');"{% endif %}>
         <div class="guild-banner-bg"></div>
         <div class="container" style="position: relative; z-index: 1;">
             <div class="guild-header-content">

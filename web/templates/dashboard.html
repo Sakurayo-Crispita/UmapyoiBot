@@ -80,7 +80,7 @@
             border-radius: var(--radius-lg);
             overflow: hidden;
             transition: var(--transition);
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(1px);
             position: relative;
             display: flex;
             flex-direction: column;
@@ -105,8 +105,15 @@
             background-image: var(--banner-url);
             background-size: cover;
             background-position: center;
-            filter: blur(5px) brightness(0.8);
+            filter: blur(2px) brightness(0.8);
             transform: scale(1.2);
+        }
+        .no-icon-banner .card-banner {
+            filter: none !important;
+            background: #000 !important;
+        }
+        .no-icon-banner {
+            background: #000 !important;
         }
         .card-body {
             padding: 20px;
@@ -179,7 +186,7 @@
             background: var(--bg-alt);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
-            color: white;
+            color: var(--text-main);
             transition: var(--transition);
         }
         .search-input:focus {
@@ -476,7 +483,8 @@
             <div class="server-grid">
                 {% if servers %}
                     {% for server in servers %}
-                    <div class="server-card" style="--banner-url: url('{% if server.icon %}https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}{% else %}https://i.imgur.com/8fK2q3E.png{% endif %}');">
+                    <div class="server-card {% if not server.icon %}no-icon-banner{% endif %}" 
+                         {% if server.icon %}style="--banner-url: url('https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}');"{% endif %}>
                         <div class="card-banner"></div>
                         <div class="card-body">
                             <div class="server-icon-overlay">
