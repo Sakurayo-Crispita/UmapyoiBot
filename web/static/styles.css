@@ -725,7 +725,7 @@ nav .container {
 
 /* Mobile Adjustments for Floating Tags */
 @media (max-width: 768px) {
-    .floating-tags { display: none; } /* Too crowded on mobile hero */
+    .floating-tags { display: flex; flex-wrap: wrap; justify-content: center; position: relative; gap: 12px; margin-top: 40px; top: auto; left: auto; right: auto; bottom: auto; transform: none; width: 100%; max-width: 500px; z-index: 10; pointer-events: auto; }
 }
 .feature-card {
     padding: 45px;
@@ -772,34 +772,38 @@ nav .container {
         justify-content: center;
         gap: 20px;
         padding: 40px;
-        transition: var(--transition);
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: -10px 0 30px rgba(0,0,0,0.1);
         z-index: 1000;
         backdrop-filter: blur(20px);
+        visibility: hidden;
+        opacity: 0;
     }
 
     .nav-links.active {
         right: 0;
         visibility: visible;
         opacity: 1;
+        transform: translateX(0);
     }
 
     .nav-item { width: 100%; }
     
     .dropdown {
         position: static;
-        transform: none;
+        transform: none !important;
         width: 100%;
-        opacity: 1;
-        visibility: visible;
+        opacity: 1 !important;
+        visibility: visible !important;
         box-shadow: none;
         border: none;
         background: transparent;
         padding: 0;
         max-height: 0;
         overflow: hidden;
-        margin-top: 10px;
+        margin-top: 5px;
         pointer-events: all;
+        transition: max-height 0.3s ease-out;
     }
 
     .nav-item:hover .dropdown {
@@ -807,12 +811,36 @@ nav .container {
         transform: none;
     }
 
-    .hero-grid { grid-template-columns: 1fr; text-align: center; gap: 30px; }
+    .hero {
+        padding-top: calc(var(--header-h) + 20px);
+        text-align: center;
+        align-items: center;
+    }
+
+    .hero-grid { 
+        grid-template-columns: 1fr; 
+        justify-items: center;
+        text-align: center; 
+        gap: 40px; 
+    }
+    
+    .hero-text {
+        align-items: center;
+        text-align: center;
+    }
+
     .hero-text h1 { font-size: 2.8rem; }
     .hero-text p { margin: 0 auto 30px; font-size: 1.1rem; }
-    .hero-actions { justify-content: center; flex-direction: column; gap: 15px; }
-    .hero-img { order: -1; margin-top: 20px; }
-    .hero-img img { max-width: 65%; } /* Smaller on mobile to avoid overlap */
+    .hero-actions { justify-content: center; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin: 0 auto; }
+    .hero-actions .btn { width: 100%; }
+    
+    .hero-img { 
+        order: -1; 
+        margin-top: 20px; 
+        flex-direction: column; 
+        align-items: center;
+    }
+    .hero-img img { max-width: 60%; margin: 0 auto; }
 }
 
 /* --- Module Pages --- */
