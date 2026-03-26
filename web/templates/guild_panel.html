@@ -54,10 +54,11 @@
             left: 0;
             width: 100%;
             height: 100%;
+            background-color: #2a2b2f;
             background-image: var(--banner-url, none);
             background-size: cover;
             background-position: center;
-            filter: blur(4px) brightness(1.2);
+            filter: blur(4px) brightness(0.7);
             opacity: 0.85;
             z-index: 0;
             transform: scale(1.1);
@@ -565,7 +566,8 @@
                         }
                     }, 4000);
                 </script>
-                {% endif                 {% if section == 'general' %}
+                {% endif %}
+                {% if section == 'general' %}
                 <!-- Quick Start Onboarding -->
                 <div class="quick-start-banner" data-reveal>
                     <div class="quick-start-content">
