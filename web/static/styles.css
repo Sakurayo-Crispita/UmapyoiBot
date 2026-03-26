@@ -723,9 +723,35 @@ nav .container {
     75% { transform: translate(-5px, -2px); }
 }
 
-/* Mobile Adjustments for Floating Tags */
+/* Mobile adjustments for Floating Tags - IMPROVED */
 @media (max-width: 768px) {
-    .floating-tags { display: flex; flex-wrap: wrap; justify-content: center; position: relative; gap: 12px; margin-top: 40px; top: auto; left: auto; right: auto; bottom: auto; transform: none; width: 100%; max-width: 500px; z-index: 10; pointer-events: auto; }
+    .floating-tags { 
+        display: flex; 
+        flex-wrap: wrap; 
+        justify-content: center; 
+        position: relative; 
+        gap: 12px; 
+        margin-top: 40px; 
+        top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+        transform: none !important;
+        width: 100% !important;
+        max-width: 500px;
+        z-index: 10;
+        pointer-events: auto;
+    }
+
+    .floating-tag {
+        position: relative !important;
+        animation: fadeIn 0.8s ease forwards;
+        opacity: 1 !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        margin: 5px !important;
+        box-shadow: var(--shadow-md);
+    }
 }
 .feature-card {
     padding: 45px;
