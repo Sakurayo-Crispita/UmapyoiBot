@@ -18,7 +18,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <!-- Custom Style with Cache Busting -->
-    <link rel="stylesheet" href="/static/styles.css?v=9.0">
+    <link rel="stylesheet" href="/static/styles.css?v=9.1">
 </head>
 <body>
 
@@ -114,10 +114,30 @@
         </div>
     </nav>
 
+    <!-- Social Sidebar -->
+    <div class="social-sidebar">
+        <a href="https://discord.gg/fwNeZsGkSj" target="_blank" class="social-link discord-float" title="Únete a nuestro Discord">
+            <i data-lucide="message-circle"></i>
+        </a>
+    </div>
+
     <!-- Hero Section -->
     <header class="hero" id="inicio">
-        <!-- Background animated elements -->
+        <!-- Background elements -->
         <div class="hero-bg-particles"></div>
+        <div class="hero-blobs">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
+        </div>
+        
+        <div class="floating-bits">
+            <div class="bit bit-1"><i data-lucide="music"></i></div>
+            <div class="bit bit-2"><i data-lucide="star"></i></div>
+            <div class="bit bit-3"><i data-lucide="sparkles"></i></div>
+            <div class="bit bit-4"><i data-lucide="heart"></i></div>
+        </div>
+
         <div class="container">
             <div class="hero-grid">
                 <div class="hero-text">
@@ -143,6 +163,14 @@
                 </div>
             </div>
         </div>
+
+        <!-- Scroll Indicator -->
+        <a href="#funciones" class="scroll-indicator">
+            <div class="mouse">
+                <div class="wheel"></div>
+            </div>
+            <span>Deslizar</span>
+        </a>
     </header>
 
     <!-- Features Section -->
@@ -184,6 +212,30 @@
 
     <footer>
         <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/" class="logo" style="margin-bottom: 20px;">
+                        <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%;"> Umapyoi<span>.</span>
+                    </a>
+                    <p>La compañera más dulce y dinámica para tu servidor de Discord. Música, economía y diversión asegurada.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Navegación</h4>
+                    <ul>
+                        <li><a href="/">Inicio</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/docs">Documentación</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Soporte</h4>
+                    <ul>
+                        <li><a href="https://discord.gg/fwNeZsGkSj" target="_blank">Discord Oficial</a></li>
+                        <li><a href="/report">Reportar Error</a></li>
+                        <li><a href="/suggest">Sugerencias</a></li>
+                    </ul>
+                </div>
+            </div>
             <div class="footer-bottom">
                 &copy; 2026 Umapyoi Bot. Todos los derechos reservados.
             </div>

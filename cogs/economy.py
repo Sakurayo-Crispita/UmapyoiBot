@@ -251,7 +251,7 @@ class EconomyCog(commands.Cog, name="Economía"):
             
             eco_conf = await db.get_economy_settings(ctx.guild.id)
             d_min = eco_conf.get('daily_min', 900)
-            d_max = eco_conf.get('daily_max', 2000)
+            d_max = eco_conf.get('daily_max', 2500)
             
             reward = random.randint(d_min, d_max)
             await db.update_balance(ctx.guild.id, ctx.author.id, wallet_change=reward)
