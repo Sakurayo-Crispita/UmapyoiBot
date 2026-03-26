@@ -42,7 +42,7 @@
 
         .guild-header {
             background: var(--bg-main);
-            padding: 120px 0 60px 0;
+            padding: 100px 0 40px 0;
             border-bottom: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
@@ -314,6 +314,62 @@
         .category-header i {
             color: var(--p-pink);
         }
+
+        @media (max-width: 768px) {
+            .guild-header {
+                padding: 80px 0 30px 0;
+            }
+
+            .guild-header-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+
+            .guild-config-grid {
+                display: block;
+                padding-left: 60px;
+            }
+
+            .db-sidebar {
+                position: fixed;
+                top: var(--header-h-scrolled);
+                left: 0;
+                height: calc(100vh - var(--header-h-scrolled));
+                width: 60px;
+                z-index: 1000;
+                transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                background: var(--bg-alt);
+                border-right: 1px solid var(--border-color);
+                border-top: none;
+                padding: 15px 5px;
+                cursor: pointer;
+                overflow-x: hidden;
+                overflow-y: auto;
+                border-radius: 0;
+            }
+
+            .guild-config-grid.expanded .db-sidebar {
+                width: 280px;
+                padding: 30px;
+                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .guild-config-grid:not(.expanded) .db-sidebar .nav-link span,
+            .guild-config-grid:not(.expanded) .db-sidebar .sidebar-heading {
+                display: none;
+            }
+
+            .guild-config-grid:not(.expanded) .db-sidebar .nav-link {
+                justify-content: center;
+                padding: 12px 0;
+            }
+
+            section {
+                padding: 20px 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -509,23 +565,41 @@
                         }
                     }, 4000);
                 </script>
-                {% endif %}
+                {% endif                 {% if section == 'general' %}
+                <!-- Quick Start Onboarding -->
+                <div class="quick-start-banner" data-reveal>
+                    <div class="quick-start-content">
+                        <h2 style="color: white; font-family: 'Quicksand', sans-serif;"><i data-lucide="sparkles"></i>
+                            ¡Bienvenido, {{ user.username }}!</h2>
+                        <p>Configura rápidamente los aspectos clave para empezar con Umapyoi en <b>{{ server.name }}</b>.</p>
+                    </div>
+                    <div class="quick-actions-list">
+                        <a href="/dashboard/server/{{ server.id }}/config" class="quick-action-btn">
+                            <i data-lucide="door-open"></i> Configurar Bienvenida
+                        </a>
+                        <a href="/dashboard/server/{{ server.id }}/moderation" class="quick-action-btn">
+                            <i data-lucide="shield-check"></i> Activar AutoMod
+                        </a>
+                        <a href="/dashboard/server/{{ server.id }}/levels" class="quick-action-btn">
+                            <i data-lucide="trending-up"></i> Ver Niveles
+                        </a>
+                    </div>
+                </div>
 
-                {% if section == 'general' %}
                 <form method="POST">
+                    <!-- Basic Settings -->
                     <div class="cfg-section">
-                        <div class="cfg-section-title"><i data-lucide="settings"></i> {{ t('dashboard.general.title') }}
-                        </div>
+                        <div class="cfg-section-title"><i data-lucide="settings"></i> Ajustes Generales</div>
                         <div class="cfg-section-body">
                             <div class="cfg-row">
                                 <div class="cfg-field">
-                                    <label class="cfg-label">{{ t('dashboard.general.prefix_label') }}</label>
+                                    <label class="cfg-label">Prefijo del Bot</label>
                                     <input type="text" name="prefix" value="{{ settings.prefix or '!' }}"
                                         class="cfg-input" placeholder="!" maxlength="5">
-                                    <span class="cfg-hint">{{ t('dashboard.general.prefix_hint') }}</span>
+                                    <span class="cfg-hint">Usado para comandos de texto (ej: !help)</span>
                                 </div>
                                 <div class="cfg-field">
-                                    <label class="cfg-label">{{ t('dashboard.general.language_label') }}</label>
+                                    <label class="cfg-label">Idioma</label>
                                     <select name="language" class="cfg-select">
                                         <option value="es" {% if settings.language=='es' %}selected{% endif %}>🇪🇸
                                             Español</option>
@@ -538,106 +612,191 @@
                             </div>
                         </div>
                     </div>
-                    <div class="cfg-section">
-                        <div class="cfg-section-title"><i data-lucide="toggle-right"></i> {{
-                            t('dashboard.general.modules_title') }}</div>
-                        <div class="cfg-section-body">
-                            <div class="grid-2">
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="shield"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.mod_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.mod_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="mod_enabled" {% if
-                                            settings.mod_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="coins"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.eco_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.eco_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="eco_enabled" {% if
-                                            settings.eco_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="dice-5"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.gamble_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.gamble_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="gamble_enabled" {% if
-                                            settings.gamble_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="ticket"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.tickets_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.tickets_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="tickets_enabled" {% if
-                                            settings.tickets_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="music"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.music_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.music_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="music_enabled" {% if
-                                            settings.music_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="mic"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.tts_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.tts_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="tts_enabled" {% if
-                                            settings.tts_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="trending-up"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.leveling_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.leveling_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="leveling" {% if
-                                            settings.leveling_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
-                                <div class="cfg-toggle">
-                                    <div class="cfg-toggle-info">
-                                        <h4><i data-lucide="mouse-pointer-click"
-                                                style="width: 18px; color: var(--p-pink); margin-right: 8px; vertical-align: middle;"></i>
-                                            {{ t('dashboard.general.rr_enabled') }}</h4>
-                                        <p>{{ t('dashboard.general.rr_desc') }}</p>
-                                    </div>
-                                    <label class="switch"><input type="checkbox" name="reaction_roles_enabled" {% if
-                                            settings.reaction_roles_enabled %}checked{% endif %}><span
-                                            class="slider"></span></label>
-                                </div>
+
+                    <!-- Module Grid Categorized -->
+                    <div class="category-header"><i data-lucide="layout-grid"></i> Administración</div>
+                    <div class="module-grid">
+                        <!-- Moderation -->
+                        <div class="module-card {% if settings.mod_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="shield"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="mod_enabled" {% if settings.mod_enabled %}checked{%
+                                        endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Moderación</h3>
+                                <p>Logs, Automod y comandos de sanción para proteger tu chat.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/moderation" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+
+                        <!-- Tickets -->
+                        <div class="module-card {% if settings.tickets_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="ticket"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="tickets_enabled" {% if settings.tickets_enabled
+                                        %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Tickets</h3>
+                                <p>Sistema de soporte por hilos o canales para tus usuarios.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/tickets" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+
+                        <!-- Utility -->
+                        <div class="module-card {% if settings.utility_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="wrench"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="utility_enabled" {% if settings.utility_enabled
+                                        %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Utilidad</h3>
+                                <p>Canales temporales, confesiones y herramientas de gestión.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/utility" class="btn btn-sm">Configurar</a>
                             </div>
                         </div>
                     </div>
 
-                    <div class="cfg-footer">
-                        <button type="submit" class="cfg-btn primary"><i data-lucide="save"></i> {{
-                            t('dashboard.general.save_btn') }}</button>
+                    <div class="category-header"><i data-lucide="users"></i> Servicios de Usuario</div>
+                    <div class="module-grid">
+                        <!-- Levels -->
+                        <div class="module-card {% if settings.leveling_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="trending-up"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="leveling" {% if settings.leveling_enabled %}checked{%
+                                        endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Niveles & XP</h3>
+                                <p>Sistemas de experiencia y roles de recompensa por actividad.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/levels" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+
+                        <!-- Economy -->
+                        <div class="module-card {% if settings.eco_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="coins"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="eco_enabled" {% if settings.eco_enabled %}checked{%
+                                        endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Economía</h3>
+                                <p>Monedas, trabajos, tienda global y rankings competitivos.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/economy" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+
+                        <!-- Gambling -->
+                        <div class="module-card {% if settings.gamble_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="dice-5"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="gamble_enabled" {% if settings.gamble_enabled
+                                        %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Apuestas</h3>
+                                <p>Minijuegos de azar y casino para divertir a tus miembros.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/gambling" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+
+                        <!-- Reaction Roles -->
+                        <div class="module-card {% if settings.reaction_roles_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="mouse-pointer-click"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="reaction_roles_enabled" {% if
+                                        settings.reaction_roles_enabled %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Reaction Roles</h3>
+                                <p>Asignación automática de roles mediante reacciones.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/reaction_roles"
+                                    class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="category-header"><i data-lucide="headphones"></i> Audio / Multimedia</div>
+                    <div class="module-grid">
+                        <!-- Music -->
+                        <div class="module-card {% if settings.music_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="music"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="music_enabled" {% if settings.music_enabled %}checked{%
+                                        endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Música</h3>
+                                <p>Reproducción de alta fidelidad con soporte para múltiples sitios.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/music" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+
+                        <!-- TTS -->
+                        <div class="module-card {% if settings.tts_enabled %}active{% endif %}">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="mic"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" name="tts_enabled" {% if settings.tts_enabled %}checked{%
+                                        endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Texto a Voz</h3>
+                                <p>Convierte texto en audio directamente en los canales de voz.</p>
+                            </div>
+                            <div class="module-card-footer">
+                                <a href="/dashboard/server/{{ server.id }}/tts" class="btn btn-sm">Configurar</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cfg-footer" style="margin-top: 50px;">
+                        <button type="submit" class="cfg-btn primary"><i data-lucide="save"></i> Guardar Cambios</button>
                     </div>
                 </form>
 
