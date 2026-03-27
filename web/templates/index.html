@@ -107,14 +107,30 @@
                 </li>
                 {% if session.get('user') %}
                 <li class="nav-item">
-                    <a href="/dashboard" class="nav-link">
-                        <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png"
-                            style="width:24px; border-radius:50%;" alt="Avatar">
-                        Dashboard
-                    </a>
+                    <div class="profile-dropdown-container">
+                        <div class="profile-trigger" onclick="toggleProfileSlider()">
+                            <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png" alt="Avatar" class="profile-avatar-sm">
+                            <span style="font-weight: 700; font-size: 0.9rem; margin: 0 5px;">{{ session.user.username }}</span>
+                            <i data-lucide="chevron-down" style="width: 16px;"></i>
+                        </div>
+                        
+                        <div id="profileSlider" class="profile-slider" style="position: absolute; right: 0; margin-top: 15px;">
+                            <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
+                                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ session.user.username }}</h4>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ session.user.username }}!</p>
+                            </div>
+                            
+                            <div class="slider-body" style="padding: 10px;">
+                                <a href="/dashboard" class="slider-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                    Dashboard
+                                </a>
+                                <a href="/logout" class="slider-item" style="color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                    Cerrar sesión
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </li>
-                <li><a href="https://discord.com/api/oauth2/authorize?client_id=1389616993098924164&permissions=8&scope=bot%20applications.commands"
-                        class="btn btn-p" target="_blank">Invitar Bot</a></li>
                 {% else %}
                 <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
                 {% endif %}

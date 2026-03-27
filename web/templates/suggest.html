@@ -431,25 +431,17 @@
                     </div>
                     
                     <div id="profileSlider" class="profile-slider">
-                        <div class="slider-header">
-                            <h4 style="margin:0;">¡Hola {{ user.username }}!</h4>
-                            <p style="color:var(--text-muted); font-size:0.75rem; margin:5px 0 0 0;">ID: {{ user.id }}</p>
+                        <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
+                            <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ user.username }}</h4>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ user.username }}!</p>
                         </div>
                         
-                        <div class="slider-stats">
-                            <div class="stat-box" style="width: 100%;">
-                                <small>Servidores</small>
-                                <span>{{ servers|length if servers else 0 }}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="slider-body">
-                            <a href="/dashboard" class="slider-item">
-                                <i data-lucide="layout"></i> Mis servidores
+                        <div class="slider-body" style="padding: 10px;">
+                            <a href="/dashboard" class="slider-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                Dashboard
                             </a>
-                            <div class="slider-divider"></div>
-                            <a href="/logout" class="slider-item" style="color: #e74c3c;">
-                                <i data-lucide="log-out"></i> Cerrar sesión
+                            <a href="/logout" class="slider-item" style="color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                Cerrar sesión
                             </a>
                         </div>
                     </div>
