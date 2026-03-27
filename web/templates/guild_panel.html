@@ -246,6 +246,299 @@
             padding-top: 15px;
         }
 
+        /* Hide old static save buttons */
+        .cfg-footer {
+            display: none !important;
+        }
+
+        /* Sticky Save Bar */
+        .save-bar {
+            position: fixed;
+            bottom: -80px;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: #1a1b1e;
+            border-top: 1px solid var(--border-color);
+            padding: 14px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+        }
+        .save-bar.visible {
+            bottom: 0;
+        }
+        .save-bar-message {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .save-bar-message i {
+            color: var(--p-pink);
+        }
+        .save-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .save-bar-actions .btn-reset {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+        .save-bar-actions .btn-reset:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.05);
+        }
+        .save-bar-actions .btn-save {
+            background: var(--p-pink);
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 24px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .save-bar-actions .btn-save:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        /* ===== Sidebar Redesign ===== */
+        .db-sidebar {
+            padding: 20px 16px;
+            border-right: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.15);
+            border-radius: var(--radius-md);
+            height: fit-content;
+            position: sticky;
+            top: calc(var(--header-h) + 20px);
+        }
+
+        /* Server Selector Dropdown */
+        .server-selector {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .server-selector-trigger {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .server-selector-trigger:hover {
+            border-color: var(--p-pink);
+            background: rgba(0,0,0,0.3);
+        }
+        .server-selector-trigger .server-sel-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .server-selector-trigger .server-sel-icon-placeholder {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--p-pink-soft);
+            color: var(--p-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .server-selector-trigger .server-sel-name {
+            flex: 1;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .server-selector-trigger .server-sel-chevron {
+            transition: transform 0.2s;
+            opacity: 0.6;
+        }
+        .server-selector.open .server-sel-chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Server Dropdown Panel */
+        .server-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #1e1b1a;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.2s ease;
+            z-index: 100;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .server-selector.open .server-dropdown {
+            max-height: 300px;
+            opacity: 1;
+            overflow-y: auto;
+        }
+        .server-dropdown-inner {
+            padding: 8px;
+        }
+        .server-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+        .server-dropdown-item:hover {
+            background: rgba(212,163,115,0.1);
+        }
+        .server-dropdown-item.current {
+            background: rgba(212,163,115,0.15);
+            color: var(--p-pink);
+        }
+        .server-dropdown-item img {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+        .server-dropdown-item .sdi-placeholder {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--p-pink-soft);
+            color: var(--p-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .server-dropdown-item .sdi-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .server-dropdown::-webkit-scrollbar {
+            width: 4px;
+        }
+        .server-dropdown::-webkit-scrollbar-thumb {
+            background: var(--p-pink);
+            border-radius: 4px;
+        }
+
+        /* Sidebar Category */
+        .sidebar-category {
+            margin-bottom: 8px;
+        }
+        .sidebar-heading {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            padding: 10px 14px 6px;
+            opacity: 0.7;
+        }
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        /* Sidebar Nav Links */
+        .sidebar-nav .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 14px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .sidebar-nav .nav-link i {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+        .sidebar-nav .nav-link:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.04);
+        }
+        .sidebar-nav .nav-link.active {
+            color: var(--p-pink);
+            background: rgba(212,163,115,0.1);
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(212,163,115,0.25),
+                        0 0 12px rgba(212,163,115,0.08);
+        }
+        .sidebar-nav .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 18px;
+            background: var(--p-pink);
+            border-radius: 0 3px 3px 0;
+            animation: pillGlow 2s ease-in-out infinite;
+        }
+        @keyframes pillGlow {
+            0%, 100% { box-shadow: 0 0 4px var(--p-pink); }
+            50% { box-shadow: 0 0 10px var(--p-pink); }
+        }
+
+        /* Sidebar Divider */
+        .sidebar-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 8px 14px;
+        }
+
         /* Quick Start Banner */
         .quick-start-banner {
             background: linear-gradient(135deg, var(--p-pink-soft) 0%, rgba(0, 0, 0, 0.3) 100%);
@@ -469,80 +762,109 @@
     <main class="container-fluid" style="padding: 40px 0;">
         <div class="guild-config-grid">
             <aside class="db-sidebar">
-                <div class="sidebar-section">
-                    <div class="sidebar-category">
-                        <div class="sidebar-heading">{{ t('dashboard.nav.server_settings') }}</div>
-                        <ul class="sidebar-nav">
-                            <li><a href="/dashboard/server/{{ server.id }}/general"
-                                    class="nav-link {% if section == 'general' %}active{% endif %}"><i
-                                        data-lucide="settings"></i> <span>{{ t('dashboard.nav.general') }}</span></a>
-                            </li>
-                            <li><a href="/dashboard/server/{{ server.id }}/config"
-                                    class="nav-link {% if section == 'config' %}active{% endif %}"><i
-                                        data-lucide="sliders"></i> <span>{{ t('dashboard.nav.personalization')
-                                        }}</span></a></li>
-                        </ul>
+                <!-- Server Selector Dropdown -->
+                <div class="server-selector" id="serverSelector">
+                    <div class="server-selector-trigger" onclick="document.getElementById('serverSelector').classList.toggle('open')">
+                        {% if server.icon %}
+                        <img src="https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}?size=64" class="server-sel-icon" alt="">
+                        {% else %}
+                        <div class="server-sel-icon-placeholder">{{ server.name[0] }}</div>
+                        {% endif %}
+                        <span class="server-sel-name">{{ server.name }}</span>
+                        <i data-lucide="chevron-down" class="server-sel-chevron" style="width:16px;height:16px;"></i>
                     </div>
-
-                    <div class="sidebar-category">
-                        <div class="sidebar-heading">{{ t('dashboard.nav.administration') }}</div>
-                        <ul class="sidebar-nav">
-                            <li><a href="/dashboard/server/{{ server.id }}/moderation"
-                                    class="nav-link {% if section == 'moderation' %}active{% endif %}"><i
-                                        data-lucide="shield"></i> <span>{{ t('dashboard.nav.moderation') }}</span></a>
-                            </li>
-                            <li><a href="/dashboard/server/{{ server.id }}/tickets"
-                                    class="nav-link {% if section == 'tickets' %}active{% endif %}"><i
-                                        data-lucide="ticket"></i> <span>{{ t('dashboard.nav.tickets') }}</span></a></li>
-                            <li><a href="/dashboard/server/{{ server.id }}/utility"
-                                    class="nav-link {% if section == 'utility' %}active{% endif %}"><i
-                                        data-lucide="wrench"></i> <span>{{ t('dashboard.nav.utility') }}</span></a></li>
-                        </ul>
-                    </div>
-
-                    <div class="sidebar-category">
-                        <div class="sidebar-heading">{{ t('dashboard.nav.user_services') }}</div>
-                        <ul class="sidebar-nav">
-                            <li><a href="/dashboard/server/{{ server.id }}/levels"
-                                    class="nav-link {% if section == 'levels' %}active{% endif %}"><i
-                                        data-lucide="trending-up"></i> <span>{{ t('dashboard.nav.levels') }}</span></a>
-                            </li>
-                            <li><a href="/dashboard/server/{{ server.id }}/economy"
-                                    class="nav-link {% if section == 'economy' %}active{% endif %}"><i
-                                        data-lucide="coins"></i> <span>{{ t('dashboard.nav.economy') }}</span></a></li>
-                            <li><a href="/dashboard/server/{{ server.id }}/gambling"
-                                    class="nav-link {% if section == 'gambling' %}active{% endif %}"><i
-                                        data-lucide="dice-5"></i> <span>{{ t('dashboard.nav.gambling') }}</span></a>
-                            </li>
-                            <li><a href="/dashboard/server/{{ server.id }}/reaction_roles"
-                                    class="nav-link {% if section == 'reaction_roles' %}active{% endif %}"><i
-                                        data-lucide="mouse-pointer-click"></i> <span>{{
-                                        t('dashboard.nav.reaction_roles') }}</span></a></li>
-                        </ul>
-                    </div>
-
-                    <div class="sidebar-category">
-                        <div class="sidebar-heading">{{ t('dashboard.nav.audio') }}</div>
-                        <ul class="sidebar-nav">
-                            <li><a href="/dashboard/server/{{ server.id }}/music"
-                                    class="nav-link {% if section == 'music' %}active{% endif %}"><i
-                                        data-lucide="music"></i> <span>{{ t('dashboard.nav.music') }}</span></a></li>
-                            <li><a href="/dashboard/server/{{ server.id }}/tts"
-                                    class="nav-link {% if section == 'tts' %}active{% endif %}"><i
-                                        data-lucide="mic"></i> <span>{{ t('dashboard.nav.tts') }}</span></a></li>
-                        </ul>
-                    </div>
-
-                    <div class="sidebar-category">
-                        <div class="sidebar-heading">{{ t('dashboard.nav.resources') }}</div>
-                        <ul class="sidebar-nav">
-                            <li><a href="/report" class="nav-link"><i data-lucide="alert-triangle"></i> <span>{{
-                                        t('dashboard.nav.reports') }}</span></a></li>
-                            <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>{{
-                                        t('dashboard.nav.suggestions') }}</span></a></li>
-                        </ul>
+                    <div class="server-dropdown">
+                        <div class="server-dropdown-inner">
+                            {% for s in user_servers %}
+                            <a href="/dashboard/server/{{ s.id }}/general" class="server-dropdown-item {% if s.id == server.id %}current{% endif %}">
+                                {% if s.icon %}
+                                <img src="https://cdn.discordapp.com/icons/{{ s.id }}/{{ s.icon }}.png?size=64" alt="">
+                                {% else %}
+                                <div class="sdi-placeholder">{{ s.name[0] }}</div>
+                                {% endif %}
+                                <span class="sdi-name">{{ s.name }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
+
+                <div class="sidebar-divider"></div>
+
+                <!-- Navigation -->
+                <div class="sidebar-category">
+                    <div class="sidebar-heading">{{ t('dashboard.nav.server_settings') }}</div>
+                    <ul class="sidebar-nav">
+                        <li><a href="/dashboard/server/{{ server.id }}/general"
+                                class="nav-link {% if section == 'general' %}active{% endif %}"><i
+                                    data-lucide="settings"></i> <span>{{ t('dashboard.nav.general') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/config"
+                                class="nav-link {% if section == 'config' %}active{% endif %}"><i
+                                    data-lucide="sliders"></i> <span>{{ t('dashboard.nav.personalization') }}</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-category">
+                    <div class="sidebar-heading">{{ t('dashboard.nav.administration') }}</div>
+                    <ul class="sidebar-nav">
+                        <li><a href="/dashboard/server/{{ server.id }}/moderation"
+                                class="nav-link {% if section == 'moderation' %}active{% endif %}"><i
+                                    data-lucide="shield"></i> <span>{{ t('dashboard.nav.moderation') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/tickets"
+                                class="nav-link {% if section == 'tickets' %}active{% endif %}"><i
+                                    data-lucide="ticket"></i> <span>{{ t('dashboard.nav.tickets') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/utility"
+                                class="nav-link {% if section == 'utility' %}active{% endif %}"><i
+                                    data-lucide="wrench"></i> <span>{{ t('dashboard.nav.utility') }}</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-category">
+                    <div class="sidebar-heading">{{ t('dashboard.nav.user_services') }}</div>
+                    <ul class="sidebar-nav">
+                        <li><a href="/dashboard/server/{{ server.id }}/levels"
+                                class="nav-link {% if section == 'levels' %}active{% endif %}"><i
+                                    data-lucide="trending-up"></i> <span>{{ t('dashboard.nav.levels') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/economy"
+                                class="nav-link {% if section == 'economy' %}active{% endif %}"><i
+                                    data-lucide="coins"></i> <span>{{ t('dashboard.nav.economy') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/gambling"
+                                class="nav-link {% if section == 'gambling' %}active{% endif %}"><i
+                                    data-lucide="dice-5"></i> <span>{{ t('dashboard.nav.gambling') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/reaction_roles"
+                                class="nav-link {% if section == 'reaction_roles' %}active{% endif %}"><i
+                                    data-lucide="mouse-pointer-click"></i> <span>{{ t('dashboard.nav.reaction_roles') }}</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-category">
+                    <div class="sidebar-heading">{{ t('dashboard.nav.audio') }}</div>
+                    <ul class="sidebar-nav">
+                        <li><a href="/dashboard/server/{{ server.id }}/music"
+                                class="nav-link {% if section == 'music' %}active{% endif %}"><i
+                                    data-lucide="music"></i> <span>{{ t('dashboard.nav.music') }}</span></a></li>
+                        <li><a href="/dashboard/server/{{ server.id }}/tts"
+                                class="nav-link {% if section == 'tts' %}active{% endif %}"><i
+                                    data-lucide="mic"></i> <span>{{ t('dashboard.nav.tts') }}</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-category">
+                    <div class="sidebar-heading">{{ t('dashboard.nav.resources') }}</div>
+                    <ul class="sidebar-nav">
+                        <li><a href="/report" class="nav-link"><i data-lucide="alert-triangle"></i> <span>{{ t('dashboard.nav.reports') }}</span></a></li>
+                        <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>{{ t('dashboard.nav.suggestions') }}</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-divider"></div>
+
+                <!-- Back to Servers Button -->
+                <a href="/dashboard" class="nav-link" style="display:flex; align-items:center; gap:10px; padding:9px 14px; border-radius:10px; color:var(--p-pink); text-decoration:none; font-size:0.88rem; font-weight:600; border:1px solid rgba(212,163,115,0.2); margin-top:4px; justify-content:center; transition:all 0.2s;"
+                   onmouseover="this.style.background='rgba(212,163,115,0.1)'; this.style.borderColor='var(--p-pink)'"
+                   onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(212,163,115,0.2)'">
+                    <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i> Mis Servidores
+                </a>
             </aside>
 
             <section>
@@ -2000,6 +2322,20 @@
         </div>
     </main>
 
+    <!-- Sticky Save Bar -->
+    <div class="save-bar" id="saveBar">
+        <div class="save-bar-message">
+            <i data-lucide="alert-circle"></i>
+            <span>¡Cuidado! ¡Tienes cambios sin guardar!</span>
+        </div>
+        <div class="save-bar-actions">
+            <button type="button" class="btn-reset" id="saveBarReset">Reiniciar</button>
+            <button type="button" class="btn-save" id="saveBarSubmit">
+                <i data-lucide="save" style="width:16px;height:16px;"></i> Guardar Cambios
+            </button>
+        </div>
+    </div>
+
     <footer>
         <div class="container">
             <div class="footer-bottom">
@@ -2021,6 +2357,12 @@
             const slider = document.getElementById('profileSlider');
             if (container && !container.contains(event.target)) {
                 slider.classList.remove('active');
+            }
+            
+            // Server selector dropdown logic
+            const serverSelector = document.getElementById('serverSelector');
+            if (serverSelector && !serverSelector.contains(event.target)) {
+                serverSelector.classList.remove('open');
             }
         });
 
@@ -2210,6 +2552,90 @@
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
+    </script>
+
+    <!-- Sticky Save Bar Logic -->
+    <script>
+    (function() {
+        const saveBar = document.getElementById('saveBar');
+        const saveBtn = document.getElementById('saveBarSubmit');
+        const resetBtn = document.getElementById('saveBarReset');
+        if (!saveBar) return;
+
+        // Store initial form values
+        const forms = document.querySelectorAll('section.db-content form, .db-content form');
+        const initialValues = new Map();
+
+        function getFormData(form) {
+            const data = new FormData(form);
+            const entries = [];
+            for (const [key, value] of data.entries()) {
+                entries.push(key + '=' + value);
+            }
+            // Also capture unchecked checkboxes
+            form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (!data.has(cb.name)) entries.push(cb.name + '=off');
+            });
+            return entries.sort().join('&');
+        }
+
+        forms.forEach(form => {
+            initialValues.set(form, getFormData(form));
+        });
+
+        function checkChanges() {
+            let hasChanges = false;
+            forms.forEach(form => {
+                if (getFormData(form) !== initialValues.get(form)) {
+                    hasChanges = true;
+                }
+            });
+            if (hasChanges) {
+                saveBar.classList.add('visible');
+            } else {
+                saveBar.classList.remove('visible');
+            }
+        }
+
+        // Listen for changes on all form elements
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('change', checkChanges);
+            el.addEventListener('input', checkChanges);
+        });
+
+        // Save button submits the changed form
+        saveBtn.addEventListener('click', function() {
+            forms.forEach(form => {
+                if (getFormData(form) !== initialValues.get(form)) {
+                    form.submit();
+                }
+            });
+        });
+
+        // Reset button restores initial values
+        resetBtn.addEventListener('click', function() {
+            forms.forEach(form => form.reset());
+            saveBar.classList.remove('visible');
+        });
+
+        // Re-init lucide icons for the save bar
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    })();
+    </script>
+
+    <!-- Dynamic Module Card Glow on Toggle -->
+    <script>
+    document.querySelectorAll('.module-card .switch input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const card = this.closest('.module-card');
+            if (!card) return;
+            if (this.checked) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+    });
     </script>
 </body>
 

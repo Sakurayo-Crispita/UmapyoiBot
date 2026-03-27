@@ -410,7 +410,7 @@ async def get_server_context(guild_id):
         servers = session['servers']
         
     target_guild = next((g for g in servers if str(g['id']) == str(guild_id)), None)
-    if not target_guild: return None, None
+    if not target_guild: return None, None, None
 
     # Cacheo de Discord API data
     cache_key = str(guild_id)
@@ -528,7 +528,8 @@ async def get_server_context(guild_id):
         "roles": roles,
         "invite_url": invite_url,
         "level_rewards": level_rewards,
-        "shop_items": shop_items
+        "shop_items": shop_items,
+        "user_servers": servers
     }
 
 @app.route('/dashboard/server/<guild_id>/deploy/<feature>', methods=['POST'])
