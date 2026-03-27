@@ -20,7 +20,7 @@
         href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap"
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=6.0">
+    <link rel="stylesheet" href="/static/styles.css?v=11.0">
     <style>
         /* Identity Animations & Layout Fixes */
         @keyframes iconPulse {
@@ -54,12 +54,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #2a2b2f;
+            background-color: #1a1b1e;
             background-image: var(--banner-url, none);
             background-size: cover;
             background-position: center;
-            filter: blur(4px) brightness(0.7);
-            opacity: 0.85;
+            filter: blur(8px) brightness(0.4);
+            opacity: 0.5;
             z-index: 0;
             transform: scale(1.1);
         }
@@ -70,8 +70,8 @@
             opacity: 1 !important;
         }
 
-        .no-banner-bg {
-            background: #000 !important;
+        .guild-header.no-banner-bg {
+            background: #1a1b1e !important;
         }
 
         .server-icon {
@@ -177,7 +177,7 @@
         /* New Module Grid & Card System */
         .module-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 20px;
             margin-top: 20px;
         }
@@ -248,7 +248,7 @@
 
         /* Quick Start Banner */
         .quick-start-banner {
-            background: linear-gradient(135deg, var(--p-pink-soft) 0%, rgba(0,0,0,0.3) 100%);
+            background: linear-gradient(135deg, var(--p-pink-soft) 0%, rgba(0, 0, 0, 0.3) 100%);
             border: 1px solid var(--p-pink-soft);
             border-radius: var(--radius-lg);
             padding: 30px;
@@ -378,7 +378,8 @@
     <nav id="navbar" class="scrolled">
         <div class="container">
             <a href="/" class="logo">
-                <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
+                <img src="/static/assets/favicon_web.png" alt="Logo"
+                    style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
                 Umapyoi<span style="color: var(--p-pink);">.</span>
             </a>
 
@@ -418,10 +419,11 @@
         </div>
     </nav>
 
-    <header class="guild-header {% if not server.icon %}no-banner-bg{% endif %}" 
-            {% if server.icon %}style="--banner-url: url('https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}');"{% endif %}>
+    <header class="guild-header {% if not server.icon %}no-banner-bg{% endif %}" {% if server.icon
+        %}style="--banner-url: url('https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}');"
+        {% endif %}>
         <div class="guild-banner-bg"></div>
-        <div class="container-wide" style="position: relative; z-index: 1;">
+        <div class="container-fluid" style="position: relative; z-index: 1;">
             <div class="guild-header-content">
                 <div class="server-icon" style="width: 100px; height: 100px; font-size: 2.5rem; border-radius: 25px;">
                     {% if server.icon %}
@@ -464,7 +466,7 @@
         </div>
     </header>
 
-    <main class="container-wide" style="padding: 40px 0;">
+    <main class="container-fluid" style="padding: 40px 0;">
         <div class="guild-config-grid">
             <aside class="db-sidebar">
                 <div class="sidebar-section">
@@ -568,49 +570,55 @@
                 </script>
                 {% endif %}
                 {% if section == 'general' %}
-                <!-- Quick Start Onboarding -->
-                <div class="quick-start-banner" data-reveal>
+                <!-- Quick Start Banner (Compact) -->
+                <div class="quick-start-banner"
+                    style="background: linear-gradient(135deg, var(--p-pink) 0%, rgba(111,78,55,0.8) 100%); margin-bottom: 30px; border-radius: var(--radius-md); padding: 25px 30px;"
+                    data-reveal>
                     <div class="quick-start-content">
-                        <h2 style="color: white; font-family: 'Quicksand', sans-serif;"><i data-lucide="sparkles"></i>
-                            ¡Bienvenido, {{ user.username }}!</h2>
-                        <p>Configura rápidamente los aspectos clave para empezar con Umapyoi en <b>{{ server.name }}</b>.</p>
-                    </div>
-                    <div class="quick-actions-list">
-                        <a href="/dashboard/server/{{ server.id }}/config" class="quick-action-btn">
-                            <i data-lucide="door-open"></i> Configurar Bienvenida
-                        </a>
-                        <a href="/dashboard/server/{{ server.id }}/moderation" class="quick-action-btn">
-                            <i data-lucide="shield-check"></i> Activar AutoMod
-                        </a>
-                        <a href="/dashboard/server/{{ server.id }}/levels" class="quick-action-btn">
-                            <i data-lucide="trending-up"></i> Ver Niveles
-                        </a>
+                        <h2
+                            style="color: white; font-family: 'Quicksand', sans-serif; font-size: 1.3rem; margin-bottom: 8px;">
+                            <i data-lucide="sparkles"></i> Configuración de {{ server.name }}
+                        </h2>
+                        <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.95rem;">Ajusta el bot para que
+                            se adapte perfectamente a tu comunidad.</p>
                     </div>
                 </div>
 
                 <form method="POST">
-                    <!-- Basic Settings -->
-                    <div class="cfg-section">
-                        <div class="cfg-section-title"><i data-lucide="settings"></i> Ajustes Generales</div>
-                        <div class="cfg-section-body">
-                            <div class="cfg-row">
-                                <div class="cfg-field">
-                                    <label class="cfg-label">Prefijo del Bot</label>
-                                    <input type="text" name="prefix" value="{{ settings.prefix or '!' }}"
-                                        class="cfg-input" placeholder="!" maxlength="5">
-                                    <span class="cfg-hint">Usado para comandos de texto (ej: !help)</span>
-                                </div>
-                                <div class="cfg-field">
-                                    <label class="cfg-label">Idioma</label>
-                                    <select name="language" class="cfg-select">
-                                        <option value="es" {% if settings.language=='es' %}selected{% endif %}>🇪🇸
-                                            Español</option>
-                                        <option value="en" {% if settings.language=='en' %}selected{% endif %}>🇬🇧
-                                            English</option>
-                                        <option value="jp" {% if settings.language=='jp' %}selected{% endif %}>🇯🇵 日本語
-                                        </option>
-                                    </select>
-                                </div>
+                    <!-- General Settings as Cards -->
+                    <div class="category-header"><i data-lucide="settings"></i> General</div>
+                    <div class="module-grid" style="margin-bottom: 40px;">
+                        <!-- Prefix Card -->
+                        <div class="module-card active">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="terminal"></i></div>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Prefijo</h3>
+                                <p>Carácter que activa los comandos de texto.</p>
+                                <input type="text" name="prefix" value="{{ settings.prefix or '!' }}" class="cfg-input"
+                                    style="margin-top: 12px; background: rgba(0,0,0,0.15); border: 1px solid var(--border-color);"
+                                    placeholder="!" maxlength="5">
+                            </div>
+                        </div>
+
+                        <!-- Language Card -->
+                        <div class="module-card active">
+                            <div class="module-card-header">
+                                <div class="module-icon-box"><i data-lucide="languages"></i></div>
+                            </div>
+                            <div class="module-card-body">
+                                <h3>Idioma</h3>
+                                <p>Idioma de las respuestas del bot.</p>
+                                <select name="language" class="cfg-input"
+                                    style="margin-top: 12px; background: rgba(0,0,0,0.15); border: 1px solid var(--border-color);">
+                                    <option value="es" {% if settings.language=='es' %}selected{% endif %}>🇪🇸 Español
+                                    </option>
+                                    <option value="en" {% if settings.language=='en' %}selected{% endif %}>🇬🇧 English
+                                    </option>
+                                    <option value="jp" {% if settings.language=='jp' %}selected{% endif %}>🇯🇵 日本語
+                                    </option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -798,7 +806,8 @@
                     </div>
 
                     <div class="cfg-footer" style="margin-top: 50px;">
-                        <button type="submit" class="cfg-btn primary"><i data-lucide="save"></i> Guardar Cambios</button>
+                        <button type="submit" class="cfg-btn primary"><i data-lucide="save"></i> Guardar
+                            Cambios</button>
                     </div>
                 </form>
 

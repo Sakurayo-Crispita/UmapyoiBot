@@ -121,6 +121,13 @@ h1, h2, h3, h4 {
     width: 100%;
 }
 
+.container-fluid {
+    width: 98%;
+    max-width: none;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
 /* Glassmorphism */
 .glass {
     background: var(--nav-bg);
