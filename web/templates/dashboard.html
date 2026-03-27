@@ -382,38 +382,103 @@
                 <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
                 Umapyoi<span style="color: var(--p-pink);">.</span>
             </a>
-            
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <a href="/" class="nav-link hide-mobile">Volver al Inicio</a>
-                
-                <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema" style="cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--bg-alt); border: 1px solid var(--border-color); transition: background 0.3s;">
-                    <span id="theme-icon-container"><i data-lucide="moon" style="color: var(--text-main);"></i></span>
-                </div>
-
-                <div class="profile-dropdown-container">
-                    <div class="profile-trigger" onclick="toggleProfileSlider()">
-                        <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="profile-avatar-sm">
-                        <span style="font-weight: 700; font-size: 0.9rem;">{{ user.username }}</span>
-                        <i data-lucide="chevron-down" style="width: 16px;"></i>
+            <div class="menu-toggle" id="menu-toggle">
+                <i data-lucide="menu"></i>
+            </div>
+            <ul class="nav-links" id="nav-links">
+                <li class="nav-item">
+                    <a href="/#inicio" class="nav-link">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">Módulos <i data-lucide="chevron-down"></i></a>
+                    <div class="dropdown">
+                        <a href="/modules/music" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="music"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Música</h5>
+                                <p>Alta fidelidad sin lag.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/economy" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="coins"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Economía Global</h5>
+                                <p>Minijuegos y rankings.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/levels" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="trending-up"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Niveles & XP</h5>
+                                <p>Rangos personalizados.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/moderation" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="shield-check"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Moderación</h5>
+                                <p>Seguridad para tu chat.</p>
+                            </div>
+                        </a>
+                        <a href="/modules/serverconfig" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="settings"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Configuración</h5>
+                                <p>Personalización total.</p>
+                            </div>
+                        </a>
                     </div>
-                    
-                    <div id="profileSlider" class="profile-slider">
-                        <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
-                            <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ user.username }}</h4>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ user.username }}!</p>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">Recursos <i data-lucide="chevron-down"></i></a>
+                    <div class="dropdown">
+                        <a href="/docs" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="book-open"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Comandos</h5>
+                                <p>Documentación completa.</p>
+                            </div>
+                        </a>
+                        <a href="https://discord.gg/fwNeZsGkSj" target="_blank" class="dropdown-item">
+                            <div class="dropdown-icon"><i data-lucide="help-circle"></i></div>
+                            <div class="dropdown-content">
+                                <h5>Soporte</h5>
+                                <p>Servidor oficial de ayuda.</p>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <div class="profile-dropdown-container">
+                        <div class="profile-trigger" onclick="toggleProfileSlider()">
+                            <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="profile-avatar-sm" onerror="this.src='/static/assets/favicon_web.png'">
+                            <span style="font-weight: 700; font-size: 0.9rem; margin: 0 5px;">{{ user.username }}</span>
+                            <i data-lucide="chevron-down" style="width: 16px;"></i>
                         </div>
                         
-                        <div class="slider-body" style="padding: 10px;">
-                            <a href="/dashboard" class="slider-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
-                                Dashboard
-                            </a>
-                            <a href="/logout" class="slider-item" style="color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
-                                Cerrar sesión
-                            </a>
+                        <div id="profileSlider" class="profile-slider" style="position: absolute; right: 0; margin-top: 15px;">
+                            <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
+                                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ user.username }}</h4>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ user.username }}!</p>
+                            </div>
+                            
+                            <div class="slider-body" style="padding: 10px;">
+                                <a href="/dashboard" class="slider-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                    Dashboard
+                                </a>
+                                <a href="/logout" class="slider-item" style="color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                    Cerrar sesión
+                                </a>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </li>
+                <li>
+                    <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
+                        <span id="theme-icon-container"><i data-lucide="moon"></i></span>
+                    </div>
+                </li>
+            </ul>
         </div>
     </nav>
 

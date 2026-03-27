@@ -115,7 +115,7 @@ h1, h2, h3, h4 {
 /* --- Layout Components --- */
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 0 24px;
     width: 100%;
@@ -235,14 +235,6 @@ nav .container {
     justify-content: space-between;
     align-items: center;
     position: relative;
-    max-width: 100%;
-    padding: 0 5vw; /* Fluid corners */
-}
-
-@media (max-width: 768px) {
-    nav .container {
-        padding: 0 20px;
-    }
 }
 
 .logo {
