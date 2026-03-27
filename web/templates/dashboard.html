@@ -18,15 +18,13 @@
     <style>
         .dashboard-layout {
             display: grid;
-            grid-template-columns: 260px 1fr;
+            grid-template-columns: 280px 1fr;
             min-height: calc(100vh - 100px);
             padding-top: var(--header-h);
-            max-width: 1700px;
-            margin: 0 auto;
         }
         /* Remove the width-changing collapsed state to prevent layout jump */
         .dashboard-layout.collapsed {
-            grid-template-columns: 260px 1fr;
+            grid-template-columns: 280px 1fr;
         }
         .db-sidebar {
             background: var(--bg-alt);
@@ -379,7 +377,7 @@
 </head>
 <body class="dashboard-page">
     <nav id="navbar" class="scrolled">
-        <div class="container-wide">
+        <div class="container">
             <a href="/" class="logo">
                 <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
                 Umapyoi<span style="color: var(--p-pink);">.</span>
