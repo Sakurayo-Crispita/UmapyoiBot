@@ -361,6 +361,20 @@
         menuToggle.addEventListener('click', () => {
             navLinks.classList.toggle('active');
         });
+
+        // Profile Slider Logic
+        function toggleProfileSlider() {
+            const slider = document.getElementById('profileSlider');
+            if(slider) slider.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.profile-dropdown-container');
+            const slider = document.getElementById('profileSlider');
+            if (container && slider && !container.contains(event.target)) {
+                slider.classList.remove('active');
+            }
+        });
     </script>
 </body>
 
