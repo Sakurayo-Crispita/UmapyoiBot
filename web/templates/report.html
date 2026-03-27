@@ -1,18 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-    <style>html:not(.theme-ready) body { opacity: 0; visibility: hidden; }</style>
+    <style>
+        html:not(.theme-ready) body {
+            opacity: 0;
+            visibility: hidden;
+        }
+    </style>
     <!-- Anti-flash: apply theme before first paint -->
-    <script>!function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
+    <script>!function () { var t = localStorage.getItem('theme') || 'dark'; document.documentElement.setAttribute('data-theme', t); document.documentElement.classList.add('theme-ready') }()</script>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Control - UmapyoiBot</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap"
+        rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/static/styles.css?v=11.0">
     <style>
@@ -22,18 +30,22 @@
             min-height: calc(100vh - 100px);
             padding-top: var(--header-h);
         }
+
         /* Remove the width-changing collapsed state to prevent layout jump */
         .dashboard-layout.collapsed {
             grid-template-columns: 280px 1fr;
         }
+
         .db-sidebar {
             background: var(--bg-alt);
             border-right: 1px solid var(--border-color);
             padding: 30px;
         }
+
         .db-content {
             padding: 40px;
         }
+
         .identity-badge {
             display: inline-flex;
             align-items: center;
@@ -46,14 +58,17 @@
             font-weight: 600;
             color: var(--text-muted);
         }
+
         .identity-badge i {
             color: var(--p-pink);
         }
+
         .identity-badge.owner {
             background: var(--p-pink-soft);
             border-color: var(--p-pink);
             color: var(--p-pink);
         }
+
         .user-card {
             display: flex;
             align-items: center;
@@ -63,17 +78,20 @@
             border-radius: var(--radius-md);
             margin-bottom: 30px;
         }
+
         .user-avatar {
             width: 60px;
             height: 60px;
             border-radius: 50%;
             border: 3px solid var(--p-pink);
         }
+
         .server-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 25px;
         }
+
         .server-card {
             background: var(--glass-bg);
             border: 1px solid var(--border-color);
@@ -86,11 +104,13 @@
             flex-direction: column;
             text-align: left;
         }
+
         .server-card:hover {
             transform: translateY(-8px);
             border-color: var(--p-pink);
             box-shadow: 0 15px 40px var(--accent-glow);
         }
+
         .card-banner {
             height: 80px;
             width: 100%;
@@ -98,37 +118,46 @@
             overflow: hidden;
             background: var(--bg-alt);
         }
+
         .card-banner::after {
             content: "";
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-image: var(--banner-url);
             background-size: cover;
             background-position: center;
             filter: blur(2px) brightness(0.8);
             transform: scale(1.2);
         }
+
         .no-icon-banner .card-banner {
             filter: none !important;
             background: #2a2b2f !important;
         }
+
         .no-icon-banner {
             background: #2a2b2f !important;
         }
+
         .card-body {
             padding: 20px;
-            padding-top: 50px; /* Space for overlapping icon */
+            padding-top: 50px;
+            /* Space for overlapping icon */
             position: relative;
         }
+
         .server-icon-overlay {
             width: 70px;
             height: 70px;
             --radius-lg: 32px;
-    --radius-md: 20px;
-    --radius-sm: 14px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --sidebar-w: 280px;
-    --sidebar-w-collapsed: 85px;
+            --radius-md: 20px;
+            --radius-sm: 14px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --sidebar-w: 280px;
+            --sidebar-w-collapsed: 85px;
             border-radius: 20px;
             position: absolute;
             top: -35px;
@@ -136,12 +165,16 @@
             border: 4px solid var(--bg-main);
             background: var(--bg-alt);
             overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
             z-index: 2;
         }
+
         .server-icon-overlay img {
-            width: 100%; height: 100%; object-fit: cover;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
+
         .role-badge {
             font-size: 0.75rem;
             color: var(--text-muted);
@@ -153,13 +186,16 @@
         .sidebar-section {
             transition: var(--transition);
         }
+
         .sidebar-section.icon-mode ul li a span {
             display: none;
         }
+
         .sidebar-section.icon-mode ul li a {
             justify-content: center;
             padding: 12px 0;
         }
+
         .sidebar-section.icon-mode .sidebar-heading {
             text-align: center;
             padding-left: 0;
@@ -175,11 +211,13 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
         }
+
         .search-wrapper {
             position: relative;
             flex-grow: 1;
             max-width: 400px;
         }
+
         .search-input {
             width: 100%;
             padding: 12px 15px 12px 45px;
@@ -189,11 +227,13 @@
             color: var(--text-main);
             transition: var(--transition);
         }
+
         .search-input:focus {
             border-color: var(--p-pink);
             outline: none;
             box-shadow: 0 0 10px var(--accent-glow);
         }
+
         .search-icon {
             position: absolute;
             left: 15px;
@@ -202,6 +242,7 @@
             color: var(--text-muted);
             pointer-events: none;
         }
+
         .btn-refresh {
             display: flex;
             align-items: center;
@@ -215,18 +256,27 @@
             font-weight: 600;
             transition: var(--transition);
         }
+
         .btn-refresh:hover {
             background: var(--p-pink);
             color: white;
             transform: translateY(-2px);
         }
+
         .btn-refresh i.spinning {
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
+
         .btn-card-action {
             padding: 8px 20px;
             border-radius: var(--radius-sm);
@@ -234,6 +284,7 @@
             font-size: 0.85rem;
             transition: var(--transition);
         }
+
         .db-sidebar .nav-link {
             padding: 12px 15px;
             border-radius: var(--radius-sm);
@@ -242,15 +293,21 @@
             gap: 12px;
             color: var(--text-muted);
             transition: var(--transition);
-            position: relative; /* Fix for absolute pseudo-elements */
+            position: relative;
+            /* Fix for absolute pseudo-elements */
         }
+
         .db-sidebar .nav-link.active::after {
-            display: none; /* Disable global underline for sidebar */
+            display: none;
+            /* Disable global underline for sidebar */
         }
-        .db-sidebar .nav-link:hover, .db-sidebar .nav-link.active {
+
+        .db-sidebar .nav-link:hover,
+        .db-sidebar .nav-link.active {
             background: var(--p-pink-soft);
             color: var(--p-pink);
         }
+
         .badge-owner {
             background: var(--p-pink);
             color: white;
@@ -273,10 +330,12 @@
             border: 1px solid var(--border-color);
             transition: var(--transition);
         }
+
         .status-card:hover {
             border-color: var(--p-pink-soft);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
+
         .status-dot {
             width: 12px;
             height: 12px;
@@ -285,28 +344,44 @@
             margin-right: 8px;
             box-shadow: 0 0 10px currentColor;
         }
-        .status-online { background-color: #2ecc71; color: #2ecc71; }
-        .status-offline { background-color: #e74c3c; color: #e74c3c; }
-        
+
+        .status-online {
+            background-color: #2ecc71;
+            color: #2ecc71;
+        }
+
+        .status-offline {
+            background-color: #e74c3c;
+            color: #e74c3c;
+        }
+
         .bot-metric {
             text-align: center;
             flex: 1;
             padding: 10px;
         }
+
         .bot-metric h4 {
             color: var(--text-muted);
             font-size: 0.8rem;
             text-transform: uppercase;
             margin-bottom: 5px;
         }
+
         .bot-metric p {
             font-size: 1.4rem;
             font-weight: 800;
             margin: 0;
             color: var(--text-main);
         }
-        .text-online { color: #2ecc71 !important; }
-        .text-offline { color: #e74c3c !important; }
+
+        .text-online {
+            color: #2ecc71 !important;
+        }
+
+        .text-offline {
+            color: #e74c3c !important;
+        }
 
         @media (max-width: 768px) {
             .dashboard-layout {
@@ -314,6 +389,7 @@
                 padding-left: 60px;
                 padding-top: var(--header-h-scrolled);
             }
+
             .db-sidebar {
                 position: fixed;
                 top: var(--header-h-scrolled);
@@ -330,43 +406,52 @@
                 overflow-x: hidden;
                 overflow-y: auto;
             }
+
             .dashboard-layout.expanded .db-sidebar {
                 width: 280px;
                 padding: 30px;
-                box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
             }
+
             .dashboard-layout:not(.expanded) .db-sidebar .nav-link span,
             .dashboard-layout:not(.expanded) .db-sidebar .badge-owner {
                 display: none;
             }
+
             .dashboard-layout:not(.expanded) .db-sidebar .sidebar-heading {
                 display: none;
             }
+
             .dashboard-layout:not(.expanded) .user-card div {
                 display: none;
             }
+
             .dashboard-layout:not(.expanded) .user-card {
                 padding: 10px;
                 justify-content: center;
                 background: transparent;
                 border: none;
             }
+
             .dashboard-layout:not(.expanded) .db-sidebar .nav-link {
                 justify-content: center;
                 padding: 12px 0;
             }
-            
+
             .db-content {
                 padding: 20px;
                 width: 100%;
             }
+
             .server-grid {
                 grid-template-columns: 1fr;
             }
+
             .server-controls {
                 flex-direction: column;
                 align-items: stretch;
             }
+
             .status-card {
                 flex-direction: column;
                 text-align: center;
@@ -376,43 +461,213 @@
     </style>
 
     <style>
-        .feedback-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .feedback-header { margin-bottom: 40px; }
-        .feedback-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: start; }
-        .glass-card { background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; backdrop-filter: blur(10px); }
-        .form-group { margin-bottom: 25px; }
-        .form-label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.8px; }
-        .form-hint { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-bottom: 8px; display: block; }
-        .form-input, .form-select, .form-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 15px; color: white; font-family: inherit; transition: all 0.3s; }
-        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--p-pink); outline: none; background: rgba(0,0,0,0.4); }
-        .form-select option { background: var(--bg-main); color: white; }
-        .form-textarea { resize: vertical; min-height: 120px; max-height: 300px; }
-        
-        .priority-options { display: flex; gap: 15px; margin-top: 10px; }
-        .priority-btn { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); cursor: pointer; text-align: center; font-size: 0.9rem; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .priority-btn i { width: 14px; opacity: 0.5; }
-        .priority-btn.active { border-color: var(--p-pink); color: white; background: rgba(212,163,115,0.1); }
-        .priority-btn.active i { opacity: 1; color: var(--p-pink); }
-        
-        .evidence-upload { border: 2px dashed var(--border-color); border-radius: 12px; padding: 30px; text-align: center; transition: all 0.3s; cursor: pointer; background: rgba(0,0,0,0.1); }
-        .evidence-upload:hover { border-color: var(--p-pink); background: rgba(212,163,115,0.05); }
-        .evidence-upload i { width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 15px; }
-        
-        .submit-btn { width: 100%; background: var(--p-pink); color: white; border: none; border-radius: 8px; padding: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 15px rgba(212,163,115,0.2); transition: all 0.3s; }
-        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(212,163,115,0.4); filter: brightness(1.1); }
-        
-        .sidebar-right { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 20px; }
-        .example-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; gap: 6px; }
-        .priority-tag { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
-        
-        .success-overlay { position: fixed; inset: 0; background: rgba(15, 17, 24, 0.98); display: flex; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; text-align: center; padding: 20px; backdrop-filter: blur(10px); }
+        .feedback-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .feedback-header {
+            margin-bottom: 40px;
+        }
+
+        .feedback-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .glass-card {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            letter-spacing: 0.8px;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 15px;
+            color: white;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: var(--p-pink);
+            outline: none;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .form-select option {
+            background: var(--bg-main);
+            color: white;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+            max-height: 300px;
+        }
+
+        .priority-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .priority-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .priority-btn i {
+            width: 14px;
+            opacity: 0.5;
+        }
+
+        .priority-btn.active {
+            border-color: var(--p-pink);
+            color: white;
+            background: rgba(212, 163, 115, 0.1);
+        }
+
+        .priority-btn.active i {
+            opacity: 1;
+            color: var(--p-pink);
+        }
+
+        .evidence-upload {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .evidence-upload:hover {
+            border-color: var(--p-pink);
+            background: rgba(212, 163, 115, 0.05);
+        }
+
+        .evidence-upload i {
+            width: 32px;
+            height: 32px;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: var(--p-pink);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(212, 163, 115, 0.2);
+            transition: all 0.3s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 163, 115, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .sidebar-right {
+            position: sticky;
+            top: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .example-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            gap: 6px;
+        }
+
+        .priority-tag {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .success-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 17, 24, 0.98);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
     </style>
-    </head>
+</head>
+
 <body class="dashboard-page">
     <nav id="navbar" class="scrolled">
         <div class="container">
             <a href="/" class="logo">
-                <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
+                <img src="/static/assets/favicon_web.png" alt="Logo"
+                    style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 6px; box-shadow: 0 2px 10px var(--accent-glow);">
                 Umapyoi<span style="color: var(--p-pink);">.</span>
             </a>
             <div class="menu-toggle" id="menu-toggle">
@@ -481,31 +736,44 @@
                         </a>
                     </div>
                 </li>
+                {% if session.get('user') %}
                 <li class="nav-item">
                     <div class="profile-dropdown-container">
                         <div class="profile-trigger" onclick="toggleProfileSlider()">
-                            <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="profile-avatar-sm" onerror="this.src='/static/assets/favicon_web.png'">
-                            <span style="font-weight: 700; font-size: 0.9rem; margin: 0 5px;">{{ user.username }}</span>
+                            <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png"
+                                alt="Avatar" class="profile-avatar-sm"
+                                onerror="this.src='/static/assets/favicon_web.png'">
+                            <span style="font-weight: 700; font-size: 0.9rem; margin: 0 5px;">{{ session.user.username
+                                }}</span>
                             <i data-lucide="chevron-down" style="width: 16px;"></i>
                         </div>
-                        
-                        <div id="profileSlider" class="profile-slider" style="position: absolute; right: 0; margin-top: 15px;">
-                            <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
-                                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ user.username }}</h4>
-                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ user.username }}!</p>
+
+                        <div id="profileSlider" class="profile-slider"
+                            style="position: absolute; right: 0; margin-top: 15px;">
+                            <div class="slider-header"
+                                style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
+                                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ session.user.username }}
+                                </h4>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{
+                                    session.user.username }}!</p>
                             </div>
-                            
+
                             <div class="slider-body" style="padding: 10px;">
-                                <a href="/dashboard" class="slider-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                <a href="/dashboard" class="slider-item"
+                                    style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
                                     Dashboard
                                 </a>
-                                <a href="/logout" class="slider-item" style="color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
+                                <a href="/logout" class="slider-item"
+                                    style="color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition);">
                                     Cerrar sesión
                                 </a>
                             </div>
                         </div>
                     </div>
                 </li>
+                {% else %}
+                <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
+                {% endif %}
                 <li>
                     <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
                         <span id="theme-icon-container"><i data-lucide="moon"></i></span>
@@ -517,166 +785,207 @@
 
     <main class="dashboard-layout">
         <aside class="db-sidebar">
-            <div class="user-card" style="padding: 15px; gap: 12px; background: rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
-                <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="user-avatar" style="width:40px; height:40px; border: 2px solid var(--p-pink);">
+            <div class="user-card"
+                style="padding: 15px; gap: 12px; background: rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+                <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar"
+                    class="user-avatar" style="width:40px; height:40px; border: 2px solid var(--p-pink);">
                 <div style="min-width: 0;">
-                    <h4 style="margin:0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.username }}</h4>
+                    <h4
+                        style="margin:0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ user.username }}</h4>
                     <span style="color:var(--text-muted); font-size:0.75rem;">Usuario</span>
                 </div>
             </div>
-            
+
             <div class="sidebar-section" id="section-main">
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
-                    <li><a href="/dashboard" class="nav-link "><i data-lucide="layout"></i> <span>Mis Servidores</span></a></li>
+                    <li><a href="/dashboard" class="nav-link "><i data-lucide="layout"></i> <span>Mis
+                                Servidores</span></a></li>
                 </ul>
             </div>
 
             <div class="sidebar-section" id="section-resources">
-                <li class="sidebar-heading" style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Recursos</li>
+                <li class="sidebar-heading"
+                    style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">
+                    Recursos</li>
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
-                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>Documentación</span></a></li>
-                    <li><a href="/report" class="nav-link active"><i data-lucide="alert-triangle"></i> <span>Reportes</span></a></li>
-                    <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>Sugerencias</span></a></li>
-                    <li><a href="https://discord.gg/umapyoi" target="_blank" class="nav-link"><i data-lucide="help-circle"></i> <span>Soporte</span></a></li>
+                    <li><a href="/docs" class="nav-link"><i data-lucide="book-open"></i> <span>Documentación</span></a>
+                    </li>
+                    <li><a href="/report" class="nav-link active"><i data-lucide="alert-triangle"></i>
+                            <span>Reportes</span></a></li>
+                    <li><a href="/suggest" class="nav-link"><i data-lucide="lightbulb"></i> <span>Sugerencias</span></a>
+                    </li>
+                    <li><a href="https://discord.gg/umapyoi" target="_blank" class="nav-link"><i
+                                data-lucide="help-circle"></i> <span>Soporte</span></a></li>
                 </ul>
             </div>
-                
+
             {% if is_owner %}
             <div class="sidebar-section" id="section-admin">
-                <li class="sidebar-heading" style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">Administración</li>
+                <li class="sidebar-heading"
+                    style="margin-top: 20px; list-style:none; margin-bottom: 5px; color: var(--p-pink); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; padding-left: 15px;">
+                    Administración</li>
                 <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:5px;">
-                    <li><a href="/dashboard/admin" class="nav-link {% if section == 'admin' %}active{% endif %}"><i data-lucide="shield"></i> <span>Admin Bot</span></a></li>
+                    <li><a href="/dashboard/admin" class="nav-link {% if section == 'admin' %}active{% endif %}"><i
+                                data-lucide="shield"></i> <span>Admin Bot</span></a></li>
                 </ul>
             </div>
             {% endif %}
         </aside>
 
         <section class="db-content">
-{% if success %}
-    <div class="success-overlay">
-        <div style="width: 80px; height: 80px; background: #2ed573; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(46, 213, 115, 0.3);"><i data-lucide="check" style="width: 48px; height: 48px; color: white;"></i></div>
-        <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Quicksand';">Reporte Recibido</h1>
-        <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tu reporte. Nuestro equipo lo revisará detalladamente para seguir mejorando UmapyoiBot.</p>
-        <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
-    </div>
-    {% endif %}
-<div class="feedback-container">
-        <a href="javascript:history.back()" style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
-            <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Vínculo Anterior
-        </a>
-        <div class="feedback-header">
-            <h1 style="font-size: 3rem; font-family: 'Quicksand', sans-serif; margin-bottom: 10px;">Enviar un reporte</h1>
-            <p style="color: #6a6a8e; font-size: 1.1rem;">Usa este formulario para reportar errores técnicos, fallos en comandos o problemas de seguridad.</p>
-        </div>
-
-        <div class="feedback-grid">
-            <form method="POST" class="glass-card" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label class="form-label">Tipo de Reporte</label>
-                    <span class="form-hint">Elige la categoría que mejor se ajuste a tu situación.</span>
-                    <select name="type" class="form-select" required>
-                        <option value="" disabled selected>Selecciona el tipo de reporte</option>
-                        <option value="Error/Bugs">Error / Bugs</option>
-                        <option value="Servicios/Comandos">Servicios / Comandos</option>
-                        <option value="Seguridad/Exploits">Seguridad / Exploits</option>
-                        <option value="Otro">Otro</option>
-                    </select>
+            {% if success %}
+            <div class="success-overlay">
+                <div
+                    style="width: 80px; height: 80px; background: #2ed573; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; box-shadow: 0 0 40px rgba(46, 213, 115, 0.3);">
+                    <i data-lucide="check" style="width: 48px; height: 48px; color: white;"></i></div>
+                <h1 style="font-size: 2.5rem; margin-bottom: 15px; font-family: 'Quicksand';">Reporte Recibido</h1>
+                <p style="color: #a0a0c0; max-width: 500px; line-height: 1.6;">Gracias por tu reporte. Nuestro equipo lo
+                    revisará detalladamente para seguir mejorando UmapyoiBot.</p>
+                <a href="/" class="btn btn-p" style="margin-top: 40px; padding: 12px 30px;">Volver al Inicio</a>
+            </div>
+            {% endif %}
+            <div class="feedback-container">
+                <a href="javascript:history.back()"
+                    style="display:inline-flex; align-items:center; gap:8px; color:#6a6a8e; text-decoration:none; margin-bottom:20px; font-size:0.9rem; transition:color 0.3s;"
+                    onmouseover="this.style.color='white'" onmouseout="this.style.color='#6a6a8e'">
+                    <i data-lucide="arrow-left" style="width:16px;"></i> Volver al Vínculo Anterior
+                </a>
+                <div class="feedback-header">
+                    <h1 style="font-size: 3rem; font-family: 'Quicksand', sans-serif; margin-bottom: 10px;">Enviar un
+                        reporte</h1>
+                    <p style="color: #6a6a8e; font-size: 1.1rem;">Usa este formulario para reportar errores técnicos,
+                        fallos en comandos o problemas de seguridad.</p>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Asunto</label>
-                    <span class="form-hint">Describe brevemente el problema (máximo 100 caracteres).</span>
-                    <input type="text" name="subject" class="form-input" placeholder="Describe brevemente el problema..." required maxlength="100">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Descripción</label>
-                    <span class="form-hint">Explica detalladamente el problema. Incluye toda la información relevante.</span>
-                    <textarea name="description" class="form-textarea" placeholder="Explica detalladamente el problema e incluye pasos para reproducirlo..." required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Prioridad</label>
-                    <span class="form-hint">Indica qué tan urgente es este reporte.</span>
-                    <div class="priority-options">
-                        <input type="hidden" name="priority" id="priority-input" value="Media">
-                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Baja')"><i data-lucide="circle"></i> Baja</button>
-                        <button type="button" class="priority-btn active" onclick="setPriority(this, 'Media')"><i data-lucide="alert-circle"></i> Media</button>
-                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Alta')"><i data-lucide="alert-triangle"></i> Alta</button>
-                        <button type="button" class="priority-btn" onclick="setPriority(this, 'Crítica')"><i data-lucide="zap"></i> Crítica</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Evidencias (Opcional)</label>
-                    <span class="form-hint">Sube imágenes o videos que ayuden a entender el reporte (URL o archivo).</span>
-                    <div class="evidence-upload" onclick="document.getElementById('file-input').click()">
-                        <i data-lucide="upload-cloud"></i>
-                        <p style="margin:0; font-weight:600;">Haz clic para seleccionar o arrastra archivos</p>
-                        <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Máximo 8MB por archivo. Formatos sugeridos: PNG, JPG, MP4.</p>
-                        <input type="file" id="file-input" name="evidence_file" style="display:none;" multiple>
-                    </div>
-                    <div style="margin-top:15px;">
-                        <input type="url" name="evidence_url" class="form-input" placeholder="O pega un enlace directo a la imagen/video (opcional)">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">ID del Usuario</label>
-                    <span class="form-hint">Tu ID de Discord (no editable).</span>
-                    <input type="text" name="user_discord_id" class="form-input" value="{{ user.id }}" readonly style="cursor: not-allowed; background: rgba(255,255,255,0.02); color: #6a6a8e;">
-                </div>
-
-                <button type="submit" class="submit-btn">Enviar reporte</button>
-            </form>
-
-            <div class="sidebar-right">
-                <!-- STATIC EXAMPLE CARD -->
-                <div class="glass-card" style="border-left: 4px solid #ffa502;">
-                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
-                        <div style="width:32px; height:32px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center;">
-                            <i data-lucide="info" style="width:16px; color:#ffa502;"></i>
+                <div class="feedback-grid">
+                    <form method="POST" class="glass-card" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Reporte</label>
+                            <span class="form-hint">Elige la categoría que mejor se ajuste a tu situación.</span>
+                            <select name="type" class="form-select" required>
+                                <option value="" disabled selected>Selecciona el tipo de reporte</option>
+                                <option value="Error/Bugs">Error / Bugs</option>
+                                <option value="Servicios/Comandos">Servicios / Comandos</option>
+                                <option value="Seguridad/Exploits">Seguridad / Exploits</option>
+                                <option value="Otro">Otro</option>
+                            </select>
                         </div>
-                        <span style="font-weight:700; font-size:0.9rem; color:#eee;">Ejemplo de reporte</span>
-                    </div>
-                    
-                    <div style="display:flex; gap:10px; margin-bottom:20px;">
-                        <span class="example-badge" style="background: rgba(87, 95, 207, 0.2); color: #7d5fff;">Tipo: Bugs</span>
-                        <span class="priority-tag" style="background: rgba(255, 165, 2, 0.15); color: #ffa502;">Prioridad: Media</span>
-                    </div>
 
-                    <div style="margin-bottom:20px;">
-                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Asunto</label>
-                        <p style="font-weight:600; margin:0; font-size:1rem;">Error de duplicación en apuestas</p>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Asunto</label>
+                            <span class="form-hint">Describe brevemente el problema (máximo 100 caracteres).</span>
+                            <input type="text" name="subject" class="form-input"
+                                placeholder="Describe brevemente el problema..." required maxlength="100">
+                        </div>
 
-                    <div style="margin-bottom:20px;">
-                        <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Descripción</label>
-                        <p style="font-size:0.85rem; color:#a0a0c0; line-height:1.6; margin:0;">
-                            Al usar el comando /bet y perder la conexión justo antes de que termine, el bot no resta las monedas pero sí da la recompensa si el resultado es ganador.
-                            <br><br>
-                            Pasos que observé:<br>
-                            1. Iniciar apuesta.<br>
-                            2. Desconectar internet.<br>
-                            3. Reconectar.
-                        </p>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Descripción</label>
+                            <span class="form-hint">Explica detalladamente el problema. Incluye toda la información
+                                relevante.</span>
+                            <textarea name="description" class="form-textarea"
+                                placeholder="Explica detalladamente el problema e incluye pasos para reproducirlo..."
+                                required></textarea>
+                        </div>
 
-                    <div style="background: rgba(255, 165, 2, 0.05); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #ffa502; display: flex; gap: 10px; align-items: flex-start;">
-                        <i data-lucide="alert-circle" style="width:14px; flex-shrink:0; margin-top:2px;"></i>
-                        <span>Importante: Incluye siempre capturas o videos para agilizar la revisión.</span>
-                    </div>
-                </div>
+                        <div class="form-group">
+                            <label class="form-label">Prioridad</label>
+                            <span class="form-hint">Indica qué tan urgente es este reporte.</span>
+                            <div class="priority-options">
+                                <input type="hidden" name="priority" id="priority-input" value="Media">
+                                <button type="button" class="priority-btn" onclick="setPriority(this, 'Baja')"><i
+                                        data-lucide="circle"></i> Baja</button>
+                                <button type="button" class="priority-btn active"
+                                    onclick="setPriority(this, 'Media')"><i data-lucide="alert-circle"></i>
+                                    Media</button>
+                                <button type="button" class="priority-btn" onclick="setPriority(this, 'Alta')"><i
+                                        data-lucide="alert-triangle"></i> Alta</button>
+                                <button type="button" class="priority-btn" onclick="setPriority(this, 'Crítica')"><i
+                                        data-lucide="zap"></i> Crítica</button>
+                            </div>
+                        </div>
 
-                <div class="glass-card" style="background:rgba(255,255,255,0.01); border-style: dashed;">
-                    <p style="color:#6a6a8e; font-size:0.85rem; text-align:center; margin:0;">
-                        Tu reporte será enviado directamente al equipo de staff. Gracias por tu colaboración.
-                    </p>
+                        <div class="form-group">
+                            <label class="form-label">Evidencias (Opcional)</label>
+                            <span class="form-hint">Sube imágenes o videos que ayuden a entender el reporte (URL o
+                                archivo).</span>
+                            <div class="evidence-upload" onclick="document.getElementById('file-input').click()">
+                                <i data-lucide="upload-cloud"></i>
+                                <p style="margin:0; font-weight:600;">Haz clic para seleccionar o arrastra archivos</p>
+                                <p style="margin:5px 0 0 0; font-size:0.7rem; color: #6a6a8e;">Máximo 8MB por archivo.
+                                    Formatos sugeridos: PNG, JPG, MP4.</p>
+                                <input type="file" id="file-input" name="evidence_file" style="display:none;" multiple>
+                            </div>
+                            <div style="margin-top:15px;">
+                                <input type="url" name="evidence_url" class="form-input"
+                                    placeholder="O pega un enlace directo a la imagen/video (opcional)">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">ID del Usuario</label>
+                            <span class="form-hint">Tu ID de Discord (no editable).</span>
+                            <input type="text" name="user_discord_id" class="form-input" value="{{ user.id }}" readonly
+                                style="cursor: not-allowed; background: rgba(255,255,255,0.02); color: #6a6a8e;">
+                        </div>
+
+                        <button type="submit" class="submit-btn">Enviar reporte</button>
+                    </form>
+
+                    <div class="sidebar-right">
+                        <!-- STATIC EXAMPLE CARD -->
+                        <div class="glass-card" style="border-left: 4px solid #ffa502;">
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                                <div
+                                    style="width:32px; height:32px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                                    <i data-lucide="info" style="width:16px; color:#ffa502;"></i>
+                                </div>
+                                <span style="font-weight:700; font-size:0.9rem; color:#eee;">Ejemplo de reporte</span>
+                            </div>
+
+                            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                                <span class="example-badge"
+                                    style="background: rgba(87, 95, 207, 0.2); color: #7d5fff;">Tipo: Bugs</span>
+                                <span class="priority-tag"
+                                    style="background: rgba(255, 165, 2, 0.15); color: #ffa502;">Prioridad: Media</span>
+                            </div>
+
+                            <div style="margin-bottom:20px;">
+                                <label class="form-label" style="font-size:0.7rem; margin-bottom:5px;">Asunto</label>
+                                <p style="font-weight:600; margin:0; font-size:1rem;">Error de duplicación en apuestas
+                                </p>
+                            </div>
+
+                            <div style="margin-bottom:20px;">
+                                <label class="form-label"
+                                    style="font-size:0.7rem; margin-bottom:5px;">Descripción</label>
+                                <p style="font-size:0.85rem; color:#a0a0c0; line-height:1.6; margin:0;">
+                                    Al usar el comando /bet y perder la conexión justo antes de que termine, el bot no
+                                    resta las monedas pero sí da la recompensa si el resultado es ganador.
+                                    <br><br>
+                                    Pasos que observé:<br>
+                                    1. Iniciar apuesta.<br>
+                                    2. Desconectar internet.<br>
+                                    3. Reconectar.
+                                </p>
+                            </div>
+
+                            <div
+                                style="background: rgba(255, 165, 2, 0.05); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #ffa502; display: flex; gap: 10px; align-items: flex-start;">
+                                <i data-lucide="alert-circle" style="width:14px; flex-shrink:0; margin-top:2px;"></i>
+                                <span>Importante: Incluye siempre capturas o videos para agilizar la revisión.</span>
+                            </div>
+                        </div>
+
+                        <div class="glass-card" style="background:rgba(255,255,255,0.01); border-style: dashed;">
+                            <p style="color:#6a6a8e; font-size:0.85rem; text-align:center; margin:0;">
+                                Tu reporte será enviado directamente al equipo de staff. Gracias por tu colaboración.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
+        </section>
     </main>
 
     <footer>
@@ -694,7 +1003,7 @@
         function toggleSection(header) {
             const section = header.parentElement;
             section.classList.toggle('icon-mode');
-            
+
             // Save state
             const states = JSON.parse(localStorage.getItem('sidebarStates') || '{}');
             states[section.id] = section.classList.contains('icon-mode');
@@ -717,7 +1026,7 @@
         function filterServers() {
             const query = document.getElementById('guildSearch').value.toLowerCase();
             const cards = document.querySelectorAll('.server-card');
-            
+
             cards.forEach(card => {
                 const name = card.querySelector('h3').textContent.toLowerCase();
                 if (name.includes(query)) {
@@ -733,7 +1042,7 @@
             const btn = document.getElementById('refreshBtn');
             const icon = btn.querySelector('svg') || btn.querySelector('i');
             if (icon) icon.classList.add('spinning');
-            
+
             setTimeout(() => {
                 window.location.href = '?refresh=true';
             }, 600);
@@ -819,7 +1128,7 @@
         }
 
         // Close slider when clicking outside
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
             const container = document.querySelector('.profile-dropdown-container');
             const slider = document.getElementById('profileSlider');
             if (container && !container.contains(event.target)) {
@@ -830,14 +1139,14 @@
         // Mobile Sidebar Toggle
         const sidebar = document.querySelector('.db-sidebar');
         if (sidebar) {
-            sidebar.addEventListener('click', function(e) {
+            sidebar.addEventListener('click', function (e) {
                 if (window.innerWidth <= 768) {
                     const layout = document.querySelector('.dashboard-layout');
                     if (e.target.closest('a') && layout.classList.contains('expanded')) return;
                     layout.classList.toggle('expanded');
                 }
             });
-            document.addEventListener('click', function(e) {
+            document.addEventListener('click', function (e) {
                 if (window.innerWidth <= 768) {
                     const layout = document.querySelector('.dashboard-layout');
                     if (layout && layout.classList.contains('expanded') && !sidebar.contains(e.target) && !e.target.closest('#navbar')) {
@@ -845,27 +1154,6 @@
                     }
                 }
             });
-        }
-        // Theme Toggle (Dashboard)
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeContainer = document.getElementById('theme-icon-container');
-        
-        if (themeToggle && themeContainer) {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            updateThemeIcon(savedTheme);
-
-            themeToggle.addEventListener('click', () => {
-                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateThemeIcon(newTheme);
-            });
-
-            function updateThemeIcon(theme) {
-                themeContainer.innerHTML = `<i data-lucide="${theme === 'light' ? 'moon' : 'sun'}"></i>`;
-                lucide.createIcons();
-            }
         }
     </script>
 
@@ -876,7 +1164,7 @@
             document.getElementById('priority-input').value = val;
         }
 
-        document.getElementById('file-input').addEventListener('change', function(e) {
+        document.getElementById('file-input').addEventListener('change', function (e) {
             const count = this.files.length;
             if (count > 0) {
                 const label = this.parentElement.querySelector('p');
@@ -885,6 +1173,7 @@
             }
         });
     </script>
-    
+
 </body>
+
 </html>

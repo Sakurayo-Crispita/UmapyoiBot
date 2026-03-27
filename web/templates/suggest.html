@@ -481,18 +481,19 @@
                         </a>
                     </div>
                 </li>
+                {% if session.get('user') %}
                 <li class="nav-item">
                     <div class="profile-dropdown-container">
                         <div class="profile-trigger" onclick="toggleProfileSlider()">
-                            <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="profile-avatar-sm" onerror="this.src='/static/assets/favicon_web.png'">
-                            <span style="font-weight: 700; font-size: 0.9rem; margin: 0 5px;">{{ user.username }}</span>
+                            <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png" alt="Avatar" class="profile-avatar-sm" onerror="this.src='/static/assets/favicon_web.png'">
+                            <span style="font-weight: 700; font-size: 0.9rem; margin: 0 5px;">{{ session.user.username }}</span>
                             <i data-lucide="chevron-down" style="width: 16px;"></i>
                         </div>
                         
                         <div id="profileSlider" class="profile-slider" style="position: absolute; right: 0; margin-top: 15px;">
                             <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
-                                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ user.username }}</h4>
-                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ user.username }}!</p>
+                                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ session.user.username }}</h4>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ session.user.username }}!</p>
                             </div>
                             
                             <div class="slider-body" style="padding: 10px;">
@@ -506,6 +507,9 @@
                         </div>
                     </div>
                 </li>
+                {% else %}
+                <li><a href="/login" class="btn btn-p">Iniciar Sesión</a></li>
+                {% endif %}
                 <li>
                     <div class="theme-toggle" id="theme-toggle" title="Cambiar Tema">
                         <span id="theme-icon-container"><i data-lucide="moon"></i></span>
@@ -832,27 +836,6 @@
                     }
                 }
             });
-        }
-        // Theme Toggle (Dashboard)
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeContainer = document.getElementById('theme-icon-container');
-        
-        if (themeToggle && themeContainer) {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            updateThemeIcon(savedTheme);
-
-            themeToggle.addEventListener('click', () => {
-                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateThemeIcon(newTheme);
-            });
-
-            function updateThemeIcon(theme) {
-                themeContainer.innerHTML = `<i data-lucide="${theme === 'light' ? 'moon' : 'sun'}"></i>`;
-                lucide.createIcons();
-            }
         }
     </script>
 
