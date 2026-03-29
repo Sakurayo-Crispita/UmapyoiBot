@@ -68,7 +68,7 @@ async def internal_error(error):
 # Configuración de Discord
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://localhost:5000/callback")
+REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://umapyoibot.com/callback")
 API_ENDPOINT = 'https://discord.com/api/v10'
 
 # Webhooks para Reportes y Sugerencias
