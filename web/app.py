@@ -88,9 +88,9 @@ COOLDOWN_SECONDS = 3
 # Rate Limiter Global (Anti-Spam DDoS básico)
 RATE_LIMITS = {}
 RATE_LIMIT_MAX_REQUESTS = 5
-RATE_LIMIT_PERIOD_SECONDS = 60
+RATE_LIMIT_PERIOD_SECONDS = 3
 BANNED_IPS = {}
-BAN_TIME_SECONDS = 10
+BAN_TIME_SECONDS = 5
 
 @app.before_request
 async def rate_limit_check():
@@ -108,7 +108,6 @@ async def rate_limit_check():
         client_ip = "unknown"
         
     now = time.time()
-    print(f"[DEBUG SECURITY] Detected IP: {client_ip}")
     
     # Comprobar si está bloqueado temporalmente (hard-ban)
     ban_expiry = BANNED_IPS.get(client_ip, 0)
@@ -126,9 +125,8 @@ async def rate_limit_check():
     # print(f"[DEBUG SECURITY] IP: {client_ip} | Pet. previas: {len(RATE_LIMITS[client_ip])}")
         
     if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
-        # Castigar con 10 segundos fijos por spamear
+        # Castigar con ban temporal por spamear
         BANNED_IPS[client_ip] = now + BAN_TIME_SECONDS
-        print(f"[!] SEGURIDAD: IP {client_ip} ha sido bloqueada por 10s por exceso de peticiones.")
         return await render_template('429.html'), 429
         
     RATE_LIMITS[client_ip].append(now)
@@ -153,15 +151,9 @@ def login_required(f):
         return await f(*args, **kwargs)
     return decorated_function
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 async def index():
     return await render_template('index.html')
-
-@app.route('/test-payload', methods=['POST'])
-async def test_payload():
-    # Forzar la lectura de datos para disparar el límite de MAX_CONTENT_LENGTH
-    data = await request.get_data()
-    return "OK", 200
 
 @app.route('/docs')
 async def docs():

@@ -251,35 +251,46 @@
             display: none !important;
         }
 
-        /* Sticky Save Bar */
+        /* Sticky Save Bar - Rediseño Premium Floating Pill */
         .save-bar {
             position: fixed;
-            bottom: -80px;
-            left: 0;
-            right: 0;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            min-width: 500px;
+            max-width: 90%;
             z-index: 9999;
-            background: #1a1b1e;
-            border-top: 1px solid var(--border-color);
-            padding: 14px 30px;
+            background: rgba(22, 22, 28, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            border-radius: 100px;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 45px rgba(0,0,0,0.5), 0 0 20px rgba(245, 130, 174, 0.1);
+            gap: 40px;
         }
         .save-bar.visible {
-            bottom: 0;
+            bottom: 30px;
         }
         .save-bar-message {
             display: flex;
             align-items: center;
-            gap: 10px;
-            color: var(--text-main);
-            font-weight: 600;
+            gap: 12px;
+            color: #fff;
+            font-weight: 700;
             font-size: 0.95rem;
+            white-space: nowrap;
         }
         .save-bar-message i {
             color: var(--p-pink);
+            background: rgba(245, 130, 174, 0.1);
+            padding: 6px;
+            border-radius: 8px;
         }
         .save-bar-actions {
             display: flex;
@@ -287,37 +298,42 @@
             gap: 12px;
         }
         .save-bar-actions .btn-reset {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
             cursor: pointer;
             font-size: 0.9rem;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: var(--radius-sm);
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 100px;
             transition: all 0.2s;
         }
         .save-bar-actions .btn-reset:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
         }
         .save-bar-actions .btn-save {
-            background: var(--p-pink);
-            color: #1a1a1a;
+            background: linear-gradient(135deg, var(--p-pink) 0%, #ff89b6 100%);
+            color: #000;
             border: none;
-            padding: 10px 24px;
-            border-radius: var(--radius-sm);
-            font-weight: 700;
-            font-size: 0.9rem;
+            padding: 10px 28px;
+            border-radius: 100px;
+            font-weight: 800;
+            font-size: 0.95rem;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 15px rgba(245, 130, 174, 0.3);
         }
         .save-bar-actions .btn-save:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 20px rgba(245, 130, 174, 0.4);
             filter: brightness(1.1);
-            transform: translateY(-1px);
+        }
+        .save-bar-actions .btn-save:active {
+            transform: translateY(1px);
         }
 
         /* ===== Sidebar Redesign ===== */
@@ -2625,6 +2641,9 @@
         resetBtn.addEventListener('click', function() {
             forms.forEach(form => form.reset());
             saveBar.classList.remove('visible');
+            
+            // NEW: After reset, re-sync the visual state of the cards (active glow)
+            if (window.syncCardGlows) window.syncCardGlows();
         });
 
         // Re-init lucide icons for the save bar
@@ -2634,18 +2653,26 @@
 
     <!-- Dynamic Module Card Glow on Toggle -->
     <script>
-    document.querySelectorAll('.module-card .switch input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', function() {
-            const card = this.closest('.module-card');
-            if (!card) return;
-            if (this.checked) {
-                card.classList.add('active');
-            } else {
-                card.classList.remove('active');
-            }
+    (function() {
+        window.syncCardGlows = function() {
+            document.querySelectorAll('.module-card').forEach(card => {
+                const cb = card.querySelector('.switch input[type="checkbox"]');
+                if (cb) {
+                    if (cb.checked) card.classList.add('active');
+                    else card.classList.remove('active');
+                }
+            });
+        };
+
+        document.querySelectorAll('.module-card .switch input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', window.syncCardGlows);
         });
-    });
+
+        // Initialize on load
+        window.syncCardGlows();
+    })();
     </script>
+    
     
     <!-- Auto-Toast for saved changes -->
     {% if saved %}
