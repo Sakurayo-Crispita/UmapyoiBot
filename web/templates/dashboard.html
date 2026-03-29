@@ -456,8 +456,8 @@
                             <i data-lucide="chevron-down" style="width: 16px;"></i>
                         </div>
                         
-                        <div id="profileSlider" class="profile-slider" style="position: absolute; right: 0; margin-top: 15px;">
-                            <div class="slider-header" style="background: linear-gradient(to bottom, rgba(255,166,193,0.1), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
+                        <div id="profileSlider" class="profile-slider" style="position: absolute; right: 0; margin-top: 15px; border: 1px solid var(--border-color);">
+                            <div class="slider-header" style="background: linear-gradient(to bottom, var(--p-pink-soft), transparent); padding: 20px; border-bottom: 1px solid var(--border-color); text-align: left;">
                                 <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ user.username }}</h4>
                                 <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">¡Hola @{{ user.username }}!</p>
                             </div>
@@ -484,7 +484,7 @@
 
     <main class="dashboard-layout">
         <aside class="db-sidebar">
-            <div class="user-card" style="padding: 15px; gap: 12px; background: rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+            <div class="user-card" style="padding: 15px; gap: 12px; background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin: 10px;">
                 <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png" alt="Avatar" class="user-avatar" style="width:40px; height:40px; border: 2px solid var(--p-pink);">
                 <div style="min-width: 0;">
                     <h4 style="margin:0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.username }}</h4>

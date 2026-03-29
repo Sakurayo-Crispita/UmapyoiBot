@@ -816,7 +816,7 @@
                     <div class="server-dropdown">
                         <div class="server-dropdown-inner">
                             {% for s in user_servers %}
-                            <a href="/dashboard/server/{{ s.id }}/general" class="server-dropdown-item {% if s.id == server.id %}current{% endif %}">
+                            <a href="/dashboard/server/{{ s.id }}/{{ section }}" class="server-dropdown-item {% if s.id == server.id %}current{% endif %}">
                                 {% if s.icon %}
                                 <img src="https://cdn.discordapp.com/icons/{{ s.id }}/{{ s.icon }}.png?size=64" alt="">
                                 {% else %}

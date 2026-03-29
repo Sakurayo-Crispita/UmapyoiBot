@@ -509,6 +509,11 @@ async def get_server_context(guild_id):
     else:
         bot_on = False
         member_count = 0
+        text_channels = []
+        voice_channels = []
+        categories = []
+        roles = []
+        
         try:
             async with aiohttp.ClientSession() as client:
                 headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
@@ -528,9 +533,6 @@ async def get_server_context(guild_id):
             member_count = target_guild.get('approximate_member_count', 0)
 
         # Discord API: canales y roles (solo si el bot está en el servidor)
-        text_channels = []
-        voice_channels = []
-        categories = []
         if bot_on:
             text_channels, voice_channels, categories = await fetch_guild_channels(guild_id)
             roles = await fetch_guild_roles(guild_id)

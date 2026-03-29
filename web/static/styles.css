@@ -1,24 +1,22 @@
 :root {
     color-scheme: light;
-    /* Color Palette - Light Theme (Mocca/Caramel) */
-    --p-pink: #d4a373; /* Primary: Caramel */
-    --p-pink-soft: #faedcd; /* Light Beige */
-    --p-pink-deep: #bc6c25; /* Mocha */
-    --s-cream: #fefae0;
-    --a-purple: #dda15e; /* Gold/Bronze Accent */
-    --a-green: #606c38;
+    /* Color Palette - Light Theme (Mocha Premium) */
+    --bg-main: #fffcf9;      /* Smooth cream background (Eye-friendly) */
+    --bg-alt: #f8f3eb;       /* Rich paper tone */
+    --text-main: #2c1810;    /* Deep Mocha espresso headings */
+    --text-muted: #5d4a44;   /* Warm bronze secondary text */
+    --nav-bg: rgba(255, 252, 249, 0.95);
+    --crema-input: #ffffff;  /* Pure white for input contrast */
+    --border-color: rgba(44, 24, 16, 0.12);
+    --accent-glow: rgba(255, 77, 141, 0.25);
+    --glass-bg: rgba(255, 252, 249, 0.7);
+    --glass-border: rgba(44, 24, 16, 0.15);
     
-    /* Functional Colors - Light */
-    --bg-main: #ffffff;
-    --bg-alt: #fdfafb; 
-    --text-main: #2c1810; /* Deep Mocha for headings */
-    --text-muted: #5d4a44; /* Darker mocha for readability */
-    --nav-bg: rgba(255, 255, 255, 0.95);
-    --crema-input: #fffcf8; /* Soft cream background for inputs */
-    --border-color: rgba(212, 163, 115, 0.15);
-    --accent-glow: rgba(212, 163, 115, 0.3);
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(212, 163, 115, 0.15);
+    /* Branding Accents - Saturated Hero Colors */
+    --p-pink: #ff4d8d;       /* Vibrant "Nekotina-style" PINK */
+    --p-pink-soft: rgba(255, 77, 141, 0.12);
+    --p-gold: #d4a373;       /* Warm Caramel Gold */
+    --p-pink-deep: #2c1810;  /* Mocha for strong accents */
     
     /* Design Tokens */
     --header-h: 85px;
