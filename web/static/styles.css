@@ -62,6 +62,29 @@
     animation: toastSlideIn 0.5s ease;
 }
 
+/* Visual Hierarchy States */
+.guild-inactive {
+    filter: grayscale(1) opacity(0.6);
+    transition: var(--transition);
+}
+.guild-inactive:hover {
+    filter: grayscale(0.5) opacity(0.85);
+    transform: translateY(-4px) !important;
+}
+.guild-inactive .btn-ghost {
+    filter: none !important; /* Keep Invite button colorful */
+    opacity: 1 !important;
+}
+
+.guild-no-icon-minimal {
+    background: var(--glass-bg) !important;
+    border: 1px dashed var(--border-color) !important;
+    box-shadow: none !important;
+}
+.guild-no-icon-minimal .card-banner {
+    background: rgba(44, 24, 16, 0.03) !important;
+}
+
 /* Toast Unification - Fixed to Right */
 .umapyoi-toast-container {
     position: fixed;

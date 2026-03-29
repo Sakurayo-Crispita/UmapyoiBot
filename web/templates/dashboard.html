@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=15.0">
+    <link rel="stylesheet" href="/static/styles.css?v=16.0">
     <style>
         .dashboard-layout {
             display: grid;
@@ -540,7 +540,7 @@
             <div class="server-grid">
                 {% if servers %}
                     {% for server in servers %}
-                    <div class="server-card {% if not server.icon %}no-icon-banner{% endif %}" 
+                    <div class="server-card {% if not server.has_bot %}guild-inactive{% endif %} {% if not server.icon %}guild-no-icon-minimal{% endif %}" 
                          {% if server.icon %}style="--banner-url: url('https://cdn.discordapp.com/icons/{{ server.id }}/{{ server.icon }}.{{ 'gif' if server.icon.startswith('a_') else 'png' }}');"{% endif %}>
                         <div class="card-banner"></div>
                         <div class="card-body">
