@@ -318,8 +318,8 @@
             border-color: var(--text-muted);
         }
         .save-bar-actions .btn-save {
-            background: linear-gradient(135deg, var(--p-accent), #c18e5d);
-            color: #1a1b1e;
+            background: linear-gradient(135deg, #e6b980 0%, #d4a373 100%);
+            color: #2c1810 !important;
             border: none;
             padding: 12px 28px;
             border-radius: 50px;
@@ -2583,13 +2583,15 @@
         </div>
     </div>
 
-    <!-- Sticky Save Bar Logic -->
+    <!-- Sticky Save Bar Logic & Navigation Protection -->
     <script>
     (function() {
         const saveBar = document.getElementById('saveBar');
         const saveBtn = document.getElementById('saveBarSubmit');
         const resetBtn = document.getElementById('saveBarReset');
         if (!saveBar) return;
+
+        window.hasUnsavedChanges = false;
 
         // Store initial form values from the main area
         const forms = document.querySelectorAll('main form');
@@ -2613,27 +2615,54 @@
         });
 
         function checkChanges() {
-            let hasChanges = false;
+            let changes = false;
             forms.forEach(form => {
                 if (getFormData(form) !== initialValues.get(form)) {
-                    hasChanges = true;
+                    changes = true;
                 }
             });
-            if (hasChanges) {
+            
+            window.hasUnsavedChanges = changes;
+            
+            if (changes) {
                 saveBar.classList.add('visible');
             } else {
                 saveBar.classList.remove('visible');
             }
         }
 
-        // Listen for changes on all form elements
+        // Navigation Protection
+        function confirmNavigation(e) {
+            if (window.hasUnsavedChanges) {
+                const msg = "¡Cuidado! Tienes cambios sin guardar que se perderán si sales.";
+                if (e) e.returnValue = msg;
+                return msg;
+            }
+        }
+        window.addEventListener('beforeunload', confirmNavigation);
+
+        // Intercept clicks on sidebar and nav links
+        document.querySelectorAll('.sidebar-item, .sub-tab, .nav-link, .logo, .dropdown-item').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (window.hasUnsavedChanges) {
+                    if (!confirm("¡Cuidado! Tienes cambios sin guardar. ¿Estás seguro de que quieres salir sin guardar?")) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            }, true);
+        });
+
+        // Listen for changes
         document.querySelectorAll('input, select, textarea').forEach(el => {
             el.addEventListener('change', checkChanges);
             el.addEventListener('input', checkChanges);
         });
 
-        // Save button submits the changed form
+        // Save button logic
         saveBtn.addEventListener('click', function() {
+            window.removeEventListener('beforeunload', confirmNavigation);
+            window.hasUnsavedChanges = false;
             forms.forEach(form => {
                 if (getFormData(form) !== initialValues.get(form)) {
                     form.submit();
@@ -2641,16 +2670,26 @@
             });
         });
 
-        // Reset button restores initial values
+        // Reset button logic
         resetBtn.addEventListener('click', function() {
             forms.forEach(form => form.reset());
+            window.hasUnsavedChanges = false;
             saveBar.classList.remove('visible');
-            
-            // NEW: After reset, re-sync the visual state of the cards (active glow)
             if (window.syncCardGlows) window.syncCardGlows();
         });
 
-        // Re-init lucide icons for the save bar
+        // Theme Sync: Update bar appearance when theme changes
+        const themeObserver = new MutationObserver((mutations) => {
+            mutations.forEach((m) => {
+                if (m.attributeName === 'data-theme') {
+                    // Small hack to force CSS update
+                    saveBar.classList.remove('visible');
+                    setTimeout(() => { if(window.hasUnsavedChanges) saveBar.classList.add('visible'); }, 10);
+                }
+            });
+        });
+        themeObserver.observe(document.documentElement, { attributes: true });
+
         if (typeof lucide !== 'undefined') lucide.createIcons();
     })();
     </script>

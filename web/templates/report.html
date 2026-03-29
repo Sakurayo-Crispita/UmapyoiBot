@@ -479,7 +479,7 @@
         }
 
         .glass-card {
-            background: rgba(0, 0, 0, 0.15);
+            background: var(--glass-bg);
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 30px;
@@ -511,11 +511,11 @@
         .form-select,
         .form-textarea {
             width: 100%;
-            background: rgba(0, 0, 0, 0.3);
+            background: var(--bg-alt);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 12px 15px;
-            color: white;
+            color: var(--text-main);
             font-family: inherit;
             transition: all 0.3s;
         }
@@ -525,12 +525,12 @@
         .form-textarea:focus {
             border-color: var(--p-pink);
             outline: none;
-            background: rgba(0, 0, 0, 0.4);
+            background: var(--glass-bg);
         }
 
         .form-select option {
             background: var(--bg-main);
-            color: white;
+            color: var(--text-main);
         }
 
         .form-textarea {

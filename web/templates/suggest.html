@@ -379,13 +379,13 @@
         .feedback-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .feedback-header { margin-bottom: 40px; }
         .feedback-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: start; }
-        .glass-card { background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; backdrop-filter: blur(10px); }
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; backdrop-filter: blur(10px); }
         .form-group { margin-bottom: 25px; }
         .form-label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.8px; }
         .form-hint { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-bottom: 8px; display: block; }
-        .form-input, .form-select, .form-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 15px; color: white; font-family: inherit; transition: all 0.3s; }
-        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--p-pink); outline: none; background: rgba(0,0,0,0.4); }
-        .form-select option { background: var(--bg-main); color: white; }
+        .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 15px; color: var(--text-main); font-family: inherit; transition: all 0.3s; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--p-pink); outline: none; background: var(--glass-bg); }
+        .form-select option { background: var(--bg-main); color: var(--text-main); }
         .form-textarea { resize: vertical; min-height: 120px; max-height: 300px; }
         
         .priority-options { display: flex; gap: 15px; margin-top: 10px; }
@@ -617,7 +617,7 @@
                 <div class="form-group">
                     <label class="form-label">ID del Usuario</label>
                     <span class="form-hint">Tu ID de Discord (no editable).</span>
-                    <input type="text" name="user_discord_id" class="form-input" value="{{ user.id }}" readonly style="cursor: not-allowed; background: rgba(255,255,255,0.02); color: #6a6a8e;">
+                    <input type="text" name="user_discord_id" class="form-input" value="{{ user.id }}" readonly style="cursor: not-allowed; opacity: 0.6;">
                 </div>
 
                 <button type="submit" class="submit-btn" style="background-color: var(--p-pink); border-color: var(--p-pink);">Enviar sugerencia</button>
@@ -630,7 +630,7 @@
                         <div style="width:32px; height:32px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center;">
                             <i data-lucide="lightbulb" style="width:16px; color:#7d5fff;"></i>
                         </div>
-                        <span style="font-weight:700; font-size:0.9rem; color:#eee;">Ejemplo de sugerencia</span>
+                        <span style="font-weight:700; font-size:0.9rem; color:var(--text-main);">Ejemplo de sugerencia</span>
                     </div>
                     
                     <div style="margin-bottom:20px;">

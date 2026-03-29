@@ -16,6 +16,8 @@
     --nav-bg: rgba(255, 255, 255, 0.9);
     --border-color: rgba(212, 163, 115, 0.15);
     --accent-glow: rgba(212, 163, 115, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(212, 163, 115, 0.15);
     
     /* Design Tokens */
     --header-h: 85px;
@@ -39,6 +41,8 @@
     --border-color: rgba(212, 163, 115, 0.2);
     --p-pink-soft: rgba(212, 163, 115, 0.1);
     --accent-glow: rgba(212, 163, 115, 0.25);
+    --glass-bg: rgba(30, 27, 26, 0.6);
+    --glass-border: rgba(212, 163, 115, 0.1);
     --shadow-md: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
