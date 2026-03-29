@@ -1,5 +1,6 @@
 from quart import Quart, render_template, send_from_directory, redirect, url_for, session, request, send_file
 from functools import wraps
+from werkzeug.exceptions import HTTPException
 import os
 import aiohttp
 import asyncio
@@ -31,6 +32,39 @@ app = Quart(__name__,
             template_folder=template_dir)
 app.secret_key = os.urandom(24)
 
+# ==== 🛡️ CONFIGURACIONES DE SEGURIDAD (BLINDAJE DE 5 CAPAS) ====
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # Límite de 5 MB anti-DDoS/Exhaustión de RAM
+app.config['SESSION_COOKIE_HTTPONLY'] = True      # Evita que el JS malicioso robe cookies (XSS)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'       # Evita CSRF en navegación de alto nivel
+
+@app.after_request
+async def apply_security_headers(response):
+    # Cabeceras anti-ataques invisibles para el navegador
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY' # Previene Clickjacking en sitios externos
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
+@app.errorhandler(404)
+async def not_found_error(error):
+    try:
+        return await render_template('404.html'), 404
+    except:
+        return "Página no encontrada", 404
+
+@app.errorhandler(Exception)
+async def internal_error(error):
+    # Si es un error HTTP estándar (como 413 Payload Too Large o 405), lo dejamos pasar
+    if isinstance(error, HTTPException):
+        return error
+
+    # Registraremos el error fatal en consola sin exponérselo al atacante o usuario final
+    print(f"--- [!] ERROR INTERNO FATAL [!] ---\n{error}")
+    try:
+        return await render_template('500.html'), 500
+    except:
+        return "Error Interno del Servidor", 500
+
 # Configuración de Discord
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
@@ -54,7 +88,9 @@ COOLDOWN_SECONDS = 3
 # Rate Limiter Global (Anti-Spam DDoS básico)
 RATE_LIMITS = {}
 RATE_LIMIT_MAX_REQUESTS = 5
-RATE_LIMIT_PERIOD_SECONDS = 3
+RATE_LIMIT_PERIOD_SECONDS = 60
+BANNED_IPS = {}
+BAN_TIME_SECONDS = 10
 
 @app.before_request
 async def rate_limit_check():
@@ -64,17 +100,35 @@ async def rate_limit_check():
 
     # Obtener IP del cliente (soporte proxy inverso)
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    # Sanitizar en caso de local IPv6 (::1) o similar
     if client_ip and ',' in client_ip:
         client_ip = client_ip.split(',')[0].strip()
+    
+    if not client_ip:
+        client_ip = "unknown"
         
     now = time.time()
+    print(f"[DEBUG SECURITY] Detected IP: {client_ip}")
+    
+    # Comprobar si está bloqueado temporalmente (hard-ban)
+    ban_expiry = BANNED_IPS.get(client_ip, 0)
+    if now < ban_expiry:
+        # print(f"[DEBUG SECURITY] IP {client_ip} BANEADA. Quedan {round(ban_expiry - now, 1)}s")
+        return await render_template('429.html'), 429
+    elif ban_expiry != 0:
+        del BANNED_IPS[client_ip] 
     
     if client_ip in RATE_LIMITS:
         RATE_LIMITS[client_ip] = [t for t in RATE_LIMITS[client_ip] if now - t < RATE_LIMIT_PERIOD_SECONDS]
     else:
         RATE_LIMITS[client_ip] = []
+    
+    # print(f"[DEBUG SECURITY] IP: {client_ip} | Pet. previas: {len(RATE_LIMITS[client_ip])}")
         
     if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+        # Castigar con 10 segundos fijos por spamear
+        BANNED_IPS[client_ip] = now + BAN_TIME_SECONDS
+        print(f"[!] SEGURIDAD: IP {client_ip} ha sido bloqueada por 10s por exceso de peticiones.")
         return await render_template('429.html'), 429
         
     RATE_LIMITS[client_ip].append(now)
@@ -99,9 +153,15 @@ def login_required(f):
         return await f(*args, **kwargs)
     return decorated_function
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 async def index():
     return await render_template('index.html')
+
+@app.route('/test-payload', methods=['POST'])
+async def test_payload():
+    # Forzar la lectura de datos para disparar el límite de MAX_CONTENT_LENGTH
+    data = await request.get_data()
+    return "OK", 200
 
 @app.route('/docs')
 async def docs():

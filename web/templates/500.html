@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demasiadas Peticiones - UmapyoiBot</title>
+    <title>Error Interno - UmapyoiBot</title>
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,9 +19,9 @@
         }
 
         @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-            100% { transform: translateY(0px); }
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(-5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
         }
 
         @keyframes pulseGlow {
@@ -53,7 +53,7 @@
 
         .error-container {
             text-align: center;
-            padding: 40px;
+            padding: 50px 40px;
             max-width: 500px;
             width: 90%;
             background: rgba(255, 255, 255, 0.02);
@@ -70,7 +70,7 @@
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 2px;
-            background: linear-gradient(90deg, transparent, var(--p-pink), transparent);
+            background: linear-gradient(90deg, transparent, #ef4444, transparent);
             border-radius: 2px 2px 0 0;
             opacity: 0.8;
         }
@@ -78,15 +78,15 @@
         .icon-wrapper {
             width: 90px;
             height: 90px;
-            background: var(--p-pink-soft);
+            background: rgba(239, 68, 68, 0.15);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 25px auto;
-            color: var(--p-pink);
-            animation: float 4s ease-in-out infinite, pulseGlow 2s infinite;
-            border: 1px solid rgba(245, 130, 174, 0.3);
+            color: #ef4444;
+            animation: float 4s ease-in-out infinite;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
         .icon-wrapper i {
@@ -94,79 +94,71 @@
             height: 45px;
         }
 
-        h1 {
-            font-size: 2.5rem;
+        .error-code {
+            font-size: 5rem;
             font-weight: 800;
-            margin: 0 0 10px 0;
-            background: linear-gradient(to right, #fff, #ffe4e6);
+            margin: 0;
+            line-height: 1;
+            background: linear-gradient(to right, #fff, #ef4444);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
+            letter-spacing: -2px;
+            text-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 10px 0 15px 0;
+            color: #fff;
         }
 
         p {
             color: var(--text-muted);
             font-size: 1.1rem;
             line-height: 1.6;
-            margin: 0 0 30px 0;
+            margin: 0 0 35px 0;
         }
 
-        .btn-reload {
+        .btn-home {
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            background: var(--p-pink);
-            color: #0a0a0c;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
             text-decoration: none;
             padding: 14px 32px;
             border-radius: 100px;
             font-weight: 700;
             font-size: 1.05rem;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 20px rgba(245, 130, 174, 0.2);
         }
 
-        .btn-reload:hover {
+        .btn-home:hover {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 25px rgba(245, 130, 174, 0.3);
             background: #fff;
+            color: var(--bg-main);
         }
 
-        .btn-reload:active {
+        .btn-home:active {
             transform: translateY(1px);
-            box-shadow: 0 5px 10px rgba(245, 130, 174, 0.2);
-        }
-
-        .timer-badge {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 6px 14px;
-            border-radius: 100px;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
 <body>
     <div class="error-container">
-        <div class="icon-wrapper">
-            <i data-lucide="zap"></i>
+        <div class="error-code">500</div>
+        <div class="icon-wrapper" style="margin-top: -15px; width: 60px; height: 60px;">
+            <i data-lucide="server-crash" style="width: 30px; height: 30px;"></i>
         </div>
-        <h1>¡Wow, vas muy rápido!</h1>
-        <div class="timer-badge">
-            <i data-lucide="shield-alert" style="width: 16px; margin-right: 6px; color: var(--p-pink)"></i> Sistema Anti-Spam
-        </div>
-        <p>Nuestro sistema de seguridad ha limitado temporalmente tu conexión por recargar la página demasiadas veces.</p>
-        <button class="btn-reload" onclick="location.reload()">
-            <i data-lucide="refresh-cw"></i> Recargar Página
-        </button>
+        <h1>Error del Servidor</h1>
+        <p>Nuestros ingenieros mágicos tropezaron con un cable suelto. Estamos solucionándolo de forma automática, vuelve a intentar más tarde.</p>
+        <a href="/" class="btn-home">
+            <i data-lucide="home"></i> Volver al Inicio
+        </a>
     </div>
 
     <script>

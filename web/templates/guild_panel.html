@@ -2571,8 +2571,8 @@
         const resetBtn = document.getElementById('saveBarReset');
         if (!saveBar) return;
 
-        // Store initial form values
-        const forms = document.querySelectorAll('section.db-content form, .db-content form');
+        // Store initial form values from the main area
+        const forms = document.querySelectorAll('main form');
         const initialValues = new Map();
 
         function getFormData(form) {
@@ -2648,7 +2648,7 @@
     </script>
     
     <!-- Auto-Toast for saved changes -->
-    {% if request.args.get('saved') == 'true' %}
+    {% if saved %}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof showToast === 'function') {
