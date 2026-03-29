@@ -1,52 +1,38 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <style>
+        html:not(.theme-ready) body { opacity: 0; visibility: hidden; }
+    </style>
+    <script>!function(){var t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('theme-ready')}()</script>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Página no encontrada - UmapyoiBot</title>
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Outfit:wght@400;600;800&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link rel="stylesheet" href="/static/styles.css?v=11.0">
+    
     <style>
-        :root {
-            --bg-main: #151312; /* Deep Espresso */
-            --p-gold: #d4a373; /* Umapyoi Caramel */
-            --p-gold-glow: rgba(212, 163, 115, 0.3);
-            --p-gold-soft: rgba(212, 163, 115, 0.1);
-            --text-main: #f8f8f8;
-            --text-muted: #a69c97;
-            --glass-bg: rgba(30, 27, 26, 0.6);
-            --glass-border: rgba(212, 163, 115, 0.15);
-        }
-
-        @keyframes blobBounce {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(25px, -25px) scale(1.15); }
-        }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-40px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-10px) rotate(3deg); }
-        }
-
         body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            font-family: 'Quicksand', sans-serif;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-color: var(--bg-main);
+        }
+
+        .error-section {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            padding-top: var(--header-h);
             position: relative;
         }
 
@@ -54,134 +40,134 @@
             position: absolute;
             width: 700px;
             height: 700px;
-            background: radial-gradient(circle, var(--p-gold-soft) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
             filter: blur(120px);
             z-index: -1;
             animation: blobBounce 15s infinite alternate;
         }
-        .bg-glow-top { top: -300px; right: -200px; }
-        .bg-glow-bottom { bottom: -300px; left: -200px; opacity: 0.7; }
 
-        .container {
+        @keyframes blobBounce {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(25px, -25px) scale(1.1); }
+        }
+
+        .error-card {
             text-align: center;
-            padding: 70px 50px;
+            padding: 60px 40px;
             max-width: 580px;
             width: 90%;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
             border-radius: 40px;
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            box-shadow: 0 50px 120px rgba(0, 0, 0, 0.7);
-            animation: fadeInDown 1s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .container::after {
-            content: '404';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 15rem;
-            font-weight: 900;
-            color: var(--p-gold);
-            opacity: 0.03;
-            z-index: 0;
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            box-shadow: var(--shadow-lg);
+            animation: fadeIn 0.8s ease-out;
         }
 
         .icon-box {
-            width: 100px;
-            height: 100px;
-            background: var(--p-gold-soft);
+            width: 90px;
+            height: 90px;
+            background: var(--bg-alt);
             border: 1px solid var(--glass-border);
-            border-radius: 28px;
+            border-radius: 24px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: var(--p-gold);
+            color: var(--p-accent);
             margin-bottom: 30px;
-            filter: drop-shadow(0 0 15px var(--p-gold-glow));
-            animation: float 6s ease-in-out infinite;
-            position: relative;
-            z-index: 1;
+            filter: drop-shadow(0 0 15px var(--accent-glow));
         }
 
         h1 {
             font-family: 'Outfit', sans-serif;
-            font-size: 2.8rem;
+            font-size: 3rem;
             font-weight: 850;
             margin: 0 0 15px 0;
             letter-spacing: -2px;
-            background: linear-gradient(135deg, #fff 40%, var(--p-gold) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            position: relative;
-            z-index: 1;
+            color: var(--text-main);
         }
 
         p {
             color: var(--text-muted);
-            font-size: 1.15rem;
-            line-height: 1.7;
-            margin-bottom: 45px;
-            font-weight: 500;
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: linear-gradient(135deg, var(--p-gold) 0%, #dda15e 100%);
-            color: #151312;
-            text-decoration: none;
-            padding: 16px 40px;
-            border-radius: 100px;
-            font-weight: 800;
-            font-size: 1.05rem;
-            border: none;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 15px 35px rgba(212, 163, 115, 0.3);
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-action:hover {
-            transform: translateY(-5px) scale(1.03);
-            box-shadow: 0 20px 45px rgba(212, 163, 115, 0.4);
-            filter: brightness(1.1);
-        }
-
-        .btn-action:active {
-            transform: translateY(2px);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <div class="bg-glow bg-glow-top"></div>
-    <div class="bg-glow bg-glow-bottom"></div>
-
-    <div class="container">
-        <div class="icon-box">
-            <i data-lucide="map-pin-off" style="width: 50px; height: 50px;"></i>
+    <!-- Navigation (Standard Umapyoi Nav) -->
+    <nav id="navbar" class="scrolled">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; padding: 0 24px; height: 100%;">
+            <a href="/" class="logo" style="display: flex; align-items: center; gap: 12px; font-size: 1.7rem; font-weight: 850; color: var(--text-main); text-decoration: none;">
+                <img src="/static/assets/favicon_web.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%;">
+                Umapyoi<span style="color: var(--p-accent);">.</span>
+            </a>
+            
+            <ul class="nav-links" style="display: flex; align-items: center; list-style: none; gap: 32px;">
+                <li class="nav-item"><a href="/" class="nav-link" style="text-decoration: none; color: var(--text-main); font-weight: 600;">Inicio</a></li>
+                <li class="nav-item"><a href="/docs" class="nav-link" style="text-decoration: none; color: var(--text-main); font-weight: 600;">Docs</a></li>
+                
+                {% if session.get('user') %}
+                <li class="nav-item">
+                    <div class="profile-trigger" style="display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-radius: 40px; background: var(--bg-alt); border: 1px solid var(--glass-border);">
+                        <img src="https://cdn.discordapp.com/avatars/{{ session.user.id }}/{{ session.user.avatar }}.png" alt="Avatar" style="width: 30px; height: 30px; border-radius: 50%;">
+                        <span style="font-weight: 700; font-size: 0.85rem;">{{ session.user.username }}</span>
+                    </div>
+                </li>
+                {% else %}
+                <li><a href="/login" class="btn btn-p" style="padding: 10px 24px;">Login</a></li>
+                {% endif %}
+                
+                <li>
+                    <div class="theme-toggle" id="theme-toggle" style="cursor: pointer; color: var(--text-main);">
+                        <span id="theme-icon-container"><i data-lucide="moon"></i></span>
+                    </div>
+                </li>
+            </ul>
         </div>
-        <h1>¿Te has perdido?</h1>
-        <p>
-            Parece que la página que buscas se ha ido a tomar un café o simplemente nunca existió.
-        </p>
+    </nav>
 
-        <a href="/" class="btn-action">
-            <i data-lucide="home"></i> Volver al Inicio
-        </a>
+    <div class="error-section">
+        <div class="bg-glow"></div>
+        <div class="error-card">
+            <div class="icon-box">
+                <i data-lucide="map-pin-off" style="width: 45px; height: 45px;"></i>
+            </div>
+            <h1>¿Te has perdido?</h1>
+            <p>
+                Parece que la página que buscas se ha ido a tomar un café o simplemente nunca existió.
+            </p>
+            <a href="/" class="btn btn-p" style="padding: 16px 40px; border-radius: 100px;">
+                <i data-lucide="home"></i> Volver al Inicio
+            </a>
+        </div>
     </div>
 
     <script>
         lucide.createIcons();
+
+        // Basic Theme Toggle for Error Pages
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeContainer = document.getElementById('theme-icon-container');
+        const html = document.documentElement;
+
+        function updateIcon(theme) {
+            themeContainer.innerHTML = `<i data-lucide="${theme === 'light' ? 'moon' : 'sun'}"></i>`;
+            lucide.createIcons();
+        }
+
+        updateIcon(html.getAttribute('data-theme'));
+
+        themeToggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateIcon(next);
+        });
     </script>
 </body>
 </html>
