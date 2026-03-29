@@ -2552,6 +2552,17 @@
         }
     </script>
 
+    <!-- Sticky Save Bar HTML -->
+    <div id="saveBar" class="save-bar">
+        <div class="save-bar-message">
+            <i data-lucide="alert-circle"></i> Tienes cambios sin guardar.
+        </div>
+        <div class="save-bar-actions">
+            <button id="saveBarReset" class="btn-reset">Restablecer</button>
+            <button id="saveBarSubmit" class="btn-save"><i data-lucide="save"></i> Guardar Cambios</button>
+        </div>
+    </div>
+
     <!-- Sticky Save Bar Logic -->
     <script>
     (function() {
@@ -2635,6 +2646,17 @@
         });
     });
     </script>
+    
+    <!-- Auto-Toast for saved changes -->
+    {% if request.args.get('saved') == 'true' %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof showToast === 'function') {
+                showToast('Cambios guardados exitosamente.', 'success');
+            }
+        });
+    </script>
+    {% endif %}
 </body>
 
 </html>
