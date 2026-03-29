@@ -121,7 +121,15 @@ async def rate_limit_check():
         
     now = time.time()
     
-    # Comprobar si la ruta es un camino de ataque directo 🚫🔨
+    # 1. Comprobar si está ya bloqueado (hard-ban o rate-limit previo) 🚫🔨
+    ban_expiry = BANNED_IPS.get(client_ip, 0)
+    if now < ban_expiry:
+        # Si ya está baneado, devolvemos 429 directamente sin logs ni procesos extra
+        return await render_template('429.html', remaining=int(ban_expiry - now)), 429
+    elif ban_expiry != 0:
+        del BANNED_IPS[client_ip] 
+
+    # 2. Comprobar si la ruta es un camino de ataque directo (Dorking Defense) 🛡️🛡️
     is_attack = False
     req_path = request.path.lower()
     for path in ATTACK_PATHS:
@@ -132,24 +140,21 @@ async def rate_limit_check():
     if is_attack:
         # Baneo de 24 horas instantáneo por intentar acceder a rutas prohibidas
         BANNED_IPS[client_ip] = now + ATTACK_BAN_TIME
-        # Log de seguridad especial (para que sepas quién fue el gracioso)
+        # Log de seguridad especial (para que sepas quién fue el atacante la primera vez)
         print(f"--- [🛡️ BLOQUEO CRÍTICO] IP {client_ip} BANEADA 24H por ataque a: {request.path} ---")
         return await render_template('429.html', remaining=ATTACK_BAN_TIME), 429
-
-    # Comprobar si está bloqueado temporalmente (hard-ban)
-    ban_expiry = BANNED_IPS.get(client_ip, 0)
-    if now < ban_expiry:
-        # Si ya está baneado, devolvemos 429 directamente sin logs para no llenar la terminal
-        return await render_template('429.html', remaining=int(ban_expiry - now)), 429
-    elif ban_expiry != 0:
-        del BANNED_IPS[client_ip] 
     
+    # 3. Rate Limiter Global (Anti-Spam DDoS básico) 📉🛡️
+    # Si es el dueño, le damos un margen mucho mayor (50 clics)
+    is_owner = session.get('user_id') == int(os.getenv("OWNER_ID", 0))
+    limit_threshold = 50 if is_owner else RATE_LIMIT_MAX_REQUESTS
+
     if client_ip in RATE_LIMITS:
         RATE_LIMITS[client_ip] = [t for t in RATE_LIMITS[client_ip] if now - t < RATE_LIMIT_PERIOD_SECONDS]
     else:
         RATE_LIMITS[client_ip] = []
         
-    if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+    if len(RATE_LIMITS[client_ip]) >= limit_threshold:
         # Sistema de baneo progresivo 📈
         offenses = BAN_COUNTS.get(client_ip, 0)
         
