@@ -282,6 +282,28 @@
             0%, 100% { box-shadow: 0 20px 50px rgba(0,0,0,0.3), 0 0 20px var(--accent-glow); }
             50% { box-shadow: 0 20px 50px rgba(0,0,0,0.3), 0 0 40px var(--accent-glow); }
         }
+        
+        /* Shake Animation for blocked navigation */
+        @keyframes barShake {
+            0%, 100% { transform: translateX(-50%); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-52%); }
+            20%, 40%, 60%, 80% { transform: translateX(-48%); }
+        }
+        
+        .save-bar.shake {
+            animation: barShake 0.5s cubic-bezier(.36,.07,.19,.97) both !important;
+            border-color: #ff4757 !important;
+            box-shadow: 0 20px 50px rgba(255, 71, 87, 0.4), 0 0 40px rgba(255, 71, 87, 0.2) !important;
+        }
+        
+        .save-bar.shake .save-bar-message {
+            color: #ff4757 !important;
+        }
+        
+        .save-bar.shake .save-bar-message i {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+        }
         .save-bar-message {
             display: flex;
             align-items: center;
@@ -2642,16 +2664,51 @@
         window.addEventListener('beforeunload', confirmNavigation);
 
         // Intercept clicks on sidebar and nav links
-        document.querySelectorAll('.sidebar-item, .sub-tab, .nav-link, .logo, .dropdown-item').forEach(link => {
+        document.querySelectorAll('.sidebar-item, .sub-tab, .nav-link, .logo, .dropdown-item, .sidebar-nav .nav-link').forEach(link => {
             link.addEventListener('click', function(e) {
                 if (window.hasUnsavedChanges) {
-                    if (!confirm("¡Cuidado! Tienes cambios sin guardar. ¿Estás seguro de que quieres salir sin guardar?")) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
+                    // Prevent navigation
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Trigger visual alert on save bar
+                    saveBar.classList.remove('shake');
+                    void saveBar.offsetWidth; // Trigger reflow
+                    saveBar.classList.add('shake');
+                    
+                    // Optional: remove shake class after animation
+                    setTimeout(() => {
+                        saveBar.classList.remove('shake');
+                    }, 600);
                 }
             }, true);
         });
+
+        // Theme Toggle Functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIconContainer = document.getElementById('theme-icon-container');
+        
+        function updateThemeIcon(theme) {
+            if (!themeIconContainer) return;
+            themeIconContainer.innerHTML = theme === 'dark' 
+                ? '<i data-lucide="moon" style="color: var(--text-main);"></i>' 
+                : '<i data-lucide="sun" style="color: var(--text-main);"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+        }
+
+        // Initial icon update
+        updateThemeIcon(document.documentElement.getAttribute('data-theme') || 'dark');
 
         // Listen for changes
         document.querySelectorAll('input, select, textarea').forEach(el => {
