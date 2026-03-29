@@ -75,7 +75,7 @@ async def rate_limit_check():
         RATE_LIMITS[client_ip] = []
         
     if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
-        return "Demasiadas peticiones (Rate Limit). Por favor, espera 3 segundos y baja el ritmo.", 429
+        return await render_template('429.html'), 429
         
     RATE_LIMITS[client_ip].append(now)
 

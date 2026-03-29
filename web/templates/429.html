@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demasiadas Peticiones - UmapyoiBot</title>
+    <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-main: #0a0a0c;
+            --p-pink: #f582ae;
+            --p-pink-soft: rgba(245, 130, 174, 0.15);
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0.4); }
+            70% { box-shadow: 0 0 0 30px rgba(245, 130, 174, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0); }
+        }
+
+        @keyframes fadeInScale {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-main);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(245, 130, 174, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(138, 43, 226, 0.08), transparent 25%);
+            color: var(--text-main);
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            animation: fadeInScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+
+        .error-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--p-pink), transparent);
+            border-radius: 2px 2px 0 0;
+            opacity: 0.8;
+        }
+
+        .icon-wrapper {
+            width: 90px;
+            height: 90px;
+            background: var(--p-pink-soft);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px auto;
+            color: var(--p-pink);
+            animation: float 4s ease-in-out infinite, pulseGlow 2s infinite;
+            border: 1px solid rgba(245, 130, 174, 0.3);
+        }
+
+        .icon-wrapper i {
+            width: 45px;
+            height: 45px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            background: linear-gradient(to right, #fff, #ffe4e6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 0 0 30px 0;
+        }
+
+        .btn-reload {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--p-pink);
+            color: #0a0a0c;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(245, 130, 174, 0.2);
+        }
+
+        .btn-reload:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 25px rgba(245, 130, 174, 0.3);
+            background: #fff;
+        }
+
+        .btn-reload:active {
+            transform: translateY(1px);
+            box-shadow: 0 5px 10px rgba(245, 130, 174, 0.2);
+        }
+
+        .timer-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="icon-wrapper">
+            <i data-lucide="zap"></i>
+        </div>
+        <h1>¡Wow, vas muy rápido!</h1>
+        <div class="timer-badge">
+            <i data-lucide="shield-alert" style="width: 16px; margin-right: 6px; color: var(--p-pink)"></i> Sistema Anti-Spam
+        </div>
+        <p>Nuestro sistema de seguridad ha limitado temporalmente tu conexión por recargar la página demasiadas veces.</p>
+        <button class="btn-reload" onclick="location.reload()">
+            <i data-lucide="refresh-cw"></i> Recargar Página
+        </button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
