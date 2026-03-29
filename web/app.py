@@ -87,11 +87,14 @@ COOLDOWN_SECONDS = 3
 
 # Rate Limiter Global (Anti-Spam DDoS básico)
 RATE_LIMITS = {}
-RATE_LIMIT_MAX_REQUESTS = 5
-RATE_LIMIT_PERIOD_SECONDS = 3
+RATE_LIMIT_MAX_REQUESTS = 8 # Subimos un poco el margen
+RATE_LIMIT_PERIOD_SECONDS = 5
 BANNED_IPS = {}
-BAN_TIME_SECONDS = 3600 # 1 Hora de baneo por spam normal
-ATTACK_BAN_TIME = 86400 # 24 Horas de baneo por intentar hackear rutas sensibles
+BAN_COUNTS = {} # {ip: num_of_times_banned}
+
+# Tiempos de baneo progresivo (en segundos)
+BAN_TIERS = [15, 60, 600, 3600] 
+ATTACK_BAN_TIME = 86400 # 24 Horas para ataques reales
 
 # 🚫 LISTA NEGRA DE RUTAS DE ATAQUE (Dorking Defense)
 ATTACK_PATHS = {
@@ -147,10 +150,18 @@ async def rate_limit_check():
         RATE_LIMITS[client_ip] = []
         
     if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
-        # Castigar con ban temporal por spamear (1 hora)
-        BANNED_IPS[client_ip] = now + BAN_TIME_SECONDS
-        print(f"--- [🛡️ SEGURIDAD] IP BANEADA 1H (SPAM): {client_ip} ---")
-        return await render_template('429.html', remaining=BAN_TIME_SECONDS), 429
+        # Sistema de baneo progresivo 📈
+        offenses = BAN_COUNTS.get(client_ip, 0)
+        
+        # Determinar tiempo de baneo según el nivel (máximo el último nivel de BAN_TIERS)
+        tier_index = min(offenses, len(BAN_TIERS) - 1)
+        ban_duration = BAN_TIERS[tier_index]
+        
+        BANNED_IPS[client_ip] = now + ban_duration
+        BAN_COUNTS[client_ip] = offenses + 1
+        
+        print(f"--- [🛡️ SEGURIDAD] IP BANEADA tier {tier_index+1} ({ban_duration}s) por SPAM: {client_ip} ---")
+        return await render_template('429.html', remaining=ban_duration), 429
         
     RATE_LIMITS[client_ip].append(now)
 

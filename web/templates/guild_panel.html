@@ -20,7 +20,7 @@
         href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap"
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=14.0">
+    <link rel="stylesheet" href="/static/styles.css?v=15.0">
     <style>
         /* Identity Animations & Layout Fixes */
         @keyframes iconPulse {
@@ -907,30 +907,41 @@
                 </a>
             </aside>
 
-            <section>
-                {% if saved %}
-                <div class="toast-success" id="successToast">
-                    <i data-lucide="check-circle" style="width:20px;height:20px;"></i>
-                    <span>Cambios guardados correctamente.</span>
-                </div>
-                <script>
-                    setTimeout(() => {
-                        const toast = document.getElementById('successToast');
-                        if (toast) {
-                            toast.style.opacity = '0';
-                            toast.style.transform = 'translateY(20px)';
-                            setTimeout(() => toast.remove(), 300);
+            <section class="config-container">
 
-                            // Limpiar la URL para que no vuelva a aparecer al recargar
-                            if (window.history.replaceState) {
-                                const url = new URL(window.location);
-                                url.searchParams.delete('saved');
-                                window.history.replaceState({ path: url.href }, '', url.href);
-                            }
-                        }
-                    }, 4000);
-                </script>
+
+                {% if not server.has_bot %}
+
+
+                <div class="lock-barrier">
+
+
+                    <div class="lock-message" style="pointer-events: auto;">
+
+
+                        <i data-lucide="lock" style="width:48px;height:48px;color:var(--p-gold);margin-bottom:15px;"></i>
+
+
+                        <h3 style="margin-bottom:10px;">Configuración Bloqueada</h3>
+
+
+                        <p style="color:var(--text-muted);margin-bottom:20px;">Debes invitar al bot al servidor para poder gestionar estos ajustes.</p>
+
+
+                        <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&permissions=8&guild_id={{ server.id }}&scope=bot%20applications.commands" class="btn btn-p">Invitar ahora</a>
+
+
+                    </div>
+
+
+                </div>
+
+
                 {% endif %}
+
+
+
+                <div class="{% if not server.has_bot %}locked-section{% endif %}">
                 {% if section == 'general' %}
                 <!-- Quick Start Banner (Compact) -->
                 <div class="quick-start-banner"
@@ -2358,6 +2369,7 @@
                     </div>
                 </div>
                 {% endif %}
+            </div><!-- End of locked-section -->
             </section>
         </div>
     </main>
@@ -2775,24 +2787,21 @@
         window.syncCardGlows();
     })();
     </script>
-    
-    
     <!-- Auto-Toast for saved changes -->
     {% if saved %}
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof showToast === 'function') {
-                showToast('Cambios guardados exitosamente.', 'success');
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof showToast === "function") {
+                showToast("Cambios guardados exitosamente.", "success");
             }
             // Cleanup URL
             if (window.history.replaceState) {
                 const url = new URL(window.location);
-                url.searchParams.delete('saved');
-                window.history.replaceState({ path: url.href }, '', url.href);
+                url.searchParams.delete("saved");
+                window.history.replaceState({ path: url.href }, "", url.href);
             }
         });
     </script>
     {% endif %}
 </body>
-
 </html>

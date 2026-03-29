@@ -8,15 +8,16 @@
     --nav-bg: rgba(250, 243, 224, 0.98);
     --crema-input: #ffffff;  /* Pure white for inputs to POP */
     --border-color: rgba(44, 24, 16, 0.15);
-    --accent-glow: rgba(255, 77, 141, 0.3);
+    --accent-glow: rgba(212, 163, 115, 0.3);
     --glass-bg: rgba(250, 243, 224, 0.7);
     --glass-border: rgba(44, 24, 16, 0.2);
     
-    /* Branding Accents - Saturated Hero Colors */
-    --p-pink: #ff4d8d;       /* Vibrant "Nekotina-style" PINK */
-    --p-pink-soft: rgba(255, 77, 141, 0.12);
-    --p-gold: #d4a373;       /* Warm Caramel Gold */
-    --p-pink-deep: #2c1810;  /* Mocha for strong accents */
+    /* Branding Accents - Umapyoi Original (Caramel & Gold) */
+    --p-pink: #d4a373;       /* Original Caramel */
+    --p-pink-soft: #faedcd;  /* Soft Crema */
+    --p-gold: #dda15e;       /* Bronze Accent */
+    --p-pink-deep: #bc6c25;  /* Deep Mocha */
+    --a-purple: #dda15e;     /* Legacy support for bronze */
     
     /* Design Tokens */
     --header-h: 85px;
@@ -81,8 +82,8 @@
     --text-muted: #a69c97;
     --nav-bg: rgba(21, 19, 18, 0.95);
     --border-color: rgba(212, 163, 115, 0.2);
-    --p-pink-soft: rgba(212, 163, 115, 0.1);
-    --accent-glow: rgba(212, 163, 115, 0.25);
+    --p-pink-soft: rgba(212, 163, 115, 0.15);
+    --accent-glow: rgba(212, 163, 115, 0.4);
     --glass-bg: rgba(30, 27, 26, 0.6);
     --glass-border: rgba(212, 163, 115, 0.1);
     --shadow-md: 0 8px 40px rgba(0, 0, 0, 0.5);
