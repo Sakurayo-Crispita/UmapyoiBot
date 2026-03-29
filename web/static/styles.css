@@ -1,16 +1,16 @@
 :root {
     color-scheme: light;
-    /* Color Palette - Light Theme (Mocha Premium) */
-    --bg-main: #fffcf9;      /* Smooth cream background (Eye-friendly) */
-    --bg-alt: #f8f3eb;       /* Rich paper tone */
-    --text-main: #2c1810;    /* Deep Mocha espresso headings */
-    --text-muted: #5d4a44;   /* Warm bronze secondary text */
-    --nav-bg: rgba(255, 252, 249, 0.95);
-    --crema-input: #ffffff;  /* Pure white for input contrast */
-    --border-color: rgba(44, 24, 16, 0.12);
-    --accent-glow: rgba(255, 77, 141, 0.25);
-    --glass-bg: rgba(255, 252, 249, 0.7);
-    --glass-border: rgba(44, 24, 16, 0.15);
+    /* Color Palette - Light Theme (Mocha Premium - High Contrast) */
+    --bg-main: #faf3e0;      /* Richer Caramel/OldLace background (NOT WHITE) */
+    --bg-alt: #f0e2c1;       /* Deeper accent paper tone */
+    --text-main: #1a0f0a;    /* Intense Espresso for perfect legibility */
+    --text-muted: #4a3b34;   /* Dark bronze for secondary text */
+    --nav-bg: rgba(250, 243, 224, 0.98);
+    --crema-input: #ffffff;  /* Pure white for inputs to POP */
+    --border-color: rgba(44, 24, 16, 0.15);
+    --accent-glow: rgba(255, 77, 141, 0.3);
+    --glass-bg: rgba(250, 243, 224, 0.7);
+    --glass-border: rgba(44, 24, 16, 0.2);
     
     /* Branding Accents - Saturated Hero Colors */
     --p-pink: #ff4d8d;       /* Vibrant "Nekotina-style" PINK */
@@ -25,9 +25,52 @@
     --radius-md: 20px;
     --radius-sm: 14px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
-    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 16px 56px rgba(0, 0, 0, 0.12);
+    --shadow-sm: 0 4px 12px rgba(44, 24, 16, 0.08);
+    --shadow-md: 0 10px 32px rgba(44, 24, 16, 0.12);
+    --shadow-lg: 0 20px 60px rgba(44, 24, 16, 0.18);
+}
+
+/* Locking Overlay System */
+.config-container { position: relative; }
+.locked-section {
+    position: relative;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.6;
+    filter: blur(2px) grayscale(0.5);
+}
+.lock-barrier {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(44, 24, 16, 0.05);
+    cursor: not-allowed;
+    border-radius: var(--radius-md);
+}
+.lock-message {
+    background: var(--bg-main);
+    padding: 2.5rem 3rem;
+    border-radius: var(--radius-md);
+    border: 3px solid var(--p-gold);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    max-width: 450px;
+    animation: toastSlideIn 0.5s ease;
+}
+
+/* Toast Unification - Fixed to Right */
+.umapyoi-toast-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    pointer-events: none;
 }
 
 [data-theme="dark"] {

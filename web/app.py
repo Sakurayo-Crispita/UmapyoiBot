@@ -90,7 +90,16 @@ RATE_LIMITS = {}
 RATE_LIMIT_MAX_REQUESTS = 5
 RATE_LIMIT_PERIOD_SECONDS = 3
 BANNED_IPS = {}
-BAN_TIME_SECONDS = 5
+BAN_TIME_SECONDS = 3600 # 1 Hora de baneo por spam normal
+ATTACK_BAN_TIME = 86400 # 24 Horas de baneo por intentar hackear rutas sensibles
+
+# 🚫 LISTA NEGRA DE RUTAS DE ATAQUE (Dorking Defense)
+ATTACK_PATHS = {
+    '/.env', '/.git', '/wp-admin', '/wp-login.php', '/info.php', '/phpinfo', 
+    '/.well-known/', '/logs/', '/error.log', '/access.log', '/composer.json', 
+    '/.aws/', '/.ssh/', '/config.php', '/setup.php', '/admin.php', '/xmlrpc.php',
+    '/db_structure.sql', '/dump.sql', '/backup.sql', '/config.json', '/.env.local'
+}
 
 @app.before_request
 async def rate_limit_check():
@@ -109,6 +118,20 @@ async def rate_limit_check():
         
     now = time.time()
     
+    # Comprobar si la ruta es un camino de ataque directo 🚫🔨
+    is_attack = False
+    req_path = request.path.lower()
+    for path in ATTACK_PATHS:
+        if path in req_path:
+            is_attack = True
+            break
+    
+    if is_attack:
+        # Baneo de 24 horas instantáneo por intentar acceder a rutas prohibidas
+        BANNED_IPS[client_ip] = now + ATTACK_BAN_TIME
+        print(f"--- [🛡️ SECURITY] IP BANNEADA (ATAQUE): {client_ip} intentó acceder a {request.path} ---")
+        return await render_template('429.html', remaining=ATTACK_BAN_TIME), 429
+
     # Comprobar si está bloqueado temporalmente (hard-ban)
     ban_expiry = BANNED_IPS.get(client_ip, 0)
     if now < ban_expiry:
@@ -120,13 +143,12 @@ async def rate_limit_check():
         RATE_LIMITS[client_ip] = [t for t in RATE_LIMITS[client_ip] if now - t < RATE_LIMIT_PERIOD_SECONDS]
     else:
         RATE_LIMITS[client_ip] = []
-    
-    # print(f"[DEBUG SECURITY] IP: {client_ip} | Pet. previas: {len(RATE_LIMITS[client_ip])}")
         
     if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
         # Castigar con ban temporal por spamear
         BANNED_IPS[client_ip] = now + BAN_TIME_SECONDS
-        return await render_template('429.html'), 429
+        print(f"--- [🛡️ SECURITY] IP BANNEADA (SPAM): {client_ip} ---")
+        return await render_template('429.html', remaining=BAN_TIME_SECONDS), 429
         
     RATE_LIMITS[client_ip].append(now)
 
