@@ -146,9 +146,16 @@ async def rate_limit_check():
         return await render_template('429.html', remaining=ATTACK_BAN_TIME), 429
     
     # 3. Rate Limiter Global (Anti-Spam DDoS básico) 📉🛡️
-    # Si es el dueño, le damos un margen mucho mayor (50 clics)
-    is_owner = session.get('user_id') == int(os.getenv("OWNER_ID", 0))
-    limit_threshold = 50 if is_owner else RATE_LIMIT_MAX_REQUESTS
+    # Si es el dueño (por sesión) O si su IP está en la Whitelist de administración
+    admin_ips = os.getenv("ADMIN_IPS", "").split(",")
+    is_admin_ip = client_ip in [ip.strip() for ip in admin_ips]
+    
+    # Comprobar dueño (aseguando que ambos sean strings para evitar errores de tipo)
+    session_user_id = str(session.get('user_id', ''))
+    env_owner_id = str(os.getenv("OWNER_ID", "0"))
+    is_owner = session_user_id == env_owner_id
+
+    limit_threshold = 50 if (is_owner or is_admin_ip) else RATE_LIMIT_MAX_REQUESTS
 
     if client_ip in RATE_LIMITS:
         RATE_LIMITS[client_ip] = [t for t in RATE_LIMITS[client_ip] if now - t < RATE_LIMIT_PERIOD_SECONDS]
