@@ -102,7 +102,8 @@ ATTACK_PATHS = {
     '/.well-known/', '/logs/', '/error.log', '/access.log', '/composer.json', 
     '/.aws/', '/.ssh/', '/config.php', '/setup.php', '/admin.php', '/xmlrpc.php',
     '/db_structure.sql', '/dump.sql', '/backup.sql', '/config.json', '/.env.local',
-    'wlwmanifest.xml', '/wp-content/', '/wp-includes/', '/ads.txt', '/license.txt'
+    'wlwmanifest.xml', '/wp-content/', '/wp-includes/', '/ads.txt', '/license.txt',
+    '/server.js', '/app.js', 'config.env'
 }
 
 @app.before_request
@@ -146,23 +147,12 @@ async def rate_limit_check():
         return await render_template('429.html', remaining=ATTACK_BAN_TIME), 429
     
     # 3. Rate Limiter Global (Anti-Spam DDoS básico) 📉🛡️
-    # Si es el dueño (por sesión) O si su IP está en la Whitelist de administración
-    admin_ips = os.getenv("ADMIN_IPS", "").split(",")
-    is_admin_ip = client_ip in [ip.strip() for ip in admin_ips]
-    
-    # Comprobar dueño (aseguando que ambos sean strings para evitar errores de tipo)
-    session_user_id = str(session.get('user_id', ''))
-    env_owner_id = str(os.getenv("OWNER_ID", "0"))
-    is_owner = session_user_id == env_owner_id
-
-    limit_threshold = 50 if (is_owner or is_admin_ip) else RATE_LIMIT_MAX_REQUESTS
-
     if client_ip in RATE_LIMITS:
         RATE_LIMITS[client_ip] = [t for t in RATE_LIMITS[client_ip] if now - t < RATE_LIMIT_PERIOD_SECONDS]
     else:
         RATE_LIMITS[client_ip] = []
         
-    if len(RATE_LIMITS[client_ip]) >= limit_threshold:
+    if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
         # Sistema de baneo progresivo 📈
         offenses = BAN_COUNTS.get(client_ip, 0)
         
