@@ -112,8 +112,7 @@ async def rate_limit_check():
     # Comprobar si está bloqueado temporalmente (hard-ban)
     ban_expiry = BANNED_IPS.get(client_ip, 0)
     if now < ban_expiry:
-        # print(f"[DEBUG SECURITY] IP {client_ip} BANEADA. Quedan {round(ban_expiry - now, 1)}s")
-        return await render_template('429.html'), 429
+        return await render_template('429.html', remaining=int(ban_expiry - now)), 429
     elif ban_expiry != 0:
         del BANNED_IPS[client_ip] 
     

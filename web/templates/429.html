@@ -3,174 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demasiadas Peticiones - UmapyoiBot</title>
+    <title>Seguridad - UmapyoiBot</title>
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
             --bg-main: #0a0a0c;
+            /* Umapyoi Pink Palette */
             --p-pink: #f582ae;
-            --p-pink-soft: rgba(245, 130, 174, 0.15);
+            --p-pink-glow: rgba(245, 130, 174, 0.4);
+            --p-pink-soft: rgba(245, 130, 174, 0.1);
             --text-main: #ffffff;
             --text-muted: #a1a1aa;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
 
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-            100% { transform: translateY(0px); }
+        @keyframes blobBounce {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(20px, -20px) scale(1.1); }
         }
 
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0.4); }
-            70% { box-shadow: 0 0 0 30px rgba(245, 130, 174, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0); }
-        }
-
-        @keyframes fadeInScale {
-            0% { opacity: 0; transform: scale(0.9); }
-            100% { opacity: 1; transform: scale(1); }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-main);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(245, 130, 174, 0.08), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(138, 43, 226, 0.08), transparent 25%);
             color: var(--text-main);
-            font-family: 'Nunito', sans-serif;
+            font-family: 'Quicksand', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-        }
-
-        .error-container {
-            text-align: center;
-            padding: 40px;
-            max-width: 500px;
-            width: 90%;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            animation: fadeInScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
         }
 
-        .error-container::before {
-            content: '';
+        /* Ambient background decoration */
+        .bg-glow {
             position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--p-pink), transparent);
-            border-radius: 2px 2px 0 0;
-            opacity: 0.8;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--p-pink-soft) 0%, transparent 70%);
+            filter: blur(80px);
+            z-index: -1;
+            animation: blobBounce 10s infinite alternate;
+        }
+        .bg-glow-top { top: -200px; left: -100px; }
+        .bg-glow-bottom { bottom: -200px; right: -100px; background: radial-gradient(circle, rgba(138, 43, 226, 0.08) 0%, transparent 70%); }
+
+        .container {
+            text-align: center;
+            padding: 50px 40px;
+            max-width: 550px;
+            width: 90%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .icon-wrapper {
-            width: 90px;
-            height: 90px;
-            background: var(--p-pink-soft);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 25px auto;
+        .shield-icon {
+            font-size: 3rem;
             color: var(--p-pink);
-            animation: float 4s ease-in-out infinite, pulseGlow 2s infinite;
-            border: 1px solid rgba(245, 130, 174, 0.3);
-        }
-
-        .icon-wrapper i {
-            width: 45px;
-            height: 45px;
+            margin-bottom: 20px;
+            display: inline-block;
+            filter: drop-shadow(0 0 15px var(--p-pink-glow));
         }
 
         h1 {
-            font-size: 2.5rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.4rem;
             font-weight: 800;
-            margin: 0 0 10px 0;
-            background: linear-gradient(to right, #fff, #ffe4e6);
+            margin: 0 0 15px 0;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 30%, var(--p-pink) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
         }
 
-        p {
+        .message {
             color: var(--text-muted);
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             line-height: 1.6;
-            margin: 0 0 30px 0;
+            margin-bottom: 35px;
+            font-weight: 500;
         }
 
-        .btn-reload {
+        /* Countdown Visual */
+        .timer-wrapper {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 1s linear;
+            stroke-dasharray: 440; /* 2 * PI * 70 */
+            stroke-dashoffset: 0;
+            stroke: var(--p-pink);
+            stroke-width: 8;
+            fill: transparent;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px var(--p-pink-glow));
+        }
+
+        .progress-ring__bg {
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+            fill: transparent;
+        }
+
+        .timer-text {
+            position: absolute;
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--p-pink);
+        }
+
+        .countdown-label {
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .action-button {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            background: var(--p-pink);
-            color: #0a0a0c;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
             text-decoration: none;
-            padding: 14px 32px;
+            padding: 14px 35px;
             border-radius: 100px;
             font-weight: 700;
-            font-size: 1.05rem;
-            border: none;
+            font-size: 1rem;
+            border: 1px solid var(--glass-border);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 20px rgba(245, 130, 174, 0.2);
+            transition: all 0.3s;
         }
 
-        .btn-reload:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 25px rgba(245, 130, 174, 0.3);
-            background: #fff;
+        .action-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--p-pink);
         }
 
-        .btn-reload:active {
-            transform: translateY(1px);
-            box-shadow: 0 5px 10px rgba(245, 130, 174, 0.2);
-        }
-
-        .timer-badge {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 6px 14px;
-            border-radius: 100px;
-            font-size: 0.9rem;
-            color: var(--text-muted);
+        #refresh-status {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--p-pink);
+            opacity: 0.8;
             font-weight: 600;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="error-container">
-        <div class="icon-wrapper">
-            <i data-lucide="zap"></i>
+    <div class="bg-glow bg-glow-top"></div>
+    <div class="bg-glow bg-glow-bottom"></div>
+
+    <div class="container">
+        <div class="shield-icon">
+            <i data-lucide="shield-alert" style="width: 60px; height: 60px;"></i>
         </div>
         <h1>¡Wow, vas muy rápido!</h1>
-        <div class="timer-badge">
-            <i data-lucide="shield-alert" style="width: 16px; margin-right: 6px; color: var(--p-pink)"></i> Sistema Anti-Spam
+        <p class="message">
+            Se te ha bloqueado temporalmente por temas de seguridad.
+        </p>
+
+        <div class="timer-wrapper">
+            <svg class="progress-ring" width="160" height="160">
+                <circle class="progress-ring__bg" stroke-width="8" r="70" cx="80" cy="80" />
+                <circle class="progress-ring__circle" id="timer-circle" r="70" cx="80" cy="80" />
+            </svg>
+            <div class="timer-text" id="seconds">5s</div>
         </div>
-        <p>Nuestro sistema de seguridad ha limitado temporalmente tu conexión por recargar la página demasiadas veces.</p>
-        <button class="btn-reload" onclick="location.reload()">
-            <i data-lucide="refresh-cw"></i> Recargar Página
-        </button>
+
+        <span class="countdown-label" id="status-label">Esperando permiso...</span>
+        
+        <div id="refresh-status">Actualizando ahora mismo...</div>
     </div>
 
     <script>
         lucide.createIcons();
+
+        // Obtener segundos restantes desde el servidor (inyectado por Jinja)
+        // Usamos string para que el editor no marque error de sintaxis
+        let timeLeft = parseInt("{{ remaining | default(5) }}") || 5;
+        const totalTime = 5; // Base para el cálculo del círculo (5 segundos)
+        const secondsEl = document.getElementById('seconds');
+        const circle = document.getElementById('timer-circle');
+        const statusLabel = document.getElementById('status-label');
+        const refreshStatus = document.getElementById('refresh-status');
+        
+        const circumference = 2 * Math.PI * 70;
+        circle.style.strokeDasharray = `${circumference} ${circumference}`;
+
+        function setProgress(percent) {
+            const offset = circumference - (percent / 100 * circumference);
+            circle.style.strokeDashoffset = offset;
+        }
+
+        function updateTimer() {
+            if (timeLeft <= 0) {
+                secondsEl.innerText = "0s";
+                setProgress(0);
+                statusLabel.innerText = "¡Listo!";
+                refreshStatus.style.display = "block";
+                
+                // Recarga automática al terminar
+                setTimeout(() => {
+                    window.location.href = window.location.pathname; // Recargar a la misma URL
+                }, 800);
+                return;
+            }
+
+            secondsEl.innerText = timeLeft + "s";
+            const percent = (timeLeft / totalTime) * 100;
+            setProgress(percent);
+            statusLabel.innerText = "Tiempo de espera";
+            
+            timeLeft--;
+            setTimeout(updateTimer, 1000);
+        }
+
+        // Iniciar
+        updateTimer();
     </script>
 </body>
 </html>
