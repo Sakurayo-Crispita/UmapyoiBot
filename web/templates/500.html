@@ -3,159 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error Interno - UmapyoiBot</title>
+    <title>Error del Servidor - UmapyoiBot</title>
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --bg-main: #0a0a0c;
-            --p-pink: #f582ae;
-            --p-pink-soft: rgba(245, 130, 174, 0.15);
-            --text-main: #ffffff;
-            --text-muted: #a1a1aa;
+            --bg-main: #151312; /* Deep Espresso */
+            --p-gold: #d4a373; /* Umapyoi Caramel */
+            --p-gold-glow: rgba(212, 163, 115, 0.3);
+            --p-red: #e74c3c;
+            --p-red-soft: rgba(231, 76, 60, 0.1);
+            --text-main: #f8f8f8;
+            --text-muted: #a69c97;
+            --glass-bg: rgba(30, 27, 26, 0.6);
+            --glass-border: rgba(212, 163, 115, 0.1);
         }
 
-        @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(-5deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
+        @keyframes blobBounce {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-30px, 30px) scale(1.1); }
         }
 
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0.4); }
-            70% { box-shadow: 0 0 0 30px rgba(245, 130, 174, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0); }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes fadeInScale {
-            0% { opacity: 0; transform: scale(0.9); }
-            100% { opacity: 1; transform: scale(1); }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
 
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-main);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(245, 130, 174, 0.08), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(138, 43, 226, 0.08), transparent 25%);
             color: var(--text-main);
-            font-family: 'Nunito', sans-serif;
+            font-family: 'Quicksand', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-        }
-
-        .error-container {
-            text-align: center;
-            padding: 50px 40px;
-            max-width: 500px;
-            width: 90%;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            animation: fadeInScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
         }
 
-        .error-container::before {
-            content: '';
+        .bg-glow {
             position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #ef4444, transparent);
-            border-radius: 2px 2px 0 0;
-            opacity: 0.8;
+            width: 650px;
+            height: 650px;
+            background: radial-gradient(circle, var(--p-red-soft) 0%, transparent 70%);
+            filter: blur(120px);
+            z-index: -1;
+            animation: blobBounce 14s infinite alternate;
+        }
+        .bg-glow-top { top: -200px; left: -100px; }
+        .bg-glow-bottom { bottom: -200px; right: -100px; opacity: 0.5; }
+
+        .container {
+            text-align: center;
+            padding: 60px 45px;
+            max-width: 550px;
+            width: 90%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 40px;
+            backdrop-filter: blur(35px);
+            -webkit-backdrop-filter: blur(35px);
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+            animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .icon-wrapper {
+        .icon-box {
             width: 90px;
             height: 90px;
-            background: rgba(239, 68, 68, 0.15);
-            border-radius: 50%;
-            display: flex;
+            background: var(--p-red-soft);
+            border: 1px solid rgba(231, 76, 60, 0.15);
+            border-radius: 24px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 25px auto;
-            color: #ef4444;
-            animation: float 4s ease-in-out infinite;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .icon-wrapper i {
-            width: 45px;
-            height: 45px;
-        }
-
-        .error-code {
-            font-size: 5rem;
-            font-weight: 800;
-            margin: 0;
-            line-height: 1;
-            background: linear-gradient(to right, #fff, #ef4444);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -2px;
-            text-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+            color: var(--p-red);
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 10px rgba(231, 76, 60, 0.2));
+            animation: shake 4s ease-in-out infinite;
         }
 
         h1 {
-            font-size: 1.8rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.6rem;
             font-weight: 800;
-            margin: 10px 0 15px 0;
-            color: #fff;
+            margin: 0 0 15px 0;
+            letter-spacing: -1.5px;
+            background: linear-gradient(135deg, #fff 40%, var(--p-red) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         p {
             color: var(--text-muted);
             font-size: 1.1rem;
             line-height: 1.6;
-            margin: 0 0 35px 0;
+            margin-bottom: 40px;
+            font-weight: 500;
         }
 
         .btn-home {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
             text-decoration: none;
-            padding: 14px 32px;
+            padding: 15px 35px;
             border-radius: 100px;
             font-weight: 700;
-            font-size: 1.05rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 1rem;
+            border: 1px solid var(--glass-border);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s;
         }
 
         .btn-home:hover {
-            transform: translateY(-3px) scale(1.02);
-            background: #fff;
-            color: var(--bg-main);
-        }
-
-        .btn-home:active {
-            transform: translateY(1px);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--p-gold);
+            color: var(--p-gold);
         }
     </style>
 </head>
 <body>
-    <div class="error-container">
-        <div class="error-code">500</div>
-        <div class="icon-wrapper" style="margin-top: -15px; width: 60px; height: 60px;">
-            <i data-lucide="server-crash" style="width: 30px; height: 30px;"></i>
+    <div class="bg-glow bg-glow-top"></div>
+    <div class="bg-glow bg-glow-bottom"></div>
+
+    <div class="container">
+        <div class="icon-box">
+            <i data-lucide="server-crash" style="width: 45px; height: 45px;"></i>
         </div>
         <h1>Error del Servidor</h1>
-        <p>Nuestros ingenieros mágicos tropezaron con un cable suelto. Estamos solucionándolo de forma automática, vuelve a intentar más tarde.</p>
+        <p>
+            Nuestros ingenieros mágicos tropezaron con un cable suelto. Estamos solucionándolo de forma automática, vuelve a intentar en unos minutos.
+        </p>
+
         <a href="/" class="btn-home">
             <i data-lucide="home"></i> Volver al Inicio
         </a>

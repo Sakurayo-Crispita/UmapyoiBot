@@ -7,28 +7,27 @@
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --bg-main: #0a0a0c;
-            /* Umapyoi Pink Palette */
-            --p-pink: #f582ae;
-            --p-pink-glow: rgba(245, 130, 174, 0.4);
-            --p-pink-soft: rgba(245, 130, 174, 0.1);
-            --text-main: #ffffff;
-            --text-muted: #a1a1aa;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --bg-main: #151312; /* Deep Espresso */
+            --p-gold: #d4a373; /* Umapyoi Caramel */
+            --p-gold-glow: rgba(212, 163, 115, 0.3);
+            --p-gold-soft: rgba(212, 163, 115, 0.1);
+            --text-main: #f8f8f8;
+            --text-muted: #a69c97;
+            --glass-bg: rgba(30, 27, 26, 0.6);
+            --glass-border: rgba(212, 163, 115, 0.15);
         }
 
         @keyframes blobBounce {
             0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(20px, -20px) scale(1.1); }
+            50% { transform: translate(30px, -30px) scale(1.1); }
         }
 
         @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
+            from { opacity: 0; transform: translateY(-30px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -46,48 +45,53 @@
             position: relative;
         }
 
-        /* Ambient background decoration */
         .bg-glow {
             position: absolute;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, var(--p-pink-soft) 0%, transparent 70%);
-            filter: blur(80px);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--p-gold-soft) 0%, transparent 70%);
+            filter: blur(100px);
             z-index: -1;
-            animation: blobBounce 10s infinite alternate;
+            animation: blobBounce 12s infinite alternate;
         }
-        .bg-glow-top { top: -200px; left: -100px; }
-        .bg-glow-bottom { bottom: -200px; right: -100px; background: radial-gradient(circle, rgba(138, 43, 226, 0.08) 0%, transparent 70%); }
+        .bg-glow-top { top: -250px; left: -100px; }
+        .bg-glow-bottom { bottom: -250px; right: -100px; opacity: 0.6; }
 
         .container {
             text-align: center;
-            padding: 50px 40px;
+            padding: 60px 45px;
             max-width: 550px;
             width: 90%;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: 32px;
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border-radius: 40px;
+            backdrop-filter: blur(35px);
+            -webkit-backdrop-filter: blur(35px);
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
             animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .shield-icon {
-            font-size: 3rem;
-            color: var(--p-pink);
-            margin-bottom: 20px;
-            display: inline-block;
-            filter: drop-shadow(0 0 15px var(--p-pink-glow));
+            width: 80px;
+            height: 80px;
+            background: var(--p-gold-soft);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--p-gold);
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 15px var(--p-gold-glow));
         }
 
         h1 {
             font-family: 'Outfit', sans-serif;
-            font-size: 2.4rem;
+            font-size: 2.5rem;
             font-weight: 800;
             margin: 0 0 15px 0;
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, #fff 30%, var(--p-pink) 100%);
+            letter-spacing: -1.5px;
+            background: linear-gradient(135deg, #fff 40%, var(--p-gold) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -95,24 +99,27 @@
 
         .message {
             color: var(--text-muted);
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             line-height: 1.6;
-            margin-bottom: 35px;
+            margin-bottom: 40px;
             font-weight: 500;
         }
 
-        /* Countdown Visual */
+        /* Countdown Visual - FIX: Increased size to prevent clipping */
         .timer-wrapper {
             position: relative;
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 30px;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 35px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
             transform: rotate(-90deg);
         }
 
@@ -120,66 +127,48 @@
             transition: stroke-dashoffset 1s linear;
             stroke-dasharray: 440; /* 2 * PI * 70 */
             stroke-dashoffset: 0;
-            stroke: var(--p-pink);
-            stroke-width: 8;
+            stroke: var(--p-gold);
+            stroke-width: 10;
             fill: transparent;
             stroke-linecap: round;
-            filter: drop-shadow(0 0 8px var(--p-pink-glow));
+            filter: drop-shadow(0 0 12px var(--p-gold-glow));
         }
 
         .progress-ring__bg {
-            stroke: rgba(255, 255, 255, 0.05);
-            stroke-width: 8;
+            stroke: rgba(255, 255, 255, 0.03);
+            stroke-width: 10;
             fill: transparent;
         }
 
         .timer-text {
-            position: absolute;
+            position: relative;
             font-family: 'Outfit', sans-serif;
-            font-size: 2.2rem;
+            font-size: 3rem;
             font-weight: 800;
-            color: var(--p-pink);
+            color: var(--p-gold);
+            z-index: 2;
+            text-shadow: 0 0 20px var(--p-gold-glow);
         }
 
         .countdown-label {
             display: block;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             color: var(--text-muted);
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 700;
-        }
-
-        .action-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-            text-decoration: none;
-            padding: 14px 35px;
-            border-radius: 100px;
-            font-weight: 700;
-            font-size: 1rem;
-            border: 1px solid var(--glass-border);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .action-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-2px);
-            border-color: var(--p-pink);
+            opacity: 0.8;
         }
 
         #refresh-status {
-            margin-top: 15px;
-            font-size: 0.85rem;
-            color: var(--p-pink);
-            opacity: 0.8;
-            font-weight: 600;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: var(--p-gold);
+            letter-spacing: 1px;
+            font-weight: 700;
             display: none;
+            animation: fadeInDown 0.4s ease;
         }
     </style>
 </head>
@@ -189,7 +178,7 @@
 
     <div class="container">
         <div class="shield-icon">
-            <i data-lucide="shield-alert" style="width: 60px; height: 60px;"></i>
+            <i data-lucide="shield-alert" style="width: 45px; height: 45px;"></i>
         </div>
         <h1>¡Wow, vas muy rápido!</h1>
         <p class="message">
@@ -197,25 +186,23 @@
         </p>
 
         <div class="timer-wrapper">
-            <svg class="progress-ring" width="160" height="160">
-                <circle class="progress-ring__bg" stroke-width="8" r="70" cx="80" cy="80" />
-                <circle class="progress-ring__circle" id="timer-circle" r="70" cx="80" cy="80" />
+            <svg class="progress-ring" width="180" height="180">
+                <circle class="progress-ring__bg" stroke-width="10" r="70" cx="90" cy="90" />
+                <circle class="progress-ring__circle" id="timer-circle" r="70" cx="90" cy="90" />
             </svg>
             <div class="timer-text" id="seconds">5s</div>
         </div>
 
-        <span class="countdown-label" id="status-label">Esperando permiso...</span>
+        <span class="countdown-label" id="status-label">Tiempo de espera</span>
         
-        <div id="refresh-status">Actualizando ahora mismo...</div>
+        <div id="refresh-status">Sincronizando con el servidor...</div>
     </div>
 
     <script>
         lucide.createIcons();
 
-        // Obtener segundos restantes desde el servidor (inyectado por Jinja)
-        // Usamos string para que el editor no marque error de sintaxis
         let timeLeft = parseInt("{{ remaining | default(5) }}") || 5;
-        const totalTime = 5; // Base para el cálculo del círculo (5 segundos)
+        const totalTime = 5; 
         const secondsEl = document.getElementById('seconds');
         const circle = document.getElementById('timer-circle');
         const statusLabel = document.getElementById('status-label');
@@ -233,12 +220,11 @@
             if (timeLeft <= 0) {
                 secondsEl.innerText = "0s";
                 setProgress(0);
-                statusLabel.innerText = "¡Listo!";
+                statusLabel.innerText = "¡Hecho!";
                 refreshStatus.style.display = "block";
                 
-                // Recarga automática al terminar
                 setTimeout(() => {
-                    window.location.href = window.location.pathname; // Recargar a la misma URL
+                    window.location.reload(); 
                 }, 800);
                 return;
             }
@@ -246,13 +232,11 @@
             secondsEl.innerText = timeLeft + "s";
             const percent = (timeLeft / totalTime) * 100;
             setProgress(percent);
-            statusLabel.innerText = "Tiempo de espera";
             
             timeLeft--;
             setTimeout(updateTimer, 1000);
         }
 
-        // Iniciar
         updateTimer();
     </script>
 </body>

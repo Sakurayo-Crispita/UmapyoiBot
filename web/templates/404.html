@@ -7,158 +7,175 @@
     <link rel="icon" type="image/png" href="/static/assets/favicon_web.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --bg-main: #0a0a0c;
-            --p-pink: #f582ae;
-            --p-pink-soft: rgba(245, 130, 174, 0.15);
-            --text-main: #ffffff;
-            --text-muted: #a1a1aa;
+            --bg-main: #151312; /* Deep Espresso */
+            --p-gold: #d4a373; /* Umapyoi Caramel */
+            --p-gold-glow: rgba(212, 163, 115, 0.3);
+            --p-gold-soft: rgba(212, 163, 115, 0.1);
+            --text-main: #f8f8f8;
+            --text-muted: #a69c97;
+            --glass-bg: rgba(30, 27, 26, 0.6);
+            --glass-border: rgba(212, 163, 115, 0.15);
+        }
+
+        @keyframes blobBounce {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(25px, -25px) scale(1.15); }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-40px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(5deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
-        }
-
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0.4); }
-            70% { box-shadow: 0 0 0 30px rgba(245, 130, 174, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 130, 174, 0); }
-        }
-
-        @keyframes fadeInScale {
-            0% { opacity: 0; transform: scale(0.9); }
-            100% { opacity: 1; transform: scale(1); }
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(3deg); }
         }
 
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-main);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(245, 130, 174, 0.08), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(138, 43, 226, 0.08), transparent 25%);
             color: var(--text-main);
-            font-family: 'Nunito', sans-serif;
+            font-family: 'Quicksand', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-        }
-
-        .error-container {
-            text-align: center;
-            padding: 50px 40px;
-            max-width: 500px;
-            width: 90%;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            animation: fadeInScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
         }
 
-        .error-container::before {
-            content: '';
+        .bg-glow {
             position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--p-pink), transparent);
-            border-radius: 2px 2px 0 0;
-            opacity: 0.8;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, var(--p-gold-soft) 0%, transparent 70%);
+            filter: blur(120px);
+            z-index: -1;
+            animation: blobBounce 15s infinite alternate;
+        }
+        .bg-glow-top { top: -300px; right: -200px; }
+        .bg-glow-bottom { bottom: -300px; left: -200px; opacity: 0.7; }
+
+        .container {
+            text-align: center;
+            padding: 70px 50px;
+            max-width: 580px;
+            width: 90%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 40px;
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            box-shadow: 0 50px 120px rgba(0, 0, 0, 0.7);
+            animation: fadeInDown 1s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
         }
 
-        .icon-wrapper {
-            width: 90px;
-            height: 90px;
-            background: var(--p-pink-soft);
-            border-radius: 50%;
-            display: flex;
+        .container::after {
+            content: '404';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 15rem;
+            font-weight: 900;
+            color: var(--p-gold);
+            opacity: 0.03;
+            z-index: 0;
+        }
+
+        .icon-box {
+            width: 100px;
+            height: 100px;
+            background: var(--p-gold-soft);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 25px auto;
-            color: var(--p-pink);
-            animation: float 4s ease-in-out infinite, pulseGlow 2s infinite;
-            border: 1px solid rgba(245, 130, 174, 0.3);
-        }
-
-        .icon-wrapper i {
-            width: 45px;
-            height: 45px;
-        }
-
-        .error-code {
-            font-size: 5rem;
-            font-weight: 800;
-            margin: 0;
-            line-height: 1;
-            background: linear-gradient(to right, #fff, var(--p-pink));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -2px;
-            text-shadow: 0 10px 30px rgba(245, 130, 174, 0.3);
+            color: var(--p-gold);
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 15px var(--p-gold-glow));
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+            z-index: 1;
         }
 
         h1 {
-            font-size: 1.8rem;
-            font-weight: 800;
-            margin: 10px 0 15px 0;
-            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 850;
+            margin: 0 0 15px 0;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #fff 40%, var(--p-gold) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 1;
         }
 
         p {
             color: var(--text-muted);
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin: 0 0 35px 0;
+            font-size: 1.15rem;
+            line-height: 1.7;
+            margin-bottom: 45px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
         }
 
-        .btn-home {
+        .btn-action {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            background: var(--p-pink);
-            color: #0a0a0c;
+            gap: 12px;
+            background: linear-gradient(135deg, var(--p-gold) 0%, #dda15e 100%);
+            color: #151312;
             text-decoration: none;
-            padding: 14px 32px;
+            padding: 16px 40px;
             border-radius: 100px;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 1.05rem;
             border: none;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 20px rgba(245, 130, 174, 0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 35px rgba(212, 163, 115, 0.3);
+            position: relative;
+            z-index: 1;
         }
 
-        .btn-home:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 25px rgba(245, 130, 174, 0.3);
-            background: #fff;
+        .btn-action:hover {
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 20px 45px rgba(212, 163, 115, 0.4);
+            filter: brightness(1.1);
         }
 
-        .btn-home:active {
-            transform: translateY(1px);
-            box-shadow: 0 5px 10px rgba(245, 130, 174, 0.2);
+        .btn-action:active {
+            transform: translateY(2px);
         }
     </style>
 </head>
 <body>
-    <div class="error-container">
-        <div class="error-code">404</div>
-        <div class="icon-wrapper" style="margin-top: -15px; width: 60px; height: 60px;">
-            <i data-lucide="map-pin-off" style="width: 30px; height: 30px;"></i>
+    <div class="bg-glow bg-glow-top"></div>
+    <div class="bg-glow bg-glow-bottom"></div>
+
+    <div class="container">
+        <div class="icon-box">
+            <i data-lucide="map-pin-off" style="width: 50px; height: 50px;"></i>
         </div>
         <h1>¿Te has perdido?</h1>
-        <p>Parece que la página que intentas buscar ha sido borrada o escrita incorrectamente en la barra de direcciones.</p>
-        <a href="/" class="btn-home">
+        <p>
+            Parece que la página que buscas se ha ido a tomar un café o simplemente nunca existió.
+        </p>
+
+        <a href="/" class="btn-action">
             <i data-lucide="home"></i> Volver al Inicio
         </a>
     </div>
