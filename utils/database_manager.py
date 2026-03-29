@@ -188,6 +188,12 @@ def setup_database():
             last_use TEXT,
             PRIMARY KEY (guild_id, user_id, command_name)
         )''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS dashboard_users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            avatar TEXT,
+            last_login DATETIME DEFAULT CURRENT_TIMESTAMP
+        )''')
 
         run_migrations(conn)
         conn.commit()

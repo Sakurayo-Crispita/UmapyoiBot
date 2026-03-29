@@ -26,7 +26,6 @@ class EconomyCog(commands.Cog, name="Economía"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.user_locks = {}
-        self.user_locks = {}
 
     async def cog_check(self, ctx: commands.Context):
         """Check global para este Cog."""

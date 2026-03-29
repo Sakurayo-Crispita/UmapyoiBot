@@ -51,6 +51,34 @@ if not CLIENT_ID or not CLIENT_SECRET:
 ADMIN_COOLDOWNS = {} # {user_id: last_action_timestamp}
 COOLDOWN_SECONDS = 3
 
+# Rate Limiter Global (Anti-Spam DDoS básico)
+RATE_LIMITS = {}
+RATE_LIMIT_MAX_REQUESTS = 5
+RATE_LIMIT_PERIOD_SECONDS = 3
+
+@app.before_request
+async def rate_limit_check():
+    # Exceptuar rutas estáticas u otras que no queramos limitar
+    if request.path.startswith('/static/'):
+        return
+
+    # Obtener IP del cliente (soporte proxy inverso)
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if client_ip and ',' in client_ip:
+        client_ip = client_ip.split(',')[0].strip()
+        
+    now = time.time()
+    
+    if client_ip in RATE_LIMITS:
+        RATE_LIMITS[client_ip] = [t for t in RATE_LIMITS[client_ip] if now - t < RATE_LIMIT_PERIOD_SECONDS]
+    else:
+        RATE_LIMITS[client_ip] = []
+        
+    if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+        return "Demasiadas peticiones (Rate Limit). Por favor, espera 3 segundos y baja el ritmo.", 429
+        
+    RATE_LIMITS[client_ip].append(now)
+
 # Utilidades internas de la web
 async def fetch_user_guilds(access_token):
     headers = {'Authorization': f"Bearer {access_token}"}
@@ -62,6 +90,14 @@ async def fetch_user_guilds(access_token):
                 # Debug: print(f"Fetched {len(data)} guilds")
                 return data
             return []
+
+def login_required(f):
+    @wraps(f)
+    async def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        return await f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 async def index():
@@ -92,9 +128,8 @@ async def serverconfig_module():
     return await render_template('serverconfig.html')
 
 @app.route('/report', methods=['GET', 'POST'])
+@login_required
 async def report():
-    if 'user' not in session:
-        return redirect(url_for('login'))
     
     if request.method == 'POST':
         form = await request.form
@@ -154,9 +189,8 @@ async def report():
     return await render_template('report.html', user=session['user'])
 
 @app.route('/suggest', methods=['GET', 'POST'])
+@login_required
 async def suggest():
-    if 'user' not in session:
-        return redirect(url_for('login'))
     
     if request.method == 'POST':
         form = await request.form
@@ -269,9 +303,8 @@ async def logout():
     return redirect(url_for('index'))
 
 @app.route('/dashboard')
+@login_required
 async def dashboard():
-    if 'user' not in session:
-        return redirect(url_for('login'))
     
     user = session['user']
     owner_id = os.getenv("OWNER_ID")
@@ -313,9 +346,8 @@ async def dashboard():
                                section='servers')
 
 @app.route('/dashboard/account')
+@login_required
 async def dashboard_account():
-    if 'user' not in session:
-        return redirect(url_for('login'))
     
     user = session['user']
     owner_id = os.getenv("OWNER_ID")
@@ -410,7 +442,7 @@ async def get_server_context(guild_id):
         servers = session['servers']
         
     target_guild = next((g for g in servers if str(g['id']) == str(guild_id)), None)
-    if not target_guild: return None, None, None
+    if not target_guild: return None, None
 
     # Cacheo de Discord API data
     cache_key = str(guild_id)
@@ -533,11 +565,10 @@ async def get_server_context(guild_id):
     }
 
 @app.route('/dashboard/server/<guild_id>/deploy/<feature>', methods=['POST'])
+@login_required
 async def dashboard_deploy(guild_id, feature):
     target_guild, ctx = await get_server_context(guild_id)
     if not target_guild:
-        if 'user' not in session:
-            return redirect(url_for('login'))
         return "No tienes acceso o permisos de administrador en este servidor.", 403
 
     settings = await database_manager.fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
@@ -613,6 +644,7 @@ async def dashboard_deploy(guild_id, feature):
 
 @app.route('/dashboard/server/<guild_id>', defaults={'section': 'general'}, methods=['GET', 'POST'])
 @app.route('/dashboard/server/<guild_id>/<section>', methods=['GET', 'POST'])
+@login_required
 async def dashboard_server(guild_id, section):
     target_guild, ctx = await get_server_context(guild_id)
     if not target_guild:

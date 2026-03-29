@@ -592,7 +592,7 @@ class ServerConfigCog(commands.Cog, name="Configuración del Servidor"):
         # 3. Economía y Sistemas
         leveling = "✅ Activado" if settings.get('leveling_enabled', 1) else "🚫 Desactivado"
         currency = f"**{eco_settings.get('currency_name', 'créditos')}** {eco_settings.get('currency_emoji', '🪙')}" if eco_settings else "**créditos** 🪙"
-        casino_ch_list = ", ".join(f"<#{r['channel_id']}>" for r in casino_channels) if casino_channels else "🚫 Inactivo"
+        casino_ch_list = ", ".join(f"<#{r['channel_id']}>" for r in casino_channels_rows) if casino_channels_rows else "🚫 Inactivo"
         
         work_info = f"{eco_settings['work_min']}-{eco_settings['work_max']}" if eco_settings else "50-250"
         daily_info = f"{eco_settings['daily_min']}-{eco_settings['daily_max']}" if eco_settings else "100-500"

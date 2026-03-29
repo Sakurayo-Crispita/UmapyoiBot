@@ -36,9 +36,6 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
             active_channel_row = await db.fetchone("SELECT text_channel_id FROM tts_active_channels WHERE guild_id = ?", (message.guild.id,))
             if not active_channel_row or message.channel.id != active_channel_row['text_channel_id']: return
         
-        music_cog = self.bot.get_cog("Música")
-        if not music_cog or (music_cog.get_guild_state(message.guild.id).current_song is not None): return
-        
         vc = message.guild.voice_client
         if not vc or not vc.is_connected() or vc.is_playing(): return
         if not message.author.voice or message.author.voice.channel != vc.channel: return
@@ -76,12 +73,13 @@ class TTSCog(commands.Cog, name="Texto a Voz"):
     async def setup_tts(self, ctx: commands.Context):
         if not ctx.author.voice or not ctx.author.voice.channel:
             return await ctx.send("Debes estar en un canal de voz para usar este comando.", ephemeral=True)
-        music_cog = self.bot.get_cog("Música")
-        if not music_cog: return await ctx.send("Error interno: no se pudo encontrar el cog de música.", ephemeral=True)
-        
         channel = ctx.author.voice.channel
-        if not (vc := await music_cog.ensure_voice_client(channel)):
-            return await ctx.send("❌ No pude conectarme a tu canal de voz.", ephemeral=True)
+        vc = ctx.guild.voice_client
+        if not vc:
+            try:
+                vc = await channel.connect()
+            except Exception as e:
+                return await ctx.send(f"❌ No pude conectarme a tu canal de voz: {e}", ephemeral=True)
 
         # Usamos el gestor de DB
         await db.execute("REPLACE INTO tts_active_channels (guild_id, text_channel_id) VALUES (?, ?)", (ctx.guild.id, ctx.channel.id))

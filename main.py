@@ -76,7 +76,40 @@ class UmapyoiBot(commands.Bot):
                 except Exception as e:
                     print(f"Error al cargar el Cog '{filename[:-3]}': {e}")
         print("Cogs cargados.")
-# Sincronización de comandos slash
+
+        # Añadir cooldown global de 3 segundos para comandos del bot
+        @self.tree.interaction_check
+        async def global_cooldown_check(interaction: discord.Interaction):
+            # Solo afectar a los comandos (slash commands, context menus)
+            if interaction.type != discord.InteractionType.application_command:
+                return True
+                
+            # Exceptuar comandos de economía/niveles que ya tienen sus propios cooldowns
+            # o comandos que queremos que sean instantáneos.
+            exempt_commands = {'work', 'rob', 'daily', 'deposit', 'withdraw', 'balance', 'rank', 'play', 'pause', 'resume', 'skip'}
+            if interaction.command and interaction.command.name in exempt_commands:
+                return True
+
+            now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+            user_id = interaction.user.id
+            
+            # Exceptuar al dueño por conveniencia técnica
+            if OWNER_ID and str(user_id) == str(OWNER_ID):
+                return True
+                
+            if not hasattr(self, '_last_cmd_times'):
+                self._last_cmd_times = {}
+                
+            last_time = self._last_cmd_times.get(user_id, 0)
+            if now - last_time < 3.0:
+                time_left = 3.0 - (now - last_time)
+                await interaction.response.send_message(f"⏳ Te estás apresurando. Por favor, espera **{time_left:.1f}** segundos antes de usar otro comando.", ephemeral=True)
+                return False
+                
+            self._last_cmd_times[user_id] = now
+            return True
+
+        # Sincronización de comandos slash
         await self.tree.sync()
         print("¡Comandos sincronizados!")
 
@@ -134,6 +167,7 @@ class UmapyoiBot(commands.Bot):
                     print(f"Error procesando leave_guild: {e}")
             
             elif task_type == 'send_dm':
+                u_id = 'desconocido'
                 try:
                     import json
                     data = json.loads(message)
@@ -431,8 +465,8 @@ async def on_interaction(interaction: discord.Interaction):
         await database_manager.log_global_command(
             guild_id, guild_name, interaction.user.id, str(interaction.user), command_name
         )
-    # Importante procesar la interacción para que los comandos slash sigan funcionando
-    await bot.process_application_commands(interaction)
+    # En discord.py, el tree ya procesa los comandos slash automáticamente.
+    # No se necesita llamar a process_application_commands (eso es de Pycord).
 
 @bot.check
 async def global_blacklist_check(ctx):

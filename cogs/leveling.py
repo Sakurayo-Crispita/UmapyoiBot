@@ -41,6 +41,7 @@ class LevelingCog(commands.Cog, name="Niveles"):
         """Procesa la ganancia de XP de un usuario considerando cooldowns."""
         import datetime
         guild_id, user_id = message.guild.id, message.author.id
+        now = datetime.datetime.now(datetime.timezone.utc)
         
         # --- NUEVO: Comprobación de Cooldown Persistente (Anti-Spam de XP) ---
         last_use = await db.get_cooldown(guild_id, user_id, 'xp_gain')

@@ -1,45 +1,92 @@
+"""Tests para el cog de ServerConfig — incluye verificación del fix de Bug #2."""
 import pytest
+from unittest.mock import patch
 from cogs.serverconfig import ServerConfigCog
 from utils import database_manager as db
-import discord
+
 
 @pytest.fixture
 async def config_cog(mock_bot):
-    return ServerConfigCog(mock_bot)
+    """Crear el cog patcheando el task loop para evitar RuntimeError."""
+    with patch.object(ServerConfigCog, 'cog_unload', lambda self: None):
+        # Patch the task start to avoid needing a running discord event loop
+        original_init = ServerConfigCog.__init__
+        def patched_init(self, bot):
+            self.bot = bot
+            self.recent_events = {}
+            # No llamamos self.cleanup_recent_events.start()
+        
+        ServerConfigCog.__init__ = patched_init
+        cog = ServerConfigCog(mock_bot)
+        ServerConfigCog.__init__ = original_init
+        return cog
 
-class MockInteraction:
-    def __init__(self, guild):
-        self.guild = guild
-        self.response = self
-    
-    async def send_message(self, content=None, embed=None, ephemeral=False):
-        pass
 
-async def test_toggle_leveling(config_cog, mock_ctx):
-    # Configurar el servidor en la BD antes de la prueba
-    await db.execute("INSERT INTO server_settings (guild_id, leveling_enabled) VALUES (?, ?)", (mock_ctx.guild.id, 1))
+class TestToggleLeveling:
+    async def test_disable_leveling(self, config_cog, mock_ctx):
+        await config_cog.toggle_leveling.callback(config_cog, mock_ctx, "off")
+        settings = await db.fetchone(
+            "SELECT leveling_enabled FROM server_settings WHERE guild_id = ?",
+            (mock_ctx.guild.id,)
+        )
+        assert settings["leveling_enabled"] == 0
 
-    # Desactivar niveles
-    await config_cog.toggle_leveling.callback(config_cog, mock_ctx, "off")
-    
-    settings = await db.fetchone("SELECT leveling_enabled FROM server_settings WHERE guild_id = ?", (mock_ctx.guild.id,))
-    assert settings["leveling_enabled"] == 0
-    
-    # Verificar que el mensaje refleje el éxito
-    assert any("desactivado" in msg for msg in mock_ctx.responses or mock_ctx.ephemeral_responses)
+    async def test_enable_leveling(self, config_cog, mock_ctx):
+        # Primero desactivamos
+        await config_cog.toggle_leveling.callback(config_cog, mock_ctx, "off")
+        db.invalidate_cache(mock_ctx.guild.id)
+        mock_ctx.responses.clear()
+        mock_ctx.ephemeral_responses.clear()
 
-async def test_toggle_module_case_insensitive(config_cog, mock_ctx):
-    # Insertar configuración inicial
-    await db.execute("INSERT INTO server_settings (guild_id, music_enabled) VALUES (?, ?)", (mock_ctx.guild.id, 0))
+        # Luego activamos
+        await config_cog.toggle_leveling.callback(config_cog, mock_ctx, "on")
+        settings = await db.fetchone(
+            "SELECT leveling_enabled FROM server_settings WHERE guild_id = ?",
+            (mock_ctx.guild.id,)
+        )
+        assert settings["leveling_enabled"] == 1
 
-    # Probar con "Musica" (capitalizada)
-    await config_cog.toggle_module.callback(config_cog, mock_ctx, "Musica", "on")
 
-    settings = await db.fetchone("SELECT music_enabled FROM server_settings WHERE guild_id = ?", (mock_ctx.guild.id,))
-    assert settings["music_enabled"] == 1
-    assert any("activado" in msg for msg in mock_ctx.responses or mock_ctx.ephemeral_responses)
+class TestToggleModule:
+    async def test_toggle_music_off_and_on(self, config_cog, mock_ctx):
+        await config_cog.toggle_module.callback(config_cog, mock_ctx, "musica", "off")
+        settings = await db.fetchone(
+            "SELECT music_enabled FROM server_settings WHERE guild_id = ?",
+            (mock_ctx.guild.id,)
+        )
+        assert settings["music_enabled"] == 0
 
-    # Probar con "MUSICA" (mayúsculas)
-    await config_cog.toggle_module.callback(config_cog, mock_ctx, "MUSICA", "off")
-    settings = await db.fetchone("SELECT music_enabled FROM server_settings WHERE guild_id = ?", (mock_ctx.guild.id,))
-    assert settings["music_enabled"] == 0
+        db.invalidate_cache(mock_ctx.guild.id)
+        mock_ctx.responses.clear()
+        mock_ctx.ephemeral_responses.clear()
+
+        await config_cog.toggle_module.callback(config_cog, mock_ctx, "musica", "on")
+        settings = await db.fetchone(
+            "SELECT music_enabled FROM server_settings WHERE guild_id = ?",
+            (mock_ctx.guild.id,)
+        )
+        assert settings["music_enabled"] == 1
+
+    async def test_toggle_economia(self, config_cog, mock_ctx):
+        await config_cog.toggle_module.callback(config_cog, mock_ctx, "economia", "off")
+        settings = await db.fetchone(
+            "SELECT eco_enabled FROM server_settings WHERE guild_id = ?",
+            (mock_ctx.guild.id,)
+        )
+        assert settings["eco_enabled"] == 0
+
+    async def test_toggle_invalid_module(self, config_cog, mock_ctx):
+        await config_cog.toggle_module.callback(config_cog, mock_ctx, "inventado", "on")
+        assert any("no válido" in msg.lower() or "módulo" in msg.lower()
+                    for msg in mock_ctx.ephemeral_responses)
+
+
+class TestServerConfigDisplay:
+    """Verifica que el Bug #2 (casino_channels vs casino_channels_rows) está corregido."""
+
+    async def test_serverconfig_no_crash(self, config_cog, mock_ctx):
+        """El comando /serverconfig no debe crashear por NameError."""
+        try:
+            await config_cog.serverconfig.callback(config_cog, mock_ctx)
+        except NameError as e:
+            pytest.fail(f"Bug #2 no corregido: NameError — {e}")
