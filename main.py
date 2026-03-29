@@ -77,23 +77,17 @@ class UmapyoiBot(commands.Bot):
                     print(f"Error al cargar el Cog '{filename[:-3]}': {e}")
         print("Cogs cargados.")
 
-        # Añadir cooldown global de 3 segundos para comandos del bot
-        @self.tree.interaction_check
-        async def global_cooldown_check(interaction: discord.Interaction):
-            # Solo afectar a los comandos (slash commands, context menus)
+        # === Cooldown Global para Comandos Slash ===
+        async def global_interaction_cooldown(interaction: discord.Interaction):
             if interaction.type != discord.InteractionType.application_command:
                 return True
-                
-            # Exceptuar comandos de economía/niveles que ya tienen sus propios cooldowns
-            # o comandos que queremos que sean instantáneos.
+            
             exempt_commands = {'work', 'rob', 'daily', 'deposit', 'withdraw', 'balance', 'rank', 'play', 'pause', 'resume', 'skip'}
             if interaction.command and interaction.command.name in exempt_commands:
                 return True
 
             now = datetime.datetime.now(datetime.timezone.utc).timestamp()
             user_id = interaction.user.id
-            
-            # Exceptuar al dueño por conveniencia técnica
             if OWNER_ID and str(user_id) == str(OWNER_ID):
                 return True
                 
@@ -103,7 +97,40 @@ class UmapyoiBot(commands.Bot):
             last_time = self._last_cmd_times.get(user_id, 0)
             if now - last_time < 3.0:
                 time_left = 3.0 - (now - last_time)
-                await interaction.response.send_message(f"⏳ Te estás apresurando. Por favor, espera **{time_left:.1f}** segundos antes de usar otro comando.", ephemeral=True)
+                await interaction.response.send_message(f"⏳ Te estás apresurando. Por favor, espera **{time_left:.1f}** segundos.", ephemeral=True)
+                return False
+                
+            self._last_cmd_times[user_id] = now
+            return True
+        
+        self.tree.interaction_check = global_interaction_cooldown
+
+        # === Cooldown Global para Comandos de Prefijo (!!ping) ===
+        @self.check
+        async def global_prefix_cooldown(ctx: commands.Context):
+            if not ctx.command:
+                return True
+                
+            exempt_commands = {'work', 'rob', 'daily', 'deposit', 'withdraw', 'balance', 'rank', 'play', 'pause', 'resume', 'skip'}
+            if ctx.command.name in exempt_commands:
+                return True
+
+            now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+            user_id = ctx.author.id
+            if OWNER_ID and str(user_id) == str(OWNER_ID):
+                return True
+                
+            if not hasattr(self, '_last_cmd_times'):
+                self._last_cmd_times = {}
+                
+            last_time = self._last_cmd_times.get(user_id, 0)
+            if now - last_time < 3.0:
+                time_left = 3.0 - (now - last_time)
+                # Avisar al usuario pero borrar el mensaje rápido para no hacer spam (prefijo no tiene ephemeral)
+                try:
+                    await ctx.send(f"⏳ Te estás apresurando. Por favor, espera **{time_left:.1f}** segundos.", delete_after=3.0)
+                except discord.HTTPException:
+                    pass
                 return False
                 
             self._last_cmd_times[user_id] = now
