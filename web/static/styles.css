@@ -11,9 +11,10 @@
     /* Functional Colors - Light */
     --bg-main: #ffffff;
     --bg-alt: #fdfafb; 
-    --text-main: #1a1a1a;
-    --text-muted: #5f5f5f;
-    --nav-bg: rgba(255, 255, 255, 0.9);
+    --text-main: #2c1810; /* Deep Mocha for headings */
+    --text-muted: #5d4a44; /* Darker mocha for readability */
+    --nav-bg: rgba(255, 255, 255, 0.95);
+    --crema-input: #fffcf8; /* Soft cream background for inputs */
     --border-color: rgba(212, 163, 115, 0.15);
     --accent-glow: rgba(212, 163, 115, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7);

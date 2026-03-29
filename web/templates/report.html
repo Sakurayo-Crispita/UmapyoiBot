@@ -480,10 +480,12 @@
 
         .glass-card {
             background: var(--glass-bg);
-            border: 1px solid var(--border-color);
+            border: 2.5px solid var(--border-color);
             border-radius: 16px;
             padding: 30px;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(28px);
+            box-shadow: var(--shadow-lg);
+            transition: border-color 0.4s;
         }
 
         .form-group {
@@ -492,17 +494,17 @@
 
         .form-label {
             display: block;
-            font-size: 0.8rem;
-            font-weight: 700;
+            font-size: 0.85rem;
+            font-weight: 800;
             text-transform: uppercase;
-            color: var(--text-muted);
+            color: var(--text-main);
             margin-bottom: 8px;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
         }
 
         .form-hint {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.78rem;
+            color: var(--text-muted);
             margin-bottom: 8px;
             display: block;
         }
@@ -511,13 +513,15 @@
         .form-select,
         .form-textarea {
             width: 100%;
-            background: var(--bg-alt);
-            border: 1px solid var(--border-color);
+            background: var(--crema-input);
+            border: 1.5px solid var(--border-color);
             border-radius: 8px;
-            padding: 12px 15px;
+            padding: 14px 18px;
             color: var(--text-main);
             font-family: inherit;
+            font-weight: 500;
             transition: all 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .form-input:focus,
@@ -525,7 +529,8 @@
         .form-textarea:focus {
             border-color: var(--p-pink);
             outline: none;
-            background: var(--glass-bg);
+            background: #fffdfb;
+            box-shadow: 0 0 0 3px var(--accent-glow);
         }
 
         .form-select option {
