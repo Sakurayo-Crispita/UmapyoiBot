@@ -125,16 +125,18 @@ async def rate_limit_check():
         if path in req_path:
             is_attack = True
             break
-    
+            
     if is_attack:
         # Baneo de 24 horas instantáneo por intentar acceder a rutas prohibidas
         BANNED_IPS[client_ip] = now + ATTACK_BAN_TIME
-        print(f"--- [🛡️ SECURITY] IP BANNEADA (ATAQUE): {client_ip} intentó acceder a {request.path} ---")
+        # Log de seguridad especial (para que sepas quién fue el gracioso)
+        print(f"--- [🛡️ BLOQUEO CRÍTICO] IP {client_ip} BANEADA 24H por ataque a: {request.path} ---")
         return await render_template('429.html', remaining=ATTACK_BAN_TIME), 429
 
     # Comprobar si está bloqueado temporalmente (hard-ban)
     ban_expiry = BANNED_IPS.get(client_ip, 0)
     if now < ban_expiry:
+        # Si ya está baneado, devolvemos 429 directamente sin logs para no llenar la terminal
         return await render_template('429.html', remaining=int(ban_expiry - now)), 429
     elif ban_expiry != 0:
         del BANNED_IPS[client_ip] 
@@ -145,9 +147,9 @@ async def rate_limit_check():
         RATE_LIMITS[client_ip] = []
         
     if len(RATE_LIMITS[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
-        # Castigar con ban temporal por spamear
+        # Castigar con ban temporal por spamear (1 hora)
         BANNED_IPS[client_ip] = now + BAN_TIME_SECONDS
-        print(f"--- [🛡️ SECURITY] IP BANNEADA (SPAM): {client_ip} ---")
+        print(f"--- [🛡️ SEGURIDAD] IP BANEADA 1H (SPAM): {client_ip} ---")
         return await render_template('429.html', remaining=BAN_TIME_SECONDS), 429
         
     RATE_LIMITS[client_ip].append(now)

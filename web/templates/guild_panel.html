@@ -20,7 +20,7 @@
         href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Quicksand:wght@600;700&display=swap"
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/styles.css?v=13.0">
+    <link rel="stylesheet" href="/static/styles.css?v=14.0">
     <style>
         /* Identity Animations & Layout Fixes */
         @keyframes iconPulse {
@@ -2787,12 +2787,6 @@
             // Cleanup URL
             if (window.history.replaceState) {
                 const url = new URL(window.location);
-                url.searchParams.delete('saved');
-                window.history.replaceState({ path: url.href }, '', url.href);
-            }
-        });
-    </script>
-    {% endif %}
                 url.searchParams.delete('saved');
                 window.history.replaceState({ path: url.href }, '', url.href);
             }
