@@ -101,7 +101,8 @@ ATTACK_PATHS = {
     '/.env', '/.git', '/wp-admin', '/wp-login.php', '/info.php', '/phpinfo', 
     '/.well-known/', '/logs/', '/error.log', '/access.log', '/composer.json', 
     '/.aws/', '/.ssh/', '/config.php', '/setup.php', '/admin.php', '/xmlrpc.php',
-    '/db_structure.sql', '/dump.sql', '/backup.sql', '/config.json', '/.env.local'
+    '/db_structure.sql', '/dump.sql', '/backup.sql', '/config.json', '/.env.local',
+    'wlwmanifest.xml', '/wp-content/', '/wp-includes/', '/ads.txt', '/license.txt'
 }
 
 @app.before_request
