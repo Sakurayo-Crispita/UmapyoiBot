@@ -293,10 +293,10 @@ async def on_ready():
     await database_manager.log_system_event("INFO", "System", f"UmapyoiBot está en línea. Conectado como {bot.user}")
 
 async def sync_guilds_background():
-    """Sincroniza la lista de servidores en segundo plano."""
+    """Sincroniza la lista de servidores en segundo plano con manejo de errores y reintentos."""
     print("Iniciando sincronización de servidores en segundo plano...")
-    guilds_data = []
-    # Consultamos lo que ya tenemos
+    
+    # Pre-cargar gremios existentes para comparar
     try:
         existing_bg = await database_manager.get_bot_guilds()
         bg_dict = {g['guild_id']: g for g in existing_bg}
@@ -304,37 +304,60 @@ async def sync_guilds_background():
         print(f"Error cargando gremios existentes: {e}")
         bg_dict = {}
 
-    for g in bot.guilds:
-        inviter_id = None
-        inviter_name = None
-        inviter_avatar = None
-        
-        if g.id in bg_dict and bg_dict[g.id].get('inviter_id'):
-            inviter_id = bg_dict[g.id]['inviter_id']
-            inviter_name = bg_dict[g.id]['inviter_name']
-            inviter_avatar = bg_dict[g.id]['inviter_avatar']
-        else:
-            if g.member_count < 1000:
-                inviter = await get_guild_inviter(g)
-                if inviter:
-                    inviter_id = inviter.id
-                    inviter_name = str(inviter)
-                    inviter_avatar = str(inviter.display_avatar.url)
+    guilds_data = []
 
-        guilds_data.append({
-            'id': g.id,
-            'name': g.name,
-            'member_count': g.member_count,
-            'icon_url': str(g.icon.url) if g.icon else None,
-            'owner_id': g.owner_id,
-            'owner_name': str(g.owner) if g.owner else f"ID: {g.owner_id}",
-            'inviter_id': inviter_id,
-            'inviter_name': inviter_name,
-            'inviter_avatar': inviter_avatar
-        })
-    
-    await database_manager.sync_bot_guilds(guilds_data)
-    print(f"Sincronización completada: {len(guilds_data)} servidores actualizados.")
+    async def sync_one_guild(g: discord.Guild):
+        try:
+            # Asegurar que el nombre no sea None o vacío (vincular a ID si es necesario)
+            g_name = g.name if g.name else f"Servidor Desconocido ({g.id})"
+            
+            inviter_id = None
+            inviter_name = None
+            inviter_avatar = None
+            
+            # Reutilizar info de inviter si ya existe en DB para ahorrar peticiones pesadas a la Audit Log
+            if g.id in bg_dict and bg_dict[g.id].get('inviter_id'):
+                inviter_id = bg_dict[g.id]['inviter_id']
+                inviter_name = bg_dict[g.id]['inviter_name']
+                inviter_avatar = bg_dict[g.id]['inviter_avatar']
+            else:
+                # Solo buscamos inviter si el servidor no es gigantesco (evitar bloqueos)
+                if g.member_count < 2000:
+                    inviter = await get_guild_inviter(g)
+                    if inviter:
+                        inviter_id = inviter.id
+                        inviter_name = str(inviter)
+                        inviter_avatar = str(inviter.display_avatar.url)
+
+            return {
+                'id': g.id,
+                'name': g_name,
+                'member_count': g.member_count,
+                'icon_url': str(g.icon.url) if g.icon else None,
+                'owner_id': g.owner_id,
+                'owner_name': str(g.owner) if g.owner else f"ID: {g.owner_id}",
+                'inviter_id': inviter_id,
+                'inviter_name': inviter_name,
+                'inviter_avatar': inviter_avatar
+            }
+        except Exception as e:
+            print(f"Error sincronizando gremio {g.id}: {e}")
+            return None
+
+    # Sincronizamos en bloques pequeños para no saturar la API
+    for i in range(0, len(bot.guilds), 10):
+        chunk = bot.guilds[i:i+10]
+        results = await asyncio.gather(*(sync_one_guild(g) for g in chunk))
+        guilds_data.extend([r for r in results if r])
+
+    if guilds_data:
+        try:
+            await database_manager.sync_bot_guilds(guilds_data)
+            print(f"Sincronización completada: {len(guilds_data)} servidores registrados.")
+        except Exception as e:
+            print(f"Error guardando sincronización en DB: {e}")
+    else:
+        print("Aviso: No se recopilaron datos de servidores para sincronizar.")
 
 # Evento al recibir mensaje
 @bot.event
@@ -581,8 +604,12 @@ async def on_command_error(ctx: commands.Context, error):
                 color=discord.Color.red(),
                 timestamp=datetime.datetime.now(datetime.timezone.utc)
             )
-            embed.add_field(name="Servidor", value=f"{ctx.guild.name} (`{ctx.guild.id}`)", inline=False)
-            embed.add_field(name="Canal", value=f"{ctx.channel.mention} (`{ctx.channel.id}`)", inline=False)
+            # Resolver nombres para que no salgan vacíos
+            guild_display = f"{ctx.guild.name}" if ctx.guild and ctx.guild.name else f"ID: {ctx.guild.id if ctx.guild else 'N/A'}"
+            channel_display = f"{ctx.channel.mention} (`{ctx.channel.id}`)" if ctx.channel else "Canal Desconocido"
+            
+            embed.add_field(name="Servidor", value=guild_display, inline=False)
+            embed.add_field(name="Canal", value=channel_display, inline=False)
             embed.add_field(name="Usuario", value=f"{ctx.author} (`{ctx.author.id}`)", inline=False)
             embed.add_field(name="Comando", value=f"`{ctx.command.qualified_name}`" if ctx.command else "N/A", inline=False)
             embed.add_field(name="Error", value=f"```py\n{type(error).__name__}: {error}\n```", inline=False)

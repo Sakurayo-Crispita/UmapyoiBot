@@ -186,7 +186,11 @@ class UtilityCog(commands.Cog, name="Utilidad"):
             await ctx.author.send("Aquí tienes la lista:", file=discord.File(fp=io.StringIO(server_list_str), filename="serverlist.txt"))
             if ctx.guild: await ctx.send("✅ Te he enviado la lista por DM.", delete_after=10)
         except discord.Forbidden:
-            await ctx.send("No pude enviarte la lista por DM.", file=discord.File(fp=io.StringIO(server_list_str), filename="serverlist.txt"))
+            await ctx.send("No pude enviarte la lista por DM. ¿Tienes los mensajes directos cerrados?", file=discord.File(fp=io.StringIO(server_list_str), filename="serverlist.txt"))
+        except discord.errors.DiscordServerError:
+            await ctx.send("❌ Discord está experimentando problemas técnicos (503). Por favor, inténtalo de nuevo en unos minutos.")
+        except Exception as e:
+            await ctx.send(f"❌ Ocurrió un error inesperado: {e}")
 
     @commands.hybrid_command(name='contacto', description="Muestra la información de contacto del creador.")
     async def contacto(self, ctx: commands.Context):

@@ -24,7 +24,7 @@ sudo npm install pm2 -g
 ```bash
 # Sube tus archivos al servidor o usa git clone
 cd /ruta/hacia/UmapyoiBot
-
+pa              
 # Crear entorno virtual (opcional pero recomendado)
 python3 -m venv venv
 source venv/bin/activate

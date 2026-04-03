@@ -213,8 +213,8 @@ def invalidate_cache(guild_id: int):
     if guild_id in _settings_cache:
         del _settings_cache[guild_id]
 
-async def get_cached_server_settings(guild_id: int) -> Optional[Dict[str, Any]]:
-    # TTL reducido a 5 segundos para que los cambios en la web sean casi instantáneos en el bot.
+async def get_cached_server_settings(guild_id: int) -> Dict[str, Any]:
+    """Obtiene configuraciones del servidor desde la caché o la DB, asegurando que siempre haya un resultado."""
     import time
     now = time.time()
     if guild_id in _settings_cache and 'server' in _settings_cache[guild_id]:
@@ -223,9 +223,17 @@ async def get_cached_server_settings(guild_id: int) -> Optional[Dict[str, Any]]:
             return cached['server']
             
     settings = await fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
-    if settings:
-        _settings_cache.setdefault(guild_id, {})['server'] = settings
-        _settings_cache[guild_id]['last_update'] = now
+    if not settings:
+        # Auto-inicializar si no existe
+        await execute("INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)", (guild_id,))
+        settings = await fetchone("SELECT * FROM server_settings WHERE guild_id = ?", (guild_id,))
+        
+    # Si por alguna razón crítica sigue siendo None, devolvemos valores por defecto
+    if not settings:
+        settings = {'prefix': '!', 'language': 'es', 'mod_enabled': 1, 'eco_enabled': 1}
+
+    _settings_cache.setdefault(guild_id, {})['server'] = settings
+    _settings_cache[guild_id]['last_update'] = now
     return settings
 
 async def get_cached_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
@@ -393,8 +401,10 @@ async def get_bot_guilds():
 
 # Registro de logs de comandos y sistema
 async def log_global_command(guild_id: int, guild_name: str, user_id: int, user_name: str, command_name: str):
+    # Asegurar que el nombre del servidor no sea None o vacío para el dashboard
+    safe_guild_name = guild_name if (guild_name and guild_name.strip()) else f"ID: {guild_id}"
     await execute("INSERT INTO global_command_logs (guild_id, guild_name, user_id, user_name, command_name) VALUES (?, ?, ?, ?, ?)",
-                 (guild_id, guild_name, user_id, user_name, command_name))
+                 (guild_id, safe_guild_name, user_id, user_name, command_name))
 
 async def get_recent_global_logs(limit: int = 50):
     return await fetchall("SELECT * FROM global_command_logs ORDER BY timestamp DESC LIMIT ?", (limit,))
