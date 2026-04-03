@@ -480,6 +480,14 @@
                     <h3 style="display:flex; align-items:center; gap:8px;"><i data-lucide="list" style="color:var(--p-pink);"></i> Lista Detallada de Servidores</h3>
                     <p style="color: var(--text-muted); margin-bottom: 20px;">Explora todos los gremios donde UmapyoiBot está presente actualmente.</p>
                     
+                    <!-- Barra de Búsqueda de Servidores -->
+                    <div style="margin-bottom: 20px; position: relative; max-width: 400px;">
+                        <i data-lucide="search" style="position: absolute; left: 15px; top: 12px; width: 18px; color: var(--p-pink); z-index: 1;"></i>
+                        <input type="text" id="server-search" placeholder="Buscar por Nombre, ID, Dueño o Invitado..." 
+                               style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,107,158,0.2); border-radius: 12px; color: white; font-size: 0.9rem;"
+                               oninput="filterServers()">
+                    </div>
+                    
                     <div style="overflow-x: auto; border: 1px solid rgba(255,107,158,0.2); border-radius: 10px;">
                         <table>
                             <thead style="background: rgba(255,107,158,0.1);">
@@ -1239,6 +1247,17 @@
             const rows = document.querySelectorAll('#data-table-body tr');
             
             rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function filterServers() {
+            const query = document.getElementById('server-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#tab-servers tbody tr');
+            
+            rows.forEach(row => {
+                // Buscamos en todo el texto de la fila (Nombre, ID, Dueño, etc)
                 const text = row.innerText.toLowerCase();
                 row.style.display = text.includes(query) ? '' : 'none';
             });
