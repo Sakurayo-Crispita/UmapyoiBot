@@ -180,6 +180,12 @@ class UmapyoiBot(commands.Bot):
                                 break
                     except Exception: pass
                 print(f"Broadcast {b_id} enviado a {count} servidores.")
+
+            elif task_type == 'sync_all':
+                print(f"Tarea recibida: Sincronización completa solicitada via broadcast_queue (ID: {b_id})")
+                await database_manager.log_system_event("INFO", "Sync", "Iniciando sincronización forzada por administrador.")
+                # Lanzamos la sincronización en una tarea separada para no bloquear el procesador de colas
+                asyncio.create_task(sync_guilds_background())
             
             elif task_type == 'leave_guild':
                 try:
@@ -294,6 +300,8 @@ async def on_ready():
 
 async def sync_guilds_background():
     """Sincroniza la lista de servidores en segundo plano con manejo de errores y reintentos."""
+    # Breve espera para que la caché de Discord se estabilice tras el ready
+    await asyncio.sleep(5)
     print("Iniciando sincronización de servidores en segundo plano...")
     
     # Pre-cargar gremios existentes para comparar

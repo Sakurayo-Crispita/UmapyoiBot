@@ -1341,6 +1341,21 @@ async def api_admin_dm_send():
         return {"success": True, "message": "Mensaje directo programado correctamente."}
     return {"success": False, "message": "ID de usuario o contenido faltante."}, 400
 
+@app.route('/api/admin/guilds/sync', methods=['POST'])
+@admin_required
+async def api_admin_guilds_sync():
+    """Programar una tarea de sincronización completa para el bot."""
+    user = session['user']
+    try:
+        await database_manager.execute(
+            "INSERT INTO broadcast_queue (message, type, status) VALUES (?, 'sync_all', 'pending')", 
+            ('Web Trigger', )
+        )
+        await database_manager.log_admin_action(user['id'], user['username'], "force_guild_sync", details="Sincronización manual solicitada via Panel.")
+        return {"success": True, "message": "Sincronización programada. Verás los cambios en unos segundos."}
+    except Exception as e:
+        return {"success": False, "message": f"Error: {e}"}, 500
+
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
