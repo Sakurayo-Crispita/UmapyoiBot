@@ -159,29 +159,37 @@ class MusicCog(commands.Cog, name="Música"):
     """Comandos para reproducir música de alta calidad a través de Lavalink."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.pomice = pomice.NodePool()
         if bot.GENIUS_API_TOKEN: self.genius = lyricsgenius.Genius(bot.GENIUS_API_TOKEN, verbose=False, remove_section_headers=True)
         else: self.genius = None
         self.voice_locks: dict[int, asyncio.Lock] = {}
         
         bot.loop.create_task(self.start_nodes())
 
+
     # Conexión de nodos Lavalink
     async def start_nodes(self):
         await self.bot.wait_until_ready()
+        
+        # Obtener configuración de .env
+        host = os.getenv("LAVALINK_HOST", "127.0.0.1")
+        port = int(os.getenv("LAVALINK_PORT", 2333))
+        password = os.getenv("LAVALINK_PASS", "youshallnotpass")
+        
         try:
-            await self.pomice.create_node(
+            # Usamos pomice.NodePool directamente para registro global
+            await pomice.NodePool.create_node(
                 bot=self.bot,
-                host='127.0.0.1',
-                port=2333,
-                password='youshallnotpass',
+                host=host,
+                port=port,
+                password=password,
                 identifier='MAIN',
                 spotify_client_id=getattr(constants, 'SPOTIFY_CLIENT_ID', None),
                 spotify_client_secret=getattr(constants, 'SPOTIFY_CLIENT_SECRET', None)
             )
-            print("🟢 Nodo Pomice (Lavalink) conectado exitosamente.")
+            print(f"🟢 Nodo Pomice (Lavalink) conectado en {host}:{port}")
         except Exception as e:
             print(f"🔴 Error al conectar el nodo Pomice: {e}")
+
 
     async def cog_check(self, ctx: commands.Context):
         if not ctx.guild: return True
@@ -201,9 +209,9 @@ class MusicCog(commands.Cog, name="Música"):
             player = getattr(before.channel.guild, 'voice_client', None)
             if not player:
                 try:
-                    node = self.pomice.get_node()
-                    player = node.get_player(member.guild.id)
+                    player = pomice.NodePool.get_node().get_player(member.guild.id)
                 except: pass
+
                 
             if player:
                 if getattr(player, 'active_panel', None):

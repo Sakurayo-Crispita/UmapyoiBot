@@ -87,8 +87,9 @@ COOLDOWN_SECONDS = 3
 
 # Rate Limiter Global (Anti-Spam DDoS básico)
 RATE_LIMITS = {}
-RATE_LIMIT_MAX_REQUESTS = 8 # Subimos un poco el margen
+RATE_LIMIT_MAX_REQUESTS = 25 # Aumentamos para evitar falsos positivos en el dashboard
 RATE_LIMIT_PERIOD_SECONDS = 5
+
 BANNED_IPS = {}
 BAN_COUNTS = {} # {ip: num_of_times_banned}
 
@@ -109,8 +110,10 @@ ATTACK_PATHS = {
 @app.before_request
 async def rate_limit_check():
     # Exceptuar rutas estáticas u otras que no queramos limitar
-    if request.path.startswith('/static/'):
+    # Añadimos /api/admin/stats para que las gráficas no auto-bloqueen al admin
+    if request.path.startswith('/static/') or request.path == '/api/admin/stats':
         return
+
 
     # Obtener IP del cliente (soporte proxy inverso)
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)

@@ -102,8 +102,9 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.has_permissions(administrator=True)
     async def add_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
         if cantidad <= 0: return await ctx.send("❌ La cantidad debe ser mayor a 0.", ephemeral=True)
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=cantidad)
         await ctx.send(f"✅ Se han impreso **{cantidad} {emoji}** y añadido a la cartera de {miembro.mention}.")
 
@@ -111,8 +112,9 @@ class EconomyCog(commands.Cog, name="Economía"):
     @commands.has_permissions(administrator=True)
     async def remove_money(self, ctx: commands.Context, miembro: discord.Member, cantidad: int):
         if cantidad <= 0: return await ctx.send("❌ La cantidad debe ser mayor a 0.", ephemeral=True)
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         await db.update_balance(ctx.guild.id, miembro.id, wallet_change=-cantidad)
         await ctx.send(f"🛑 Se han deducido **{cantidad} {emoji}** de la cartera de {miembro.mention}.")
 
@@ -126,9 +128,10 @@ class EconomyCog(commands.Cog, name="Economía"):
         if target.bot: return await ctx.send("🤖 Los bots formamos parte de una red de consciencia unificada que anula el concepto de capitalismo.")
         
         wallet, bank = await db.get_balance(ctx.guild.id, target.id)
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         currency_name = settings.get('currency_name', 'créditos')
         emoji = settings.get('currency_emoji', '🪙')
+
         
         max_bank = await self.get_max_bank(ctx.guild.id, target.id)
         
@@ -148,8 +151,9 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def deposit(self, ctx: commands.Context, cantidad: str):
         if not ctx.guild: return
         await ctx.defer()
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         
         async with self.get_user_lock(ctx.author.id):
             wallet, bank = await db.get_balance(ctx.guild.id, ctx.author.id)
@@ -176,8 +180,9 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def withdraw(self, ctx: commands.Context, cantidad: str):
         if not ctx.guild: return
         await ctx.defer()
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         
         async with self.get_user_lock(ctx.author.id):
             wallet, bank = await db.get_balance(ctx.guild.id, ctx.author.id)
@@ -200,8 +205,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         if miembro.bot: return await ctx.send("🤖 La interfaz de las IAs aún no acepta propinas.")
         if miembro.id == ctx.author.id: return await ctx.send("❌ No te puedes pagar a ti mismo.")
         
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
 
         async with self.get_user_lock(ctx.author.id):
             wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
@@ -228,8 +234,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         if not ctx.guild: return
         await ctx.defer()
         
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         
         async with self.get_user_lock(ctx.author.id):
             # Fetch language for localization
@@ -263,8 +270,9 @@ class EconomyCog(commands.Cog, name="Economía"):
     async def work(self, ctx: commands.Context):
         if not ctx.guild: return
         await ctx.defer()
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         cooldown_time = settings.get('work_cooldown', 3600)
+
         
         now_dt = discord.utils.utcnow()
         last_use_dt = await db.get_cooldown(ctx.guild.id, ctx.author.id, 'work')
@@ -326,8 +334,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         items = await db.fetchall("SELECT * FROM shop_items WHERE guild_id = ?", (ctx.guild.id,))
         if not items: return await ctx.send("🛒 La tienda está vacía. Vuelve más tarde.", ephemeral=True)
         
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         
         embed = discord.Embed(title="🛒 Tienda del Servidor", description="Usa `/buy <ID>` para comprar un artículo.", color=discord.Color.gold())
         for item in items:
@@ -343,8 +352,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         item = await db.fetchone("SELECT * FROM shop_items WHERE item_id = ? AND guild_id = ?", (item_id, ctx.guild.id))
         if not item: return await ctx.send("❌ No existe ningún artículo con esa ID en esta tienda.", ephemeral=True)
         
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         
         async with self.get_user_lock(ctx.author.id):
             wallet, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
@@ -395,8 +405,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         if miembro.bot:
             return await ctx.send("Robarle a una IA es intentar hackear a la Matrix. Imposible.")
 
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         cooldown_time = settings.get('rob_cooldown', 21600)
+
         
         now_dt = discord.utils.utcnow()
         last_use_dt = await db.get_cooldown(ctx.guild.id, ctx.author.id, 'rob')
@@ -464,8 +475,9 @@ class EconomyCog(commands.Cog, name="Economía"):
         query = "SELECT user_id, wallet, bank FROM balances WHERE guild_id = ? ORDER BY (wallet + bank) DESC LIMIT 10"
         top_users = await db.fetchall(query, (ctx.guild.id,))
         
-        settings = await db.get_cached_economy_settings(ctx.guild.id)
+        settings = await db.get_cached_economy_settings(ctx.guild.id) or {}
         emoji = settings.get('currency_emoji', '🪙')
+
         
         if not top_users: return await ctx.send("Este lugar parece un desierto económico.")
         
