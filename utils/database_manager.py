@@ -236,12 +236,25 @@ async def get_cached_server_settings(guild_id: int) -> Dict[str, Any]:
     _settings_cache[guild_id]['last_update'] = now
     return settings
 
-async def get_cached_economy_settings(guild_id: int) -> Optional[Dict[str, Any]]:
+async def get_cached_economy_settings(guild_id: int) -> Dict[str, Any]:
+    """Obtiene configuraciones de economía desde la caché o la DB, asegurando que siempre haya un resultado."""
+    import time
+    now = time.time()
     if guild_id in _settings_cache and 'economy' in _settings_cache[guild_id]:
-        return _settings_cache[guild_id]['economy']
+        cached = _settings_cache[guild_id]
+        if now - cached.get('last_update_eco', 0) < 5: # 5 segundos de cache
+            return cached['economy']
+
     settings = await get_guild_economy_settings(guild_id)
-    if settings:
-        _settings_cache.setdefault(guild_id, {})['economy'] = settings
+    if not settings:
+        # Fallback de seguridad extrema
+        settings = {
+            'currency_name': 'créditos', 'currency_emoji': '🪙', 
+            'start_balance': 100, 'work_cooldown': 3600, 'rob_cooldown': 21600
+        }
+    
+    _settings_cache.setdefault(guild_id, {})['economy'] = settings
+    _settings_cache[guild_id]['last_update_eco'] = now
     return settings
 
 # Funciones asíncronas para consultas y ejecución

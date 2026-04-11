@@ -1,4 +1,5 @@
 import discord
+import os
 from discord.ext import commands
 import pomice
 import asyncio
@@ -175,20 +176,30 @@ class MusicCog(commands.Cog, name="Música"):
         port = int(os.getenv("LAVALINK_PORT", 2333))
         password = os.getenv("LAVALINK_PASS", "youshallnotpass")
         
-        try:
-            # Usamos pomice.NodePool directamente para registro global
-            await pomice.NodePool.create_node(
-                bot=self.bot,
-                host=host,
-                port=port,
-                password=password,
-                identifier='MAIN',
-                spotify_client_id=getattr(constants, 'SPOTIFY_CLIENT_ID', None),
-                spotify_client_secret=getattr(constants, 'SPOTIFY_CLIENT_SECRET', None)
-            )
-            print(f"🟢 Nodo Pomice (Lavalink) conectado en {host}:{port}")
-        except Exception as e:
-            print(f"🔴 Error al conectar el nodo Pomice: {e}")
+        max_retries = 5
+        retry_delay = 5
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Usamos pomice.NodePool directamente para registro global
+                await pomice.NodePool.create_node(
+                    bot=self.bot,
+                    host=host,
+                    port=port,
+                    password=password,
+                    identifier='MAIN',
+                    spotify_client_id=getattr(constants, 'SPOTIFY_CLIENT_ID', None),
+                    spotify_client_secret=getattr(constants, 'SPOTIFY_CLIENT_SECRET', None)
+                )
+                print(f"🟢 Nodo Pomice (Lavalink) conectado en {host}:{port}")
+                return
+            except Exception as e:
+                print(f"🔴 Intento {attempt}/{max_retries}: Error al conectar el nodo Pomice en {host}:{port}: {e}")
+                if attempt == max_retries:
+                    print("❌ No se pudo conectar al nodo después de varios intentos.")
+                    break
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2
 
 
     async def cog_check(self, ctx: commands.Context):

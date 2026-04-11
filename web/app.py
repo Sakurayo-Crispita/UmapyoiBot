@@ -30,7 +30,11 @@ app = Quart(__name__,
             static_url_path='/static',
             static_folder=static_dir, 
             template_folder=template_dir)
-app.secret_key = os.urandom(24)
+# Usar una clave fija del .env si existe, si no, generarla (pero avisar)
+app.secret_key = os.getenv("APP_SECRET_KEY")
+if not app.secret_key:
+    app.secret_key = "umapyoi_default_secret_key_change_me"
+    print("⚠️ AVISO: APP_SECRET_KEY no encontrada en .env. Usando clave por defecto.")
 
 # ==== 🛡️ CONFIGURACIONES DE SEGURIDAD (BLINDAJE DE 5 CAPAS) ====
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # Límite de 5 MB anti-DDoS/Exhaustión de RAM
@@ -68,7 +72,11 @@ async def internal_error(error):
 # Configuración de Discord
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://umapyoibot.com/callback")
+# Intentar construir el REDIRECT_URI si no está definido
+REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
+if not REDIRECT_URI:
+    # Si no hay REDIRECT_URI, intentamos inferirlo o usar umapyoi.com por defecto
+    REDIRECT_URI = "https://umapyoibot.com/callback"
 API_ENDPOINT = 'https://discord.com/api/v10'
 
 # Webhooks para Reportes y Sugerencias
@@ -110,8 +118,12 @@ ATTACK_PATHS = {
 @app.before_request
 async def rate_limit_check():
     # Exceptuar rutas estáticas u otras que no queramos limitar
-    # Añadimos /api/admin/stats para que las gráficas no auto-bloqueen al admin
     if request.path.startswith('/static/') or request.path == '/api/admin/stats':
+        return
+
+    # Bypass para el dueño del bot (OWNER_ID)
+    owner_id = os.getenv("OWNER_ID")
+    if owner_id and session.get('user', {}).get('id') == owner_id:
         return
 
 

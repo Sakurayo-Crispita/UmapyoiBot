@@ -424,6 +424,9 @@ class EconomyCog(commands.Cog, name="Economía"):
             server_settings = await db.get_cached_server_settings(ctx.guild.id)
             lang = server_settings.get('language', 'es')
             
+            if not miembro or not hasattr(miembro, 'id'):
+                return await ctx.send("❌ No se pudo identificar a la víctima correctamente.")
+
             robador_w, _ = await db.get_balance(ctx.guild.id, ctx.author.id)
             victima_w, _ = await db.get_balance(ctx.guild.id, miembro.id)
             
